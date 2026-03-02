@@ -32,12 +32,6 @@ enum PaymentBrand {
   apple_pay
 }
 
-enum PlanName {
-  basic
-  starter
-  pro
-}
-
 enum SupportTicketStatus {
   open
   in_progress
@@ -99,11 +93,11 @@ model Captain {
   totalTrips      Int       @default(0)
   language        String    @default("en")
   notificationsEnabled Boolean @default(true)
+  serviceId       String?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
-  planId          String?
 
-  plan            PricePlan?  @relation(fields: [planId], references: [id])
+  service         Service?  @relation(fields: [serviceId], references: [id])
   vehicle         Vehicle?
   wallet          Wallet?
   tripsAsCaptain  Trip[]    @relation("CaptainTrips")
@@ -127,8 +121,10 @@ model VehicleType {
   name        String    @unique
   description String?
   imageUrl    String?
+  serviceId   String?
   createdAt   DateTime  @default(now())
-  plans       PricePlan[]
+
+  service     Service?  @relation(fields: [serviceId], references: [id])
   vehicles    Vehicle[]
 
   @@map("vehicle_types")
@@ -175,7 +171,6 @@ model Trip {
   id              String      @id @default(uuid())
   userId          String
   captainId       String?
-  planId          String?
   serviceId       String?
   paymentMethodId String?
   status          TripStatus  @default(searching)
@@ -198,29 +193,12 @@ model Trip {
 
   user            User        @relation("UserTrips", fields: [userId], references: [id])
   captain         Captain?    @relation("CaptainTrips", fields: [captainId], references: [id])
-  // vehicleType     VehicleType @relation(fields: [vehicleTypeId], references: [id])
-  plan            PricePlan?  @relation(fields: [planId], references: [id])
   service         Service?    @relation(fields: [serviceId], references: [id])
   paymentMethod   PaymentMethod? @relation(fields: [paymentMethodId], references: [id])
   rating          Rating?
-  fareOffers      FareOffer[]
   declines        TripDecline[]
 
   @@map("trips")
-}
-
-model FareOffer {
-  id            String    @id @default(uuid())
-  tripId        String
-  captainId     String
-  proposedFare  Decimal   @db.Decimal(10, 2)
-  currency      String    @default("EGP")
-  isAccepted    Boolean   @default(false)
-  createdAt     DateTime  @default(now())
-
-  trip          Trip      @relation(fields: [tripId], references: [id])
-
-  @@map("fare_offers")
 }
 
 model TripDecline {
@@ -272,25 +250,6 @@ model PaymentMethod {
   trips         Trip[]
 
   @@map("payment_methods")
-}
-
-// ─────────────────────────────────────────────
-//  PRICE PLAN
-// ─────────────────────────────────────────────
-
-model PricePlan {
-  id          String    @id @default(uuid())
-  name        PlanName
-  price       Decimal   @db.Decimal(10, 2)
-  credits     Int       // -1 = unlimited
-  features    Json
-  createdAt   DateTime  @default(now())
-
-  captains    Captain[]
-  vehicleTypes VehicleType[] // 👈 add this
-  trips        Trip[]        // 👈 and this
-
-  @@map("price_plans")
 }
 
 // ─────────────────────────────────────────────
@@ -570,7 +529,9 @@ model Service {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  trips     Trip[]
+  trips        Trip[]
+  vehicleTypes VehicleType[]
+  captains     Captain[]
 
   @@map("services")
 }

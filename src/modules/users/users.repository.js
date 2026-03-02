@@ -26,17 +26,6 @@ const updateAddress = (id, userId, data) =>
 const deleteAddress = (id, userId) =>
   prisma.savedAddress.deleteMany({ where: { id, userId } });
 
-// ── Wishlist ──────────────────────────────────────────────────────────────────
-
-const getWishlist = (userId) =>
-  prisma.wishlistItem.findMany({ where: { userId } });
-
-const addWishlistItem = (userId, itemRef) =>
-  prisma.wishlistItem.create({ data: { userId, itemRef } });
-
-const deleteWishlistItem = (id, userId) =>
-  prisma.wishlistItem.deleteMany({ where: { id, userId } });
-
 // ── Payment Methods ───────────────────────────────────────────────────────────
 
 const getPaymentMethods = (userId) =>
@@ -56,6 +45,5 @@ const setDefaultPayment = async (id, userId) => {
 module.exports = {
   findById, updateUser, getWallet,
   getSavedAddresses, createAddress, updateAddress, deleteAddress,
-  getWishlist, addWishlistItem, deleteWishlistItem,
   getPaymentMethods, createPaymentMethod, deletePaymentMethod, setDefaultPayment,
 };

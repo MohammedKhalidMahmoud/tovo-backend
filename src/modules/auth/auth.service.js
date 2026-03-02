@@ -39,9 +39,14 @@ const registerCaptain = async ({ name, email, phone, password, drivingLicense, v
 
   const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
 
+  // Resolve serviceId from the chosen vehicle type (one read before the transaction)
+  const vehicleType = await prisma.vehicleType.findUnique({ where: { id: vehicleTypeId }, select: { serviceId: true } });
+  if (!vehicleType) throw { status: 400, message: 'Invalid vehicleTypeId' };
+  const serviceId = vehicleType.serviceId ?? null;
+
   const captain = await prisma.$transaction(async (tx) => {
     const newCaptain = await tx.captain.create({
-      data: { name, email, phone, passwordHash, drivingLicense },
+      data: { name, email, phone, passwordHash, drivingLicense, serviceId },
     });
 
     await tx.vehicle.create({

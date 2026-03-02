@@ -1,28 +1,5 @@
 const prisma = require('../../../config/prisma');
 
-exports.listPlans = async () => {
-  const plans = await prisma.pricePlan.findMany();
-  return plans;
-};
-
-exports.createPlan = async (data) => {
-  const plan = await prisma.pricePlan.create({ data: { name: data.name, price: data.price, credits: data.credits || 0, features: data.features || {}, description: data.description || '' } });
-  return plan;
-};
-
-exports.getPlan = async (planId) => {
-  return prisma.pricePlan.findUnique({ where: { id: planId } });
-};
-
-exports.updatePlan = async (planId, data) => {
-  return prisma.pricePlan.update({ where: { id: planId }, data });
-};
-
-exports.deletePlan = async (planId, reassignPlanId) => {
-  // If reassignPlanId provided, reassign related records (not implemented)
-  await prisma.pricePlan.delete({ where: { id: planId } });
-};
-
 exports.listPromotions = async (filters) => {
   const where = {};
   if (filters.status && filters.status !== 'all') where.isActive = filters.status === 'active';

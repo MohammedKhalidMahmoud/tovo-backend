@@ -33,20 +33,10 @@ const getWallet = async (captainId) => {
   return wallet;
 };
 
-const getPricePlans = () => repo.getPricePlans();
-
-const subscribeToPlan = async (captainId, planId) => {
-  const plan = await repo.getPricePlans().then(plans => plans.find(p => p.id === planId));
-  if (!plan) throw { status: 404, message: 'Plan not found' };
-
-  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 1 week
-  return repo.upsertCaptainPlan(captainId, planId, expiresAt);
-};
-
 const getInsuranceCards = (captainId) => repo.getInsuranceCards(captainId);
 
 module.exports = {
   getProfile, updateProfile, updateAvatar,
   startDuty, endDuty, getWallet,
-  getPricePlans, subscribeToPlan, getInsuranceCards,
+  getInsuranceCards,
 };

@@ -22,10 +22,6 @@ router.post('/me/duty/start',              ...captainOnly, controller.startDuty)
 router.post('/me/duty/end',                ...captainOnly, controller.endDuty);
 router.get('/me/wallet',                   ...captainOnly, controller.getWallet);
 
-// ── Price Plans ───────────────────────────────────────────────────────────────
-router.get('/me/price-plans',              ...captainOnly, controller.getPricePlans);
-router.post('/me/price-plans',             ...captainOnly, [body('plan_id').notEmpty().isUUID()], validate, controller.subscribeToPlan);
-
 // ── Insurance ─────────────────────────────────────────────────────────────────
 router.get('/me/insurance',                ...captainOnly, controller.getInsuranceCards);
 
@@ -35,10 +31,4 @@ router.patch('/me/trips/:id/accept',       ...captainOnly, [param('id').isUUID()
 router.patch('/me/trips/:id/decline',      ...captainOnly, [param('id').isUUID()], validate, tripsController.declineTrip);
 router.patch('/me/trips/:id/start',        ...captainOnly, [param('id').isUUID()], validate, tripsController.startTrip);
 router.patch('/me/trips/:id/end',          ...captainOnly, [param('id').isUUID()], validate, tripsController.endTrip);
-router.post('/me/trips/:id/fare-offer',    ...captainOnly, [
-  param('id').isUUID(),
-  body('proposed_fare').isDecimal(),
-  body('currency').notEmpty(),
-], validate, tripsController.createFareOffer);
-
 module.exports = router;

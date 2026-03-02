@@ -292,17 +292,6 @@ components:
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
 
-    # ── PRICE PLAN ──────────────────────────────────────────────────────────
-    PricePlan:
-      type: object
-      properties:
-        id: { type: string, format: uuid }
-        name: { type: string, enum: [basic, starter, pro] }
-        price: { type: number, example: 99.99 }
-        credits: { type: integer, description: '-1 means unlimited', example: -1 }
-        features: { type: array, items: { type: string } }
-        isActive: { type: boolean }
-
     # ── ADDRESS ─────────────────────────────────────────────────────────────
     SavedAddress:
       type: object
@@ -759,40 +748,6 @@ paths:
                 properties:
                   data: { $ref: '#/components/schemas/Wallet' }
 
-  /users/me/wishlist:
-    get:
-      tags: [Users]
-      summary: Get wishlist
-      security: [{ BearerAuth: [] }]
-      responses:
-        '200': { description: Wishlist items }
-    post:
-      tags: [Users]
-      summary: Add to wishlist
-      security: [{ BearerAuth: [] }]
-      requestBody:
-        content:
-          application/json:
-            schema:
-              required: [item_ref]
-              properties:
-                item_ref: { type: string }
-      responses:
-        '201': { description: Added to wishlist }
-
-  /users/me/wishlist/{id}:
-    delete:
-      tags: [Users]
-      summary: Remove from wishlist
-      security: [{ BearerAuth: [] }]
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema: { type: string, format: uuid }
-      responses:
-        '200': { description: Removed }
-
   /users/me/addresses:
     get:
       tags: [Users]
@@ -980,36 +935,6 @@ paths:
                 properties:
                   data: { $ref: '#/components/schemas/Wallet' }
 
-  /captains/me/price-plans:
-    get:
-      tags: [Captains]
-      summary: List subscription plans
-      security: [{ BearerAuth: [] }]
-      responses:
-        '200':
-          description: Available plans
-          content:
-            application/json:
-              schema:
-                properties:
-                  data:
-                    type: array
-                    items: { $ref: '#/components/schemas/PricePlan' }
-    post:
-      tags: [Captains]
-      summary: Subscribe to a plan
-      security: [{ BearerAuth: [] }]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              required: [plan_id]
-              properties:
-                plan_id: { type: string, format: uuid }
-      responses:
-        '201': { description: Subscribed }
-
   /captains/me/insurance:
     get:
       tags: [Captains]
@@ -1086,28 +1011,6 @@ paths:
       responses:
         '200': { description: Trip completed }
 
-  /captains/me/trips/{id}/fare-offer:
-    post:
-      tags: [Captains]
-      summary: Propose a custom fare
-      security: [{ BearerAuth: [] }]
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema: { type: string }
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              required: [proposed_fare, currency]
-              properties:
-                proposed_fare: { type: number, example: 600.00 }
-                currency: { type: string, example: EGP }
-      responses:
-        '201': { description: Fare offer submitted }
-
   # ── TRIPS ───────────────────────────────────────────────────────────────────
   /trips/estimate:
     get:
@@ -1119,21 +1022,26 @@ paths:
         - { name: pickup_lng,    in: query, required: true,  schema: { type: number } }
         - { name: dropoff_lat,   in: query, required: true,  schema: { type: number } }
         - { name: dropoff_lng,   in: query, required: true,  schema: { type: number } }
-        - { name: vehicle_type_id, in: query, required: false, schema: { type: string } }
+        - { name: service_id, in: query, required: false, schema: { type: string, format: uuid } }
       responses:
         '200':
-          description: Fare estimates
+          description: Fare estimate with commission breakdown
           content:
             application/json:
               schema:
                 properties:
                   data:
-                    type: array
-                    items:
-                      properties:
-                        vehicleType: { $ref: '#/components/schemas/VehicleType' }
-                        distanceKm: { type: number }
-                        estimatedFare: { type: number }
+                    type: object
+                    properties:
+                      distanceKm:    { type: number, example: 4.2 }
+                      farePerKm:     { type: number, example: 5.0 }
+                      baseFare:      { type: number, example: 20.0 }
+                      serviceName:   { type: string, example: Comfort }
+                      tripFare:      { type: number, example: 41.0, description: 'Captain earnings' }
+                      commissionPct: { type: number, example: 15 }
+                      commission:    { type: number, example: 6.15, description: "App's profit" }
+                      totalFare:     { type: number, example: 47.15, description: 'Total charged to user' }
+                      currency:      { type: string, example: EGP }
 
   /trips:
     post:

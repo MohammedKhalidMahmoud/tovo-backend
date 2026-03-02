@@ -21,7 +21,8 @@ const haversineKm = (lat1, lng1, lat2, lng2) => {
 // ─────────────────────────────────────────────────────────────────────────────
 //  FARE ESTIMATE
 // ─────────────────────────────────────────────────────────────────────────────
-const FARE_PER_KM = Number(process.env.FARE_PER_KM) || 5.0;
+const FARE_PER_KM    = Number(process.env.FARE_PER_KM)    || 5.0;
+const COMMISSION_PCT = Number(process.env.COMMISSION_PCT) || 15;
 
 const estimateFare = async ({ pickupLat, pickupLng, dropoffLat, dropoffLng, serviceId }) => {
   const distanceKm = haversineKm(pickupLat, pickupLng, dropoffLat, dropoffLng);
@@ -35,16 +36,29 @@ const estimateFare = async ({ pickupLat, pickupLng, dropoffLat, dropoffLng, serv
     serviceName = svc.name;
   }
 
-  const estimatedFare = +(baseFare + distanceKm * FARE_PER_KM).toFixed(2);
-  return { distanceKm: +distanceKm.toFixed(2), farePerKm: FARE_PER_KM, baseFare, serviceName, estimatedFare, currency: 'EGP' };
+  const tripFare   = +(baseFare + distanceKm * FARE_PER_KM).toFixed(2);
+  const commission = +(tripFare * COMMISSION_PCT / 100).toFixed(2);
+  const totalFare  = +(tripFare + commission).toFixed(2);
+
+  return {
+    distanceKm:    +distanceKm.toFixed(2),
+    farePerKm:     FARE_PER_KM,
+    baseFare,
+    serviceName,
+    tripFare,
+    commissionPct: COMMISSION_PCT,
+    commission,
+    totalFare,
+    currency:      'EGP',
+  };
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  NEARBY CAPTAINS  (used by controller after trip creation)
 //  Reads from the in-memory locationStore — zero DB I/O, synchronous.
 // ─────────────────────────────────────────────────────────────────────────────
-const getNearbyCaptains = (pickupLat, pickupLng, radiusKm = 10) =>
-  locationStore.getNearby(pickupLat, pickupLng, radiusKm);
+const getNearbyCaptains = (pickupLat, pickupLng, radiusKm = 10, serviceId = null) =>
+  locationStore.getNearby(pickupLat, pickupLng, radiusKm, serviceId);
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  CREATE TRIP
@@ -57,8 +71,10 @@ const createTrip = async (userId, body) => {
   if (!svc || !svc.isActive) throw Object.assign(new Error('Service not found or inactive'), { statusCode: 404 });
 
   const distanceKm = haversineKm(pickup_lat, pickup_lng, dropoff_lat, dropoff_lng);
-  const baseFare = parseFloat(svc.baseFare);
-  const fare = +(baseFare + distanceKm * FARE_PER_KM).toFixed(2);
+  const baseFare   = parseFloat(svc.baseFare);
+  const tripFare   = +(baseFare + distanceKm * FARE_PER_KM).toFixed(2);
+  const commission = +(tripFare * COMMISSION_PCT / 100).toFixed(2);
+  const fare       = +(tripFare + commission).toFixed(2); // total charged to user
 
   return repo.createTrip({
     user: { connect: { id: userId } },
@@ -151,14 +167,6 @@ const endTrip = async (tripId, captainId) => {
   return repo.updateTrip(tripId, { status: 'completed', endedAt: new Date() });
 };
 
-const createFareOffer = async (tripId, captainId, proposedFare, currency) => {
-  const trip = await repo.findTripById(tripId);
-  if (!trip) throw { status: 404, message: 'Trip not found' };
-  if (trip.status !== 'searching') throw { status: 422, message: 'Trip is no longer accepting fare offers' };
-
-  return repo.createFareOffer({ tripId, captainId, proposedFare, currency });
-};
-
 // ─────────────────────────────────────────────────────────────────────────────
 //  RATINGS
 // ─────────────────────────────────────────────────────────────────────────────
@@ -187,6 +195,6 @@ const getCaptainRatings = async (captainId, page = 1, perPage = 20) => {
 
 module.exports = {
   estimateFare, getNearbyCaptains, createTrip, getTripById, getUserTrips, cancelTrip,
-  getCaptainTrips, getNewRequests, acceptTrip, declineTrip, startTrip, endTrip, createFareOffer,
+  getCaptainTrips, getNewRequests, acceptTrip, declineTrip, startTrip, endTrip,
   rateTrip, getCaptainRatings,
 };

@@ -33,14 +33,6 @@ const updateAddress = (id, userId, data) => repo.updateAddress(id, userId, data)
 
 const deleteAddress = (id, userId) => repo.deleteAddress(id, userId);
 
-// ── Wishlist ──────────────────────────────────────────────────────────────────
-
-const getWishlist = (userId) => repo.getWishlist(userId);
-
-const addToWishlist = (userId, itemRef) => repo.addWishlistItem(userId, itemRef);
-
-const removeFromWishlist = (id, userId) => repo.deleteWishlistItem(id, userId);
-
 // ── Payment Methods ───────────────────────────────────────────────────────────
 
 const getPaymentMethods = (userId) => repo.getPaymentMethods(userId);
@@ -54,6 +46,5 @@ const setDefaultPayment = (id, userId) => repo.setDefaultPayment(id, userId);
 module.exports = {
   getProfile, updateProfile, updateAvatar, getWallet,
   getSavedAddresses, addAddress, updateAddress, deleteAddress,
-  getWishlist, addToWishlist, removeFromWishlist,
   getPaymentMethods, addPaymentMethod, deletePaymentMethod, setDefaultPayment,
 };

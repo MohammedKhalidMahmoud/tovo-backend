@@ -1,53 +1,6 @@
 const service = require('./pricing.service');
 const { success, error } = require('../../../utils/response');
 
-exports.listPlans = async (req, res, next) => {
-  try {
-    const plans = await service.listPlans();
-    return success(res, plans, 'Price plans retrieved');
-  } catch (err) {
-    next(err);
-  }
-};
-
-exports.createPlan = async (req, res, next) => {
-  try {
-    const data = req.body;
-    const plan = await service.createPlan(data);
-    return success(res, plan, 'Price plan created', null, 201);
-  } catch (err) {
-    next(err);
-  }
-};
-
-exports.getPlan = async (req, res, next) => {
-  try {
-    const plan = await service.getPlan(req.params.planId);
-    if (!plan) return error(res, 'Plan not found', 404);
-    return success(res, plan, 'Plan retrieved');
-  } catch (err) {
-    next(err);
-  }
-};
-
-exports.updatePlan = async (req, res, next) => {
-  try {
-    const plan = await service.updatePlan(req.params.planId, req.body);
-    return success(res, plan, 'Plan updated');
-  } catch (err) {
-    next(err);
-  }
-};
-
-exports.deletePlan = async (req, res, next) => {
-  try {
-    await service.deletePlan(req.params.planId, req.query.reassignPlanId);
-    return success(res, null, 'Plan deleted');
-  } catch (err) {
-    next(err);
-  }
-};
-
 exports.listPromotions = async (req, res, next) => {
   try {
     const filters = { page: req.query.page || 1, limit: req.query.limit || 50, status: req.query.status || 'all', search: req.query.search };

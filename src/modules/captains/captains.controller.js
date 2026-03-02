@@ -1,5 +1,5 @@
 const service = require('./captains.service');
-const { success, created, error } = require('../../utils/response');
+const { success, error } = require('../../utils/response');
 
 const getProfile = async (req, res, next) => {
   try {
@@ -59,25 +59,6 @@ const getWallet = async (req, res, next) => {
   }
 };
 
-const getPricePlans = async (_req, res, next) => {
-  try {
-    const data = await service.getPricePlans();
-    return success(res, data);
-  } catch (err) {
-    next(err);
-  }
-};
-
-const subscribeToPlan = async (req, res, next) => {
-  try {
-    const data = await service.subscribeToPlan(req.actor.id, req.body.plan_id);
-    return created(res, data, 'Subscribed to plan');
-  } catch (err) {
-    if (err.status) return error(res, err.message, err.status);
-    next(err);
-  }
-};
-
 const getInsuranceCards = async (req, res, next) => {
   try {
     const data = await service.getInsuranceCards(req.actor.id);
@@ -90,5 +71,5 @@ const getInsuranceCards = async (req, res, next) => {
 module.exports = {
   getProfile, updateProfile, updateAvatar,
   startDuty, endDuty, getWallet,
-  getPricePlans, subscribeToPlan, getInsuranceCards,
+  getInsuranceCards,
 };

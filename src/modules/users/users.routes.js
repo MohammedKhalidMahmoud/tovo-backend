@@ -19,13 +19,6 @@ router.put('/me',                        ...userOnly, [
 router.patch('/me/avatar',               ...userOnly, upload.single('avatar'), controller.updateAvatar);
 router.get('/me/wallet',                 ...userOnly, controller.getWallet);
 
-// ── Wishlist ──────────────────────────────────────────────────────────────────
-router.get('/me/wishlist',               ...userOnly, controller.getWishlist);
-router.post('/me/wishlist',              ...userOnly, [body('item_ref').notEmpty()], validate, controller.addToWishlist);
-router.delete('/me/wishlist/:id',        ...userOnly, [
-  param('id').isUUID().withMessage('id must be a valid UUID'),
-], validate, controller.removeFromWishlist);
-
 // ── Saved Addresses ───────────────────────────────────────────────────────────
 router.get('/me/addresses',              ...userOnly, controller.getSavedAddresses);
 router.post('/me/addresses',             ...userOnly, [

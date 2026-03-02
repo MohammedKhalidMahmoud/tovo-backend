@@ -34,16 +34,26 @@ const setupSocket = (io) => {
   // Evict entries that haven't sent a location update in 30 s.
   setInterval(() => locationStore.cleanup(), 30_000);
 
-  io.on('connection', (socket) => {
+  io.on('connection', async (socket) => {
     const { id, role } = socket.actor;
     logger.info(`Socket connected: ${role}:${id} [${socket.id}]`);
 
     // Join private room
     socket.join(`${role}:${id}`);
 
-    // Captains join the available-captains broadcast room
+    // Captains join the available-captains broadcast room and load their serviceId
     if (role === 'captain') {
       socket.join('captains:available');
+
+      // One-time DB read per session — store serviceId on socket instance
+      try {
+        const prisma = require('../config/prisma');
+        const captainData = await prisma.captain.findUnique({ where: { id }, select: { serviceId: true } });
+        socket.captainServiceId = captainData?.serviceId ?? null;
+      } catch (e) {
+        logger.error('Failed to load captain serviceId on connect', e);
+        socket.captainServiceId = null;
+      }
     }
 
     // ── CLIENT EVENTS ─────────────────────────────────────────────────────────
@@ -59,7 +69,7 @@ const setupSocket = (io) => {
     socket.on('captain.location_update', ({ latitude, longitude, heading, tripId }) => {
       if (role !== 'captain') return;
 
-      locationStore.set(id, { lat: latitude, lng: longitude, heading });
+      locationStore.set(id, { lat: latitude, lng: longitude, heading, serviceId: socket.captainServiceId });
 
       if (tripId) {
         io.to(`trip:${tripId}`).emit('trip.captain_location', { latitude, longitude, heading, captainId: id });
@@ -123,14 +133,9 @@ const emitTripCancelled = (io, tripId, userId, captainId, cancelledBy) => {
     .emit('trip.cancelled', { tripId, cancelledBy });
 };
 
-const emitFareOffer = (io, userId, fareOffer) => {
-  io.to(`user:${userId}`).emit('trip.fare_offered', fareOffer);
-};
-
 module.exports = {
   setupSocket,
   emitCaptainMatched,
   emitTripStatusChanged,
   emitTripCancelled,
-  emitFareOffer,
 };

@@ -10,26 +10,23 @@ async function main() {
   // ─────────────────────────────────────────────
   //  CLEANUP (order matters — children before parents)
   // ─────────────────────────────────────────────
-  await prisma.fareOffer.deleteMany();
   await prisma.rating.deleteMany();
+  await prisma.tripDecline.deleteMany();
   await prisma.trip.deleteMany();
   await prisma.service.deleteMany();
   await prisma.ticketMessage.deleteMany();
   await prisma.supportTicket.deleteMany();
   await prisma.notification.deleteMany();
   await prisma.deviceToken.deleteMany();
-  await prisma.wishlistItem.deleteMany();
   await prisma.savedAddress.deleteMany();
   await prisma.paymentMethod.deleteMany();
   await prisma.otp.deleteMany();
   await prisma.refreshToken.deleteMany();
   await prisma.insuranceCard.deleteMany();
-  // await prisma.captainPricePlan.deleteMany();
   await prisma.vehicle.deleteMany();
   await prisma.wallet.deleteMany();
   await prisma.coupon.deleteMany();
   await prisma.promotion.deleteMany();
-  await prisma.pricePlan.deleteMany();
   await prisma.vehicleType.deleteMany();
   await prisma.captain.deleteMany();
   await prisma.user.deleteMany();
@@ -57,6 +54,7 @@ async function main() {
         name:        'Regular Car',
         description: 'Comfortable everyday rides at affordable prices',
         imageUrl:    'https://assets.tovo.app/vehicles/regular.png',
+        serviceId:   svcRegular.id,
       },
     }),
     prisma.vehicleType.create({
@@ -64,41 +62,11 @@ async function main() {
         name:        'VIP Car',
         description: 'Premium vehicles with top-rated captains',
         imageUrl:    'https://assets.tovo.app/vehicles/vip.png',
+        serviceId:   svcComfort.id,
       },
     }),
   ]);
   console.log('✅ Vehicle types created');
-
-  // ─────────────────────────────────────────────
-  //  PRICE PLANS
-  // ─────────────────────────────────────────────
-  const [basicPlan, starterPlan, proPlan] = await Promise.all([
-    prisma.pricePlan.create({
-      data: {
-        name:     'basic',
-        price:    0.00,
-        credits:  10,
-        features: ['Up to 10 trips/week', 'Standard support', 'Basic analytics'],
-      },
-    }),
-    prisma.pricePlan.create({
-      data: {
-        name:     'starter',
-        price:    49.99,
-        credits:  50,
-        features: ['Up to 50 trips/week', 'Priority support', 'Trip analytics', 'Early access features'],
-      },
-    }),
-    prisma.pricePlan.create({
-      data: {
-        name:     'pro',
-        price:    99.99,
-        credits:  -1, // unlimited
-        features: ['Unlimited trips', '24/7 dedicated support', 'Advanced analytics', 'VIP badge', 'Featured in app'],
-      },
-    }),
-  ]);
-  console.log('✅ Price plans created');
 
   // ─────────────────────────────────────────────
   //  USERS
@@ -148,6 +116,8 @@ async function main() {
   // ─────────────────────────────────────────────
   //  CAPTAINS
   // ─────────────────────────────────────────────
+  // Note: serviceId is set per vehicle type:
+  //   regularCar → svcRegular (Normal), vipCar → svcComfort (Comfort)
   const [kaptan1, kaptan2, kaptan3] = await Promise.all([
     prisma.captain.create({
       data: {
@@ -163,6 +133,7 @@ async function main() {
         rating:            4.8,
         totalTrips:        312,
         language:          'ar',
+        serviceId:         svcRegular.id,  // Regular Car → Normal service
       },
     }),
     prisma.captain.create({
@@ -178,10 +149,8 @@ async function main() {
         isOnline:          true,
         rating:            4.5,
         totalTrips:        178,
-        // currentLat:     30.0580,  // near Garden City, Cairo
-        // currentLng:     31.2280,
-        // heading:        180.0,
         language:       'ar',
+        serviceId:      svcComfort.id,  // VIP Car → Comfort service
       },
     }),
     prisma.captain.create({
@@ -197,10 +166,8 @@ async function main() {
         isOnline:          false,  // offline captain
         rating:            4.2,
         totalTrips:        89,
-        // currentLat:     null,
-        // currentLng:     null,
-        // heading:        null,
         language:       'en',
+        serviceId:      svcRegular.id,  // Regular Car → Normal service
       },
     }),
   ]);
@@ -275,40 +242,6 @@ async function main() {
   console.log('✅ Wallets created');
 
   // ─────────────────────────────────────────────
-  //  CAPTAIN PRICE PLANS
-  // ─────────────────────────────────────────────
-  // await Promise.all([
-  //   prisma.captainPricePlan.create({
-  //     data: {
-  //       captainId: kaptan1.id,
-  //       planId:    proPlan.id,
-  //       isActive:  true,
-  //       startedAt: new Date('2025-01-01'),
-  //       expiresAt: new Date('2026-01-01'),
-  //     },
-  //   }),
-  //   prisma.captainPricePlan.create({
-  //     data: {
-  //       captainId: kaptan2.id,
-  //       planId:    starterPlan.id,
-  //       isActive:  true,
-  //       startedAt: new Date('2025-06-01'),
-  //       expiresAt: new Date('2026-06-01'),
-  //     },
-  //   }),
-  //   prisma.captainPricePlan.create({
-  //     data: {
-  //       captainId: kaptan3.id,
-  //       planId:    basicPlan.id,
-  //       isActive:  true,
-  //       startedAt: new Date('2025-10-01'),
-  //       expiresAt: null,
-  //     },
-  //   }),
-  // ]);
-  // console.log('✅ Captain price plans created');
-
-  // ─────────────────────────────────────────────
   //  PAYMENT METHODS
   // ─────────────────────────────────────────────
   const [ahmedCard1, ahmedCard2, saraCard] = await Promise.all([
@@ -378,15 +311,6 @@ async function main() {
     }),
   ]);
   console.log('✅ Saved addresses created');
-
-  // ─────────────────────────────────────────────
-  //  WISHLIST ITEMS
-  // ─────────────────────────────────────────────
-  await Promise.all([
-    prisma.wishlistItem.create({ data: { userId: ahmed.id, itemRef: vipCar.id } }),
-    prisma.wishlistItem.create({ data: { userId: sara.id,  itemRef: regularCar.id } }),
-  ]);
-  console.log('✅ Wishlist items created');
 
   // ─────────────────────────────────────────────
   //  PROMOTIONS
@@ -484,7 +408,6 @@ const completedTrip = await prisma.trip.create({
   data: {
     user: { connect: { id: ahmed.id } },
     captain: { connect: { id: kaptan1.id } },
-    plan: { connect: { id: basicPlan.id } }, // REQUIRED
     service: { connect: { id: svcComfort.id } },
     paymentMethod: { connect: { id: ahmedCard1.id } },
 
@@ -511,7 +434,6 @@ const completedTrip = await prisma.trip.create({
 const cancelledTrip = await prisma.trip.create({
   data: {
     user: { connect: { id: sara.id } },
-    plan: { connect: { id: starterPlan.id } }, // starter
     service: { connect: { id: svcRegular.id } },
     paymentMethod: { connect: { id: saraCard.id } },
 
@@ -535,7 +457,6 @@ const activeTrip = await prisma.trip.create({
   data: {
     user: { connect: { id: ahmed.id } },
     captain: { connect: { id: kaptan2.id } },
-    plan: { connect: { id: proPlan.id } }, // pro
     service: { connect: { id: svcComfort.id } },
     paymentMethod: { connect: { id: ahmedCard2.id } },
 
@@ -556,7 +477,6 @@ const activeTrip = await prisma.trip.create({
 const searchingTrip = await prisma.trip.create({
   data: {
     user: { connect: { id: omar.id } },
-    plan: { connect: { id: basicPlan.id } }, // basic
     service: { connect: { id: svcRegular.id } },
 
     status: 'searching',
@@ -574,20 +494,6 @@ const searchingTrip = await prisma.trip.create({
 });
 
 console.log('✅ Trips created');
-
-  // ─────────────────────────────────────────────
-  //  FARE OFFERS
-  // ─────────────────────────────────────────────
-  await prisma.fareOffer.create({
-    data: {
-      tripId:       searchingTrip.id,
-      captainId:    kaptan1.id,
-      proposedFare: 50.00,
-      currency:     'EGP',
-      isAccepted:   false,
-    },
-  });
-  console.log('✅ Fare offers created');
 
   // ─────────────────────────────────────────────
   //  RATINGS
@@ -727,9 +633,9 @@ console.log('✅ Trips created');
   console.log('  sara.mohamed@example.com   (verified, Apple Pay)');
   console.log('  omar.khaled@example.com    (unverified, no payment method)');
   console.log('Captains:');
-  console.log('  mostafa.ali@example.com    (online, Regular Car, Pro plan)');
-  console.log('  karim.samir@example.com    (online, VIP Car, Starter plan)');
-  console.log('  youssef.nour@example.com   (offline, Regular Car, Basic plan)');
+  console.log('  mostafa.ali@example.com    (online, Regular Car)');
+  console.log('  karim.samir@example.com    (online, VIP Car)');
+  console.log('  youssef.nour@example.com   (offline, Regular Car)');
   console.log('──────────────────────────────────────────');
   console.log('OTP codes for testing:');
   console.log('  +201001234567  →  123456');

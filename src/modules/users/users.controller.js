@@ -80,35 +80,6 @@ const deleteAddress = async (req, res, next) => {
   }
 };
 
-// ── Wishlist ──────────────────────────────────────────────────────────────────
-
-const getWishlist = async (req, res, next) => {
-  try {
-    const data = await service.getWishlist(req.actor.id);
-    return success(res, data);
-  } catch (err) {
-    next(err);
-  }
-};
-
-const addToWishlist = async (req, res, next) => {
-  try {
-    const data = await service.addToWishlist(req.actor.id, req.body.item_ref);
-    return created(res, data, 'Added to wishlist');
-  } catch (err) {
-    next(err);
-  }
-};
-
-const removeFromWishlist = async (req, res, next) => {
-  try {
-    await service.removeFromWishlist(req.params.id, req.actor.id);
-    return success(res, {}, 'Removed from wishlist');
-  } catch (err) {
-    next(err);
-  }
-};
-
 // ── Payment Methods ───────────────────────────────────────────────────────────
 
 const getPaymentMethods = async (req, res, next) => {
@@ -150,6 +121,5 @@ const setDefaultPayment = async (req, res, next) => {
 module.exports = {
   getProfile, updateProfile, updateAvatar, getWallet,
   getSavedAddresses, addAddress, updateAddress, deleteAddress,
-  getWishlist, addToWishlist, removeFromWishlist,
   getPaymentMethods, addPaymentMethod, deletePaymentMethod, setDefaultPayment,
 };

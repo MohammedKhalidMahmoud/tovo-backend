@@ -48,13 +48,6 @@ const recordDecline = (tripId, captainId) =>
     update: {},
   });
 
-// Include trip.userId so the controller can route the socket event
-const createFareOffer = (data) =>
-  prisma.fareOffer.create({
-    data,
-    include: { trip: { select: { userId: true } } },
-  });
-
 const createRating = (data) =>
   prisma.rating.create({ data });
 
@@ -70,5 +63,5 @@ const findCaptainRatings = (captainId, skip, take) =>
 module.exports = {
   createTrip, findTripById, findTripsByUser,
   findTripsByCaptain, findNewRequests, updateTrip, recordDecline,
-  createFareOffer, createRating, findRatingsByTrip, findCaptainRatings,
+  createRating, findRatingsByTrip, findCaptainRatings,
 };

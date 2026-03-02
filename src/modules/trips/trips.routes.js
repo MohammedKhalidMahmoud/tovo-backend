@@ -49,13 +49,6 @@ router.patch('/:id/decline', ...captainOnly, [param('id').isUUID()], validate, c
 router.patch('/:id/start',   ...captainOnly, [param('id').isUUID()], validate, controller.startTrip);
 router.patch('/:id/end',     ...captainOnly, [param('id').isUUID()], validate, controller.endTrip);
 
-// ── Captain: Fare Offers ──────────────────────────────────────────────────────
-router.post('/:id/fare-offer', ...captainOnly, [
-  param('id').isUUID(),
-  body('proposed_fare').isFloat({ min: 0 }),
-  body('currency').optional().isString(),
-], validate, controller.createFareOffer);
-
 // ── Captain Ratings (public-ish) ──────────────────────────────────────────────
 router.get('/captains/:captainId/ratings', authenticate, [
   param('captainId').isUUID().withMessage('captainId must be a valid UUID'),

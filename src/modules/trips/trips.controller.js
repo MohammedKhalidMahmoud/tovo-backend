@@ -4,7 +4,6 @@ const {
   emitCaptainMatched,
   emitTripStatusChanged,
   emitTripCancelled,
-  emitFareOffer,
 } = require('../../realtime/socket');
 
 const estimateFare = async (req, res, next) => {
@@ -28,8 +27,8 @@ const createTrip = async (req, res, next) => {
     const trip = await service.createTrip(req.actor.id, req.body);
     const io = req.app.get('io');
 
-    // Notify only captains within 10 km of the pickup point
-    const nearbyCaptains = await service.getNearbyCaptains(trip.pickupLat, trip.pickupLng);
+    // Notify only captains within 10 km who serve the same service category
+    const nearbyCaptains = await service.getNearbyCaptains(trip.pickupLat, trip.pickupLng, 10, trip.serviceId);
     nearbyCaptains.forEach((c) => io.to(`captain:${c.id}`).emit('trip.new_request', trip));
 
     return created(res, trip, 'Trip created and searching for captains');
@@ -150,19 +149,6 @@ const endTrip = async (req, res, next) => {
   }
 };
 
-const createFareOffer = async (req, res, next) => {
-  try {
-    const { proposed_fare, currency } = req.body;
-    const offer = await service.createFareOffer(req.params.id, req.actor.id, proposed_fare, currency);
-    const io = req.app.get('io');
-    emitFareOffer(io, offer.trip.userId, offer);
-    return created(res, offer, 'Fare offer submitted');
-  } catch (err) {
-    if (err.status) return error(res, err.message, err.status);
-    next(err);
-  }
-};
-
 const rateTrip = async (req, res, next) => {
   try {
     const { rating, comment } = req.body;
@@ -186,6 +172,6 @@ const getCaptainRatings = async (req, res, next) => {
 
 module.exports = {
   estimateFare, createTrip, getUserTrips, getTripById, cancelTrip,
-  getCaptainTrips, getNewRequests, acceptTrip, declineTrip, startTrip, endTrip, createFareOffer,
+  getCaptainTrips, getNewRequests, acceptTrip, declineTrip, startTrip, endTrip,
   rateTrip, getCaptainRatings,
 };
