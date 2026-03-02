@@ -41,10 +41,10 @@ async function main() {
   //  SERVICES
   // ─────────────────────────────────────────────
   const [svcComfort, svcRegular, svcMoto, svcPackage] = await Promise.all([
-    prisma.service.create({ data: { name: 'Comfort',                baseFare: 20.00, isActive: true } }),
-    prisma.service.create({ data: { name: 'Regular',                baseFare: 10.00, isActive: true } }),
-    prisma.service.create({ data: { name: 'Motorcycle',             baseFare: 5.00,  isActive: true } }),
-    prisma.service.create({ data: { name: 'Package Transportation', baseFare: 15.00, isActive: true } }),
+    prisma.service.create({ data: { name: 'Comfort',    baseFare: 20.00, isActive: true } }),
+    prisma.service.create({ data: { name: 'Normal',     baseFare: 10.00, isActive: true } }),
+    prisma.service.create({ data: { name: 'Motorcycle', baseFare: 5.00,  isActive: true } }),
+    prisma.service.create({ data: { name: 'Packages',   baseFare: 15.00, isActive: true } }),
   ]);
   console.log('✅ Services created');
 
