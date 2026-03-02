@@ -1,0 +1,576 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────
+//  ENUMS
+// ─────────────────────────────────────────────
+
+enum Role {
+  user
+  captain
+  admin
+}
+
+enum TripStatus {
+  searching
+  matched
+  on_way
+  in_progress
+  completed
+  cancelled
+}
+
+enum PaymentBrand {
+  visa
+  mastercard
+  apple_pay
+}
+
+enum PlanName {
+  basic
+  starter
+  pro
+}
+
+enum SupportTicketStatus {
+  open
+  in_progress
+  resolved
+  closed
+}
+
+// ─────────────────────────────────────────────
+//  USER
+// ─────────────────────────────────────────────
+
+model User {
+  id              String    @id @default(uuid())
+  name            String
+  email           String    @unique
+  phone           String    @unique
+  passwordHash    String?
+  avatarUrl       String?
+  role            Role      @default(user)
+  isVerified      Boolean   @default(false)
+  language        String    @default("en")
+  notificationsEnabled Boolean @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  wallet          Wallet?
+  savedAddresses  SavedAddress[]
+  paymentMethods  PaymentMethod[]
+  tripsAsUser     Trip[]         @relation("UserTrips")
+  ratings         Rating[]       @relation("UserRatings")
+  wishlist        WishlistItem[]
+  notifications   Notification[]
+  supportTickets  SupportTicket[]
+  deviceTokens    DeviceToken[]
+  otps            Otp[]
+  refreshTokens   RefreshToken[]
+  sosAlerts       SosAlert[]
+
+  @@map("users")
+}
+
+// ─────────────────────────────────────────────
+//  CAPTAIN
+// ─────────────────────────────────────────────
+
+model Captain {
+  id              String    @id @default(uuid())
+  name            String
+  email           String    @unique
+  phone           String    @unique
+  passwordHash    String?
+  avatarUrl       String?
+  
+  drivingLicense  String
+  licenseExpiryDate DateTime?
+  isVerified      Boolean   @default(false)
+  isOnline        Boolean   @default(false)
+  rating          Float     @default(0)
+  totalTrips      Int       @default(0)
+  language        String    @default("en")
+  notificationsEnabled Boolean @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  planId          String?
+
+  plan            PricePlan?  @relation(fields: [planId], references: [id])
+  vehicle         Vehicle?
+  wallet          Wallet?
+  tripsAsCaptain  Trip[]    @relation("CaptainTrips")
+  ratingsReceived Rating[]  @relation("CaptainRatings")
+  insuranceCards  InsuranceCard[]
+  deviceTokens    DeviceToken[]
+  otps            Otp[]
+  refreshTokens   RefreshToken[]
+  supportTickets  SupportTicket[]
+  sosAlerts       SosAlert[]
+
+  @@map("captains")
+}
+
+// ─────────────────────────────────────────────
+//  VEHICLE
+// ─────────────────────────────────────────────
+
+model VehicleType {
+  id          String    @id @default(uuid())
+  name        String    @unique
+  description String?
+  imageUrl    String?
+  createdAt   DateTime  @default(now())
+  plans       PricePlan[]
+  vehicles    Vehicle[]
+
+  @@map("vehicle_types")
+}
+
+model Vehicle {
+  id          String      @id @default(uuid())
+  captainId   String      @unique
+  typeId      String
+  vin         String      @unique
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  captain     Captain     @relation(fields: [captainId], references: [id])
+  type        VehicleType @relation(fields: [typeId], references: [id])
+
+  @@map("vehicles")
+}
+
+// ─────────────────────────────────────────────
+//  WALLET
+// ─────────────────────────────────────────────
+
+model Wallet {
+  id          String    @id @default(uuid())
+  userId      String?   @unique
+  captainId   String?   @unique
+  balance     Decimal   @default(0) @db.Decimal(10, 2)
+  currency    String    @default("EGP")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  user        User?     @relation(fields: [userId], references: [id])
+  captain     Captain?  @relation(fields: [captainId], references: [id])
+
+  @@map("wallets")
+}
+
+// ─────────────────────────────────────────────
+//  TRIP
+// ─────────────────────────────────────────────
+
+model Trip {
+  id              String      @id @default(uuid())
+  userId          String
+  captainId       String?
+  planId          String?
+  serviceId       String?
+  paymentMethodId String?
+  status          TripStatus  @default(searching)
+  pickupLat       Float
+  pickupLng       Float
+  pickupAddress   String
+  dropoffLat      Float
+  dropoffLng      Float
+  dropoffAddress  String
+  fare            Decimal?    @db.Decimal(10, 2)
+  currency        String      @default("EGP")
+  distanceKm      Float?
+  durationMinutes Int?
+  startedAt       DateTime?
+  endedAt         DateTime?
+  cancelledAt     DateTime?
+  cancelledBy     String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  user            User        @relation("UserTrips", fields: [userId], references: [id])
+  captain         Captain?    @relation("CaptainTrips", fields: [captainId], references: [id])
+  // vehicleType     VehicleType @relation(fields: [vehicleTypeId], references: [id])
+  plan            PricePlan?  @relation(fields: [planId], references: [id])
+  service         Service?    @relation(fields: [serviceId], references: [id])
+  paymentMethod   PaymentMethod? @relation(fields: [paymentMethodId], references: [id])
+  rating          Rating?
+  fareOffers      FareOffer[]
+  declines        TripDecline[]
+
+  @@map("trips")
+}
+
+model FareOffer {
+  id            String    @id @default(uuid())
+  tripId        String
+  captainId     String
+  proposedFare  Decimal   @db.Decimal(10, 2)
+  currency      String    @default("EGP")
+  isAccepted    Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+
+  trip          Trip      @relation(fields: [tripId], references: [id])
+
+  @@map("fare_offers")
+}
+
+model TripDecline {
+  tripId    String
+  captainId String
+  createdAt DateTime @default(now())
+
+  trip      Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  @@id([tripId, captainId])
+  @@map("trip_declines")
+}
+
+// ─────────────────────────────────────────────
+//  RATING
+// ─────────────────────────────────────────────
+
+model Rating {
+  id          String    @id @default(uuid())
+  tripId      String    @unique
+  userId      String
+  captainId   String
+  stars       Int
+  comment     String?
+  createdAt   DateTime  @default(now())
+
+  trip        Trip      @relation(fields: [tripId], references: [id])
+  user        User      @relation("UserRatings", fields: [userId], references: [id])
+  captain     Captain   @relation("CaptainRatings", fields: [captainId], references: [id])
+
+  @@map("ratings")
+}
+
+// ─────────────────────────────────────────────
+//  PAYMENT
+// ─────────────────────────────────────────────
+
+model PaymentMethod {
+  id            String        @id @default(uuid())
+  userId        String
+  brand         PaymentBrand
+  lastFour      String?
+  maskedNumber  String?
+  expiry        String?
+  isDefault     Boolean       @default(false)
+  createdAt     DateTime      @default(now())
+
+  user          User          @relation(fields: [userId], references: [id])
+  trips         Trip[]
+
+  @@map("payment_methods")
+}
+
+// ─────────────────────────────────────────────
+//  PRICE PLAN
+// ─────────────────────────────────────────────
+
+model PricePlan {
+  id          String    @id @default(uuid())
+  name        PlanName
+  price       Decimal   @db.Decimal(10, 2)
+  credits     Int       // -1 = unlimited
+  features    Json
+  createdAt   DateTime  @default(now())
+
+  captains    Captain[]
+  vehicleTypes VehicleType[] // 👈 add this
+  trips        Trip[]        // 👈 and this
+
+  @@map("price_plans")
+}
+
+// ─────────────────────────────────────────────
+//  PROMOTIONS / COUPONS
+// ─────────────────────────────────────────────
+
+model Promotion {
+  id            String    @id @default(uuid())
+  title         String
+  description   String?
+  discountPct   Int
+  imageUrl      String?
+  validUntil    DateTime?
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+
+  @@map("promotions")
+}
+
+enum DiscountType {
+  percentage
+  amount
+}
+
+model Coupon {
+  id                        String       @id @default(uuid())
+  code                      String       @unique
+  discount_type             DiscountType @default(percentage)
+  discount                  Decimal      @db.Decimal(10, 2)
+  expiry_date               DateTime?
+  usage_limit               Int?
+  usage_limit_per_rider     Int?
+  min_amount                Decimal?     @db.Decimal(10, 2)
+  max_discount              Decimal?     @db.Decimal(10, 2)
+  coupon_type               String       @default("all")
+  status                    Int          @default(1)
+  used_count                Int          @default(0)
+  createdAt                 DateTime     @default(now())
+
+  @@map("coupons")
+}
+
+// ─────────────────────────────────────────────
+//  SAVED ADDRESS
+// ─────────────────────────────────────────────
+
+model SavedAddress {
+  id        String    @id @default(uuid())
+  userId    String
+  label     String
+  address   String
+  lat       Float
+  lng       Float
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  user      User      @relation(fields: [userId], references: [id])
+
+  @@map("saved_addresses")
+}
+
+// ─────────────────────────────────────────────
+//  WISHLIST
+// ─────────────────────────────────────────────
+
+model WishlistItem {
+  id        String    @id @default(uuid())
+  userId    String
+  itemRef   String
+  createdAt DateTime  @default(now())
+
+  user      User      @relation(fields: [userId], references: [id])
+
+  @@map("wishlist_items")
+}
+
+// ─────────────────────────────────────────────
+//  NOTIFICATIONS
+// ─────────────────────────────────────────────
+
+model Notification {
+  id        String    @id @default(uuid())
+  userId    String
+  title     String
+  body      String
+  isRead    Boolean   @default(false)
+  createdAt DateTime  @default(now())
+
+  user      User      @relation(fields: [userId], references: [id])
+
+  @@map("notifications")
+}
+
+model SystemSetting {
+  key        String   @id
+  value      String
+  description String?
+  updatedAt  DateTime @updatedAt
+
+  @@map("system_settings")
+}
+
+model AdminUser {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  role         String
+  passwordHash String
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("admin_users")
+}
+
+model DeviceToken {
+  id          String    @id @default(uuid())
+  userId      String?
+  captainId   String?
+  token       String    @unique
+  platform    String
+  createdAt   DateTime  @default(now())
+
+  user        User?     @relation(fields: [userId], references: [id])
+  captain     Captain?  @relation(fields: [captainId], references: [id])
+
+  @@map("device_tokens")
+}
+
+// ─────────────────────────────────────────────
+//  SUPPORT
+// ─────────────────────────────────────────────
+
+model SupportTicket {
+  id          String              @id @default(uuid())
+  userId      String?
+  captainId   String?
+  subject     String
+  status      SupportTicketStatus @default(open)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  user        User?               @relation(fields: [userId], references: [id])
+  captain     Captain?            @relation(fields: [captainId], references: [id])
+  messages    TicketMessage[]
+
+  @@map("support_tickets")
+}
+
+model TicketMessage {
+  id        String        @id @default(uuid())
+  ticketId  String
+  senderId  String
+  body      String        @db.Text
+  createdAt DateTime      @default(now())
+
+  ticket    SupportTicket @relation(fields: [ticketId], references: [id])
+
+  @@map("ticket_messages")
+}
+
+// ─────────────────────────────────────────────
+//  AUTH HELPERS
+// ─────────────────────────────────────────────
+
+model Otp {
+  id          String    @id @default(uuid())
+  userId      String?
+  captainId   String?
+  phone       String
+  code        String
+  expiresAt   DateTime
+  isUsed      Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+
+  user        User?     @relation(fields: [userId], references: [id])
+  captain     Captain?  @relation(fields: [captainId], references: [id])
+
+  @@map("otps")
+}
+
+model RefreshToken {
+  id          String    @id @default(uuid())
+  userId      String?
+  captainId   String?
+  token       String    @unique
+  expiresAt   DateTime
+  createdAt   DateTime  @default(now())
+
+  user        User?     @relation(fields: [userId], references: [id])
+  captain     Captain?  @relation(fields: [captainId], references: [id])
+
+  @@map("refresh_tokens")
+}
+
+// ─────────────────────────────────────────────
+//  INSURANCE (Captain)
+// ─────────────────────────────────────────────
+
+model InsuranceCard {
+  id          String    @id @default(uuid())
+  captainId   String
+  provider    String
+  policyNumber String
+  expiresAt   DateTime
+  createdAt   DateTime  @default(now())
+
+  captain     Captain   @relation(fields: [captainId], references: [id])
+
+  @@map("insurance_cards")
+}
+
+// ─────────────────────────────────────────────
+//  FAQ
+// ─────────────────────────────────────────────
+
+model Faq {
+  id        String   @id @default(uuid())
+  question  String   @db.Text
+  answer    String   @db.Text
+  order     Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("faqs")
+}
+
+// ─────────────────────────────────────────────
+//  SOS ALERT
+// ─────────────────────────────────────────────
+
+model SosAlert {
+  id          String    @id @default(uuid())
+  userId      String?
+  captainId   String?
+  lat         Float?
+  lng         Float?
+  message     String?
+  status      String    @default("pending")   // pending | handled
+  resolvedAt  DateTime?
+  createdAt   DateTime  @default(now())
+
+  user        User?     @relation(fields: [userId],    references: [id])
+  captain     Captain?  @relation(fields: [captainId], references: [id])
+
+  @@map("sos_alerts")
+}
+
+// ─────────────────────────────────────────────
+//  REGION
+// ─────────────────────────────────────────────
+
+model Region {
+  id        String   @id @default(uuid())
+  name      String
+  country   String
+  city      String?
+  lat       Float?
+  lng       Float?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("regions")
+}
+
+// ─────────────────────────────────────────────
+//  SERVICE (ride/delivery type)
+// ─────────────────────────────────────────────
+
+model Service {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  baseFare  Decimal  @default(0) @db.Decimal(10, 2)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  trips     Trip[]
+
+  @@map("services")
+}

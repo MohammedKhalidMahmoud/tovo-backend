@@ -1,0 +1,939 @@
+{
+  "info": {
+    "name": "Tovo Backend API",
+    "_postman_id": "tovo-backend-collection",
+    "description": "Complete API collection for the Tovo ride-hailing backend. Base URL: {{baseUrl}}",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl",      "value": "http://localhost:3000/api/v1", "type": "string" },
+    { "key": "userToken",    "value": "",                             "type": "string" },
+    { "key": "captainToken", "value": "",                             "type": "string" },
+    { "key": "adminKey",     "value": "",                             "type": "string" }
+  ],
+  "item": [
+
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register User",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/auth/register/user", "host": ["{{baseUrl}}"], "path": ["auth","register","user"] },
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"name\": \"Ahmed Ali\",\n  \"email\": \"ahmed@example.com\",\n  \"phone\": \"+201001234567\",\n  \"password\": \"Password123\",\n  \"confirm_password\": \"Password123\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Register Captain",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/auth/register/captain", "host": ["{{baseUrl}}"], "path": ["auth","register","captain"] },
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"name\": \"Mohamed Hassan\",\n  \"email\": \"captain@example.com\",\n  \"phone\": \"+201009876543\",\n  \"driving_license\": \"DL-12345678\",\n  \"password\": \"Password123\",\n  \"confirm_password\": \"Password123\",\n  \"vehicle_type_id\": \"<vehicle-type-uuid>\",\n  \"vin\": \"1HGBH41JXMN109186\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.data && res.data.accessToken) {",
+                  "  if (pm.request.body.raw.includes('\"user\"')) pm.collectionVariables.set('userToken', res.data.accessToken);",
+                  "  else pm.collectionVariables.set('captainToken', res.data.accessToken);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth","login"] },
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"email\": \"ahmed@example.com\",\n  \"password\": \"Password123\",\n  \"role\": \"user\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Login (Captain)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth","login"] },
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"email\": \"captain@example.com\",\n  \"password\": \"Password123\",\n  \"role\": \"captain\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{userToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/auth/logout", "host": ["{{baseUrl}}"], "path": ["auth","logout"] },
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"refreshToken\": \"<refresh-token>\",\n  \"fcm_token\": \"<optional-fcm-token>\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/auth/token/refresh", "host": ["{{baseUrl}}"], "path": ["auth","token","refresh"] },
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"refreshToken\": \"<refresh-token>\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Send OTP",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/auth/otp/send", "host": ["{{baseUrl}}"], "path": ["auth","otp","send"] },
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"phone\": \"+201001234567\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Verify OTP",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/auth/otp/verify", "host": ["{{baseUrl}}"], "path": ["auth","otp","verify"] },
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"phone\": \"+201001234567\",\n  \"otp_code\": \"123456\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Forgot Password",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/auth/forgot-password", "host": ["{{baseUrl}}"], "path": ["auth","forgot-password"] },
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"email\": \"ahmed@example.com\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Reset Password",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/auth/reset-password", "host": ["{{baseUrl}}"], "path": ["auth","reset-password"] },
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"token\": \"<reset-token>\",\n  \"password\": \"NewPassword123\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Social Login",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/auth/social", "host": ["{{baseUrl}}"], "path": ["auth","social"] },
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"provider\": \"google\",\n  \"access_token\": \"<google-access-token>\",\n  \"role\": \"user\"\n}"
+            }
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Get My Profile",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{userToken}}" }],
+            "url": { "raw": "{{baseUrl}}/users/me", "host": ["{{baseUrl}}"], "path": ["users","me"] }
+          }
+        },
+        {
+          "name": "Update My Profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{userToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/users/me", "host": ["{{baseUrl}}"], "path": ["users","me"] },
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"name\": \"Ahmed Ali Updated\",\n  \"phone\": \"+201001234568\",\n  \"language\": \"ar\",\n  \"notificationsEnabled\": true\n}"
+            }
+          }
+        },
+        {
+          "name": "Upload Avatar",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Authorization", "value": "Bearer {{userToken}}" }],
+            "url": { "raw": "{{baseUrl}}/users/me/avatar", "host": ["{{baseUrl}}"], "path": ["users","me","avatar"] },
+            "body": {
+              "mode": "formdata",
+              "formdata": [{ "key": "avatar", "type": "file", "src": "" }]
+            }
+          }
+        },
+        {
+          "name": "Get My Wallet",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{userToken}}" }],
+            "url": { "raw": "{{baseUrl}}/users/me/wallet", "host": ["{{baseUrl}}"], "path": ["users","me","wallet"] }
+          }
+        },
+        {
+          "name": "Get Wishlist",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{userToken}}" }],
+            "url": { "raw": "{{baseUrl}}/users/me/wishlist", "host": ["{{baseUrl}}"], "path": ["users","me","wishlist"] }
+          }
+        },
+        {
+          "name": "Add to Wishlist",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{userToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/users/me/wishlist", "host": ["{{baseUrl}}"], "path": ["users","me","wishlist"] },
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"item_ref\": \"<item-uuid>\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Remove from Wishlist",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{userToken}}" }],
+            "url": { "raw": "{{baseUrl}}/users/me/wishlist/:id", "host": ["{{baseUrl}}"], "path": ["users","me","wishlist",":id"], "variable": [{ "key": "id", "value": "<wishlist-item-uuid>" }] }
+          }
+        },
+        {
+          "name": "Get Saved Addresses",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{userToken}}" }],
+            "url": { "raw": "{{baseUrl}}/users/me/addresses", "host": ["{{baseUrl}}"], "path": ["users","me","addresses"] }
+          }
+        },
+        {
+          "name": "Add Address",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{userToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/users/me/addresses", "host": ["{{baseUrl}}"], "path": ["users","me","addresses"] },
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"label\": \"Home\",\n  \"address\": \"123 Tahrir Square, Cairo\",\n  \"lat\": 30.0444,\n  \"lng\": 31.2357\n}"
+            }
+          }
+        },
+        {
+          "name": "Update Address",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{userToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/users/me/addresses/:id", "host": ["{{baseUrl}}"], "path": ["users","me","addresses",":id"], "variable": [{ "key": "id", "value": "<address-uuid>" }] },
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"label\": \"Work\",\n  \"address\": \"Cairo International Airport\",\n  \"lat\": 30.1219,\n  \"lng\": 31.4056\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete Address",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{userToken}}" }],
+            "url": { "raw": "{{baseUrl}}/users/me/addresses/:id", "host": ["{{baseUrl}}"], "path": ["users","me","addresses",":id"], "variable": [{ "key": "id", "value": "<address-uuid>" }] }
+          }
+        },
+        {
+          "name": "Get Payment Methods",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{userToken}}" }],
+            "url": { "raw": "{{baseUrl}}/users/me/payment-methods", "host": ["{{baseUrl}}"], "path": ["users","me","payment-methods"] }
+          }
+        },
+        {
+          "name": "Add Payment Method",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{userToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/users/me/payment-methods", "host": ["{{baseUrl}}"], "path": ["users","me","payment-methods"] },
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"brand\": \"visa\",\n  \"lastFour\": \"4242\",\n  \"maskedNumber\": \"**** **** **** 4242\",\n  \"expiry\": \"12/26\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete Payment Method",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{userToken}}" }],
+            "url": { "raw": "{{baseUrl}}/users/me/payment-methods/:id", "host": ["{{baseUrl}}"], "path": ["users","me","payment-methods",":id"], "variable": [{ "key": "id", "value": "<payment-method-uuid>" }] }
+          }
+        },
+        {
+          "name": "Set Default Payment Method",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Authorization", "value": "Bearer {{userToken}}" }],
+            "url": { "raw": "{{baseUrl}}/users/me/payment-methods/:id/default", "host": ["{{baseUrl}}"], "path": ["users","me","payment-methods",":id","default"], "variable": [{ "key": "id", "value": "<payment-method-uuid>" }] }
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "Captains",
+      "item": [
+        {
+          "name": "Get My Profile",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{captainToken}}" }],
+            "url": { "raw": "{{baseUrl}}/captains/me", "host": ["{{baseUrl}}"], "path": ["captains","me"] }
+          }
+        },
+        {
+          "name": "Update My Profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{captainToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/captains/me", "host": ["{{baseUrl}}"], "path": ["captains","me"] },
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"name\": \"Mohamed Hassan Updated\",\n  \"phone\": \"+201009876544\",\n  \"language\": \"en\",\n  \"notificationsEnabled\": true\n}"
+            }
+          }
+        },
+        {
+          "name": "Upload Avatar",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Authorization", "value": "Bearer {{captainToken}}" }],
+            "url": { "raw": "{{baseUrl}}/captains/me/avatar", "host": ["{{baseUrl}}"], "path": ["captains","me","avatar"] },
+            "body": {
+              "mode": "formdata",
+              "formdata": [{ "key": "avatar", "type": "file", "src": "" }]
+            }
+          }
+        },
+        {
+          "name": "Start Duty",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{captainToken}}" }],
+            "url": { "raw": "{{baseUrl}}/captains/me/duty/start", "host": ["{{baseUrl}}"], "path": ["captains","me","duty","start"] }
+          }
+        },
+        {
+          "name": "End Duty",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{captainToken}}" }],
+            "url": { "raw": "{{baseUrl}}/captains/me/duty/end", "host": ["{{baseUrl}}"], "path": ["captains","me","duty","end"] }
+          }
+        },
+        {
+          "name": "Get My Wallet",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{captainToken}}" }],
+            "url": { "raw": "{{baseUrl}}/captains/me/wallet", "host": ["{{baseUrl}}"], "path": ["captains","me","wallet"] }
+          }
+        },
+        {
+          "name": "Get Price Plans",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{captainToken}}" }],
+            "url": { "raw": "{{baseUrl}}/captains/me/price-plans", "host": ["{{baseUrl}}"], "path": ["captains","me","price-plans"] }
+          }
+        },
+        {
+          "name": "Subscribe to Plan",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{captainToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/captains/me/price-plans", "host": ["{{baseUrl}}"], "path": ["captains","me","price-plans"] },
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"plan_id\": \"<plan-uuid>\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Insurance Cards",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{captainToken}}" }],
+            "url": { "raw": "{{baseUrl}}/captains/me/insurance", "host": ["{{baseUrl}}"], "path": ["captains","me","insurance"] }
+          }
+        },
+        {
+          "name": "Get My Trips",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{captainToken}}" }],
+            "url": { "raw": "{{baseUrl}}/captains/me/trips", "host": ["{{baseUrl}}"], "path": ["captains","me","trips"] }
+          }
+        },
+        {
+          "name": "Accept Trip",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Authorization", "value": "Bearer {{captainToken}}" }],
+            "url": { "raw": "{{baseUrl}}/captains/me/trips/:id/accept", "host": ["{{baseUrl}}"], "path": ["captains","me","trips",":id","accept"], "variable": [{ "key": "id", "value": "<trip-uuid>" }] }
+          }
+        },
+        {
+          "name": "Decline Trip",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Authorization", "value": "Bearer {{captainToken}}" }],
+            "url": { "raw": "{{baseUrl}}/captains/me/trips/:id/decline", "host": ["{{baseUrl}}"], "path": ["captains","me","trips",":id","decline"], "variable": [{ "key": "id", "value": "<trip-uuid>" }] }
+          }
+        },
+        {
+          "name": "Start Trip",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Authorization", "value": "Bearer {{captainToken}}" }],
+            "url": { "raw": "{{baseUrl}}/captains/me/trips/:id/start", "host": ["{{baseUrl}}"], "path": ["captains","me","trips",":id","start"], "variable": [{ "key": "id", "value": "<trip-uuid>" }] }
+          }
+        },
+        {
+          "name": "End Trip",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Authorization", "value": "Bearer {{captainToken}}" }],
+            "url": { "raw": "{{baseUrl}}/captains/me/trips/:id/end", "host": ["{{baseUrl}}"], "path": ["captains","me","trips",":id","end"], "variable": [{ "key": "id", "value": "<trip-uuid>" }] }
+          }
+        },
+        {
+          "name": "Submit Fare Offer",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{captainToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/captains/me/trips/:id/fare-offer", "host": ["{{baseUrl}}"], "path": ["captains","me","trips",":id","fare-offer"], "variable": [{ "key": "id", "value": "<trip-uuid>" }] },
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"proposed_fare\": \"45.00\",\n  \"currency\": \"EGP\"\n}"
+            }
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "Trips",
+      "item": [
+        {
+          "name": "Estimate Fare",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{userToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/trips/estimate?pickup_lat=30.0444&pickup_lng=31.2357&dropoff_lat=30.0761&dropoff_lng=31.2986",
+              "host": ["{{baseUrl}}"],
+              "path": ["trips","estimate"],
+              "query": [
+                { "key": "pickup_lat",  "value": "30.0444" },
+                { "key": "pickup_lng",  "value": "31.2357" },
+                { "key": "dropoff_lat", "value": "30.0761" },
+                { "key": "dropoff_lng", "value": "31.2986" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Trip",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{userToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/trips", "host": ["{{baseUrl}}"], "path": ["trips"] },
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"pickup_lat\": 30.0444,\n  \"pickup_lng\": 31.2357,\n  \"pickup_address\": \"Tahrir Square, Downtown Cairo\",\n  \"dropoff_lat\": 30.0761,\n  \"dropoff_lng\": 31.2986,\n  \"dropoff_address\": \"Cairo International Airport, Terminal 3\",\n  \"payment_method_id\": \"<payment-method-uuid>\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get My Trips",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{userToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/trips?page=1&per_page=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["trips"],
+              "query": [
+                { "key": "page",     "value": "1" },
+                { "key": "per_page", "value": "20" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Trip by ID",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{userToken}}" }],
+            "url": { "raw": "{{baseUrl}}/trips/:id", "host": ["{{baseUrl}}"], "path": ["trips",":id"], "variable": [{ "key": "id", "value": "<trip-uuid>" }] }
+          }
+        },
+        {
+          "name": "Cancel Trip",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Authorization", "value": "Bearer {{userToken}}" }],
+            "url": { "raw": "{{baseUrl}}/trips/:id/cancel", "host": ["{{baseUrl}}"], "path": ["trips",":id","cancel"], "variable": [{ "key": "id", "value": "<trip-uuid>" }] }
+          }
+        },
+        {
+          "name": "Rate Trip",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{userToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/trips/:id/rating", "host": ["{{baseUrl}}"], "path": ["trips",":id","rating"], "variable": [{ "key": "id", "value": "<trip-uuid>" }] },
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"rating\": 5,\n  \"comment\": \"Great driver, very punctual!\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get New Trip Requests (Captain)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{captainToken}}" }],
+            "url": { "raw": "{{baseUrl}}/trips/captain/requests", "host": ["{{baseUrl}}"], "path": ["trips","captain","requests"] }
+          }
+        },
+        {
+          "name": "Get Captain Trip History",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{captainToken}}" }],
+            "url": { "raw": "{{baseUrl}}/trips/captain/trips", "host": ["{{baseUrl}}"], "path": ["trips","captain","trips"] }
+          }
+        },
+        {
+          "name": "Accept Trip (Captain)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Authorization", "value": "Bearer {{captainToken}}" }],
+            "url": { "raw": "{{baseUrl}}/trips/:id/accept", "host": ["{{baseUrl}}"], "path": ["trips",":id","accept"], "variable": [{ "key": "id", "value": "<trip-uuid>" }] }
+          }
+        },
+        {
+          "name": "Decline Trip (Captain)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Authorization", "value": "Bearer {{captainToken}}" }],
+            "url": { "raw": "{{baseUrl}}/trips/:id/decline", "host": ["{{baseUrl}}"], "path": ["trips",":id","decline"], "variable": [{ "key": "id", "value": "<trip-uuid>" }] }
+          }
+        },
+        {
+          "name": "Start Trip (Captain)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Authorization", "value": "Bearer {{captainToken}}" }],
+            "url": { "raw": "{{baseUrl}}/trips/:id/start", "host": ["{{baseUrl}}"], "path": ["trips",":id","start"], "variable": [{ "key": "id", "value": "<trip-uuid>" }] }
+          }
+        },
+        {
+          "name": "End Trip (Captain)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Authorization", "value": "Bearer {{captainToken}}" }],
+            "url": { "raw": "{{baseUrl}}/trips/:id/end", "host": ["{{baseUrl}}"], "path": ["trips",":id","end"], "variable": [{ "key": "id", "value": "<trip-uuid>" }] }
+          }
+        },
+        {
+          "name": "Submit Fare Offer (Captain)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{captainToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/trips/:id/fare-offer", "host": ["{{baseUrl}}"], "path": ["trips",":id","fare-offer"], "variable": [{ "key": "id", "value": "<trip-uuid>" }] },
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"proposed_fare\": 45.00,\n  \"currency\": \"EGP\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Captain Ratings",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{userToken}}" }],
+            "url": { "raw": "{{baseUrl}}/trips/captains/:captainId/ratings", "host": ["{{baseUrl}}"], "path": ["trips","captains",":captainId","ratings"], "variable": [{ "key": "captainId", "value": "<captain-uuid>" }] }
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "Locations",
+      "item": [
+        {
+          "name": "Search Locations",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{userToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/locations/search?q=Cairo Airport&lat=30.0444&lng=31.2357&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["locations","search"],
+              "query": [
+                { "key": "q",     "value": "Cairo Airport" },
+                { "key": "lat",   "value": "30.0444" },
+                { "key": "lng",   "value": "31.2357" },
+                { "key": "limit", "value": "10" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Reverse Geocode",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{userToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/locations/reverse-geocode", "host": ["{{baseUrl}}"], "path": ["locations","reverse-geocode"] },
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"lat\": 30.0444,\n  \"lng\": 31.2357\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Nearby Captains",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{userToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/locations/nearby-captains?lat=30.0444&lng=31.2357&radius_km=5",
+              "host": ["{{baseUrl}}"],
+              "path": ["locations","nearby-captains"],
+              "query": [
+                { "key": "lat",       "value": "30.0444" },
+                { "key": "lng",       "value": "31.2357" },
+                { "key": "radius_km", "value": "5" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "Vehicle Types",
+      "item": [
+        {
+          "name": "Get All Vehicle Types",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{userToken}}" }],
+            "url": { "raw": "{{baseUrl}}/vehicle-types", "host": ["{{baseUrl}}"], "path": ["vehicle-types"] }
+          }
+        },
+        {
+          "name": "Get Vehicle Type by ID",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{userToken}}" }],
+            "url": { "raw": "{{baseUrl}}/vehicle-types/:id", "host": ["{{baseUrl}}"], "path": ["vehicle-types",":id"], "variable": [{ "key": "id", "value": "<vehicle-type-uuid>" }] }
+          }
+        },
+        {
+          "name": "Add Vehicle Type",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{userToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/vehicle-types", "host": ["{{baseUrl}}"], "path": ["vehicle-types"] },
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"name\": \"Premium SUV\",\n  \"description\": \"Spacious premium SUV for groups\",\n  \"imageUrl\": \"https://assets.tovo.app/vehicles/suv.png\"\n}"
+            }
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "Notifications",
+      "item": [
+        {
+          "name": "Get My Notifications",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{userToken}}" }],
+            "url": { "raw": "{{baseUrl}}/notifications", "host": ["{{baseUrl}}"], "path": ["notifications"] }
+          }
+        },
+        {
+          "name": "Mark All as Read",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Authorization", "value": "Bearer {{userToken}}" }],
+            "url": { "raw": "{{baseUrl}}/notifications/read-all", "host": ["{{baseUrl}}"], "path": ["notifications","read-all"] }
+          }
+        },
+        {
+          "name": "Mark Notification as Read",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Authorization", "value": "Bearer {{userToken}}" }],
+            "url": { "raw": "{{baseUrl}}/notifications/:id/read", "host": ["{{baseUrl}}"], "path": ["notifications",":id","read"], "variable": [{ "key": "id", "value": "<notification-uuid>" }] }
+          }
+        },
+        {
+          "name": "Register Device Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{userToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/notifications/device-token", "host": ["{{baseUrl}}"], "path": ["notifications","device-token"] },
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"token\": \"<fcm-device-token>\",\n  \"platform\": \"android\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Send Push to User (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Admin-Key",  "value": "{{adminKey}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/notifications/send-to-user", "host": ["{{baseUrl}}"], "path": ["notifications","send-to-user"] },
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"user_id\": \"<user-uuid>\",\n  \"title\": \"Your ride is arriving!\",\n  \"body\": \"Your captain is 2 minutes away.\",\n  \"data\": {\n    \"tripId\": \"<trip-uuid>\",\n    \"type\": \"trip_update\"\n  }\n}"
+            }
+          }
+        },
+        {
+          "name": "Send Push to Captain (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Admin-Key",  "value": "{{adminKey}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/notifications/send-to-captain", "host": ["{{baseUrl}}"], "path": ["notifications","send-to-captain"] },
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"captain_id\": \"<captain-uuid>\",\n  \"title\": \"New trip request!\",\n  \"body\": \"A user needs a ride near your location.\",\n  \"data\": {\n    \"tripId\": \"<trip-uuid>\",\n    \"type\": \"new_trip\"\n  }\n}"
+            }
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "Promotions",
+      "item": [
+        {
+          "name": "Get Promotions",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{userToken}}" }],
+            "url": { "raw": "{{baseUrl}}/promotions", "host": ["{{baseUrl}}"], "path": ["promotions"] }
+          }
+        },
+        {
+          "name": "Validate Coupon",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{userToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/promotions/coupons/validate", "host": ["{{baseUrl}}"], "path": ["promotions","coupons","validate"] },
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"code\": \"SAVE20\"\n}"
+            }
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "Support",
+      "item": [
+        {
+          "name": "Create Ticket",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{userToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/support/tickets", "host": ["{{baseUrl}}"], "path": ["support","tickets"] },
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"subject\": \"Issue with my last trip payment\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get My Tickets",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{userToken}}" }],
+            "url": { "raw": "{{baseUrl}}/support/tickets", "host": ["{{baseUrl}}"], "path": ["support","tickets"] }
+          }
+        },
+        {
+          "name": "Get Ticket by ID",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{userToken}}" }],
+            "url": { "raw": "{{baseUrl}}/support/tickets/:id", "host": ["{{baseUrl}}"], "path": ["support","tickets",":id"], "variable": [{ "key": "id", "value": "<ticket-uuid>" }] }
+          }
+        },
+        {
+          "name": "Send Message to Ticket",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{userToken}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/support/tickets/:id/messages", "host": ["{{baseUrl}}"], "path": ["support","tickets",":id","messages"], "variable": [{ "key": "id", "value": "<ticket-uuid>" }] },
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"body\": \"I was charged twice for the same trip.\"\n}"
+            }
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/health", "host": ["{{baseUrl}}"], "path": ["health"] }
+          }
+        }
+      ]
+    }
+
+  ]
+}

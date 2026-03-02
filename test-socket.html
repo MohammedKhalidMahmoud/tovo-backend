@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Tovo Socket Tester</title>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <style>
+    body { font-family: monospace; padding: 20px; background: #111; color: #eee; }
+    h2 { color: #4fc; margin-top: 30px; }
+    input, textarea { background: #222; color: #eee; border: 1px solid #444; padding: 6px 10px; width: 100%; box-sizing: border-box; border-radius: 4px; margin-bottom: 8px; }
+    button { background: #4fc; color: #000; border: none; padding: 8px 18px; border-radius: 4px; cursor: pointer; margin-right: 8px; font-weight: bold; }
+    button:hover { background: #3db; }
+    button.red { background: #f55; color: #fff; }
+    #log { background: #1a1a1a; border: 1px solid #333; padding: 12px; height: 320px; overflow-y: auto; border-radius: 4px; font-size: 13px; white-space: pre-wrap; }
+    .event { color: #4fc; } .error { color: #f55; } .info { color: #fa0; }
+    label { color: #aaa; font-size: 12px; }
+    .row { display: flex; gap: 8px; }
+    .row input { flex: 1; }
+  </style>
+</head>
+<body>
+
+<h1 style="color:#4fc">Tovo — Socket.io Tester</h1>
+
+<!-- ── CONNECTION ─────────────────────────────────────────────── -->
+<h2>1. Connect</h2>
+<label>JWT (captain or user)</label>
+<textarea id="token" rows="3" placeholder="Paste your Bearer token here (without the word 'Bearer')"></textarea>
+<button onclick="connect()">Connect</button>
+<button class="red" onclick="disconnect()">Disconnect</button>
+
+<!-- ── CAPTAIN: LOCATION ──────────────────────────────────────── -->
+<h2>2. Captain — Send Location</h2>
+<p style="color:#aaa;font-size:13px">Call this every few seconds while on duty. Must be within 10 km of your test pickup point.</p>
+<div class="row">
+  <div><label>Latitude</label><input id="lat" value="30.0444" /></div>
+  <div><label>Longitude</label><input id="lng" value="31.2357" /></div>
+  <div><label>Heading (optional)</label><input id="heading" value="0" /></div>
+  <div><label>Trip ID (if in active trip)</label><input id="locTripId" placeholder="leave empty" /></div>
+</div>
+<button onclick="sendLocation()">Emit location_update</button>
+<button onclick="startInterval()">Auto-send every 3s</button>
+<button class="red" onclick="stopInterval()">Stop auto-send</button>
+
+<!-- ── TRIP ROOM ──────────────────────────────────────────────── -->
+<h2>3. Join / Leave Trip Room</h2>
+<p style="color:#aaa;font-size:13px">User should join the trip room after creating a trip to receive live updates.</p>
+<div class="row">
+  <div style="flex:2"><label>Trip ID</label><input id="tripId" placeholder="paste trip UUID" /></div>
+</div>
+<button onclick="joinTrip()">Join trip room</button>
+<button class="red" onclick="leaveTrip()">Leave trip room</button>
+
+<!-- ── LOG ───────────────────────────────────────────────────────── -->
+<h2>Event Log</h2>
+<button onclick="document.getElementById('log').textContent=''">Clear</button>
+<div id="log"></div>
+
+<script>
+  let socket = null;
+  let intervalId = null;
+
+  function log(msg, cls = '') {
+    const div = document.getElementById('log');
+    const ts = new Date().toLocaleTimeString();
+    div.textContent += `[${ts}] ${msg}\n`;
+    div.scrollTop = div.scrollHeight;
+  }
+
+  function connect() {
+    const token = document.getElementById('token').value.trim();
+    if (!token) return log('ERROR: paste a JWT first', 'error');
+    if (socket?.connected) socket.disconnect();
+
+    socket = io('http://localhost:3000', {
+      auth: { token },
+      transports: ['websocket'],
+    });
+
+    socket.on('connect',    () => log(`✅ Connected  socket.id=${socket.id}`));
+    socket.on('disconnect', () => log('🔌 Disconnected'));
+    socket.on('connect_error', (e) => log(`❌ Auth error: ${e.message}`, 'error'));
+
+    // ── Trip events (captain receives) ──
+    socket.on('trip.new_request',     (d) => log(`🚖 NEW TRIP REQUEST:\n${JSON.stringify(d, null, 2)}`));
+    socket.on('trip.taken',           (d) => log(`🚫 Trip taken by another captain: ${d.tripId}`));
+    socket.on('trip.removed',         (d) => log(`👋 Trip removed from your list: ${d.tripId}`));
+
+    // ── Trip events (user receives) ──
+    socket.on('trip.captain_matched', (d) => log(`🎉 Captain matched:\n${JSON.stringify(d, null, 2)}`));
+    socket.on('trip.status_changed',  (d) => log(`🔄 Status changed → ${d.status}`));
+    socket.on('trip.cancelled',       (d) => log(`❌ Trip cancelled by ${d.cancelledBy}`));
+    socket.on('trip.fare_offered',    (d) => log(`💰 Fare offer received:\n${JSON.stringify(d, null, 2)}`));
+
+    // ── Live location (user receives while in trip room) ──
+    socket.on('trip.captain_location', (d) => log(`📍 Captain at ${d.latitude}, ${d.longitude} heading=${d.heading}`));
+  }
+
+  function disconnect() {
+    stopInterval();
+    socket?.disconnect();
+  }
+
+  function sendLocation() {
+    if (!socket?.connected) return log('Not connected', 'error');
+    const payload = {
+      latitude:  parseFloat(document.getElementById('lat').value),
+      longitude: parseFloat(document.getElementById('lng').value),
+      heading:   parseFloat(document.getElementById('heading').value) || 0,
+      tripId:    document.getElementById('locTripId').value.trim() || undefined,
+    };
+    socket.emit('captain.location_update', payload);
+    log(`📡 Sent location_update: ${payload.latitude}, ${payload.longitude}`);
+  }
+
+  function startInterval() {
+    if (intervalId) return;
+    sendLocation();
+    intervalId = setInterval(sendLocation, 3000);
+    log('⏱ Auto-sending location every 3 s');
+  }
+
+  function stopInterval() {
+    if (intervalId) { clearInterval(intervalId); intervalId = null; log('⏹ Auto-send stopped'); }
+  }
+
+  function joinTrip() {
+    const tripId = document.getElementById('tripId').value.trim();
+    if (!tripId || !socket?.connected) return log('Need a trip ID and a connection', 'error');
+    socket.emit('trip.join', { tripId });
+    log(`🚪 Joined trip room: trip:${tripId}`);
+  }
+
+  function leaveTrip() {
+    const tripId = document.getElementById('tripId').value.trim();
+    if (!tripId || !socket?.connected) return;
+    socket.emit('trip.leave', { tripId });
+    log(`🚪 Left trip room: trip:${tripId}`);
+  }
+</script>
+</body>
+</html>
