@@ -528,7 +528,7 @@ paths:
           application/json:
             schema:
               type: object
-              required: [name, email, phone, driving_license, password, confirm_password, vehicle_type_id, vin]
+              required: [name, email, phone, driving_license, password, confirm_password, vehicle_type, vin]
               properties:
                 name: { type: string }
                 email: { type: string, format: email }
@@ -536,7 +536,7 @@ paths:
                 driving_license: { type: string }
                 password: { type: string, minLength: 8 }
                 confirm_password: { type: string }
-                vehicle_type_id: { type: string, format: uuid }
+                vehicle_type: { type: string, description: "Name of the vehicle type (e.g. 'Regular Car')" }
                 vin: { type: string, description: Vehicle Identification Number }
       responses:
         '201': { description: Captain registered }

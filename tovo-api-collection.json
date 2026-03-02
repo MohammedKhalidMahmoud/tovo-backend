@@ -38,7 +38,7 @@
             "body": {
               "mode": "raw",
               "options": { "raw": { "language": "json" } },
-              "raw": "{\n  \"name\": \"Mohamed Hassan\",\n  \"email\": \"captain@example.com\",\n  \"phone\": \"+201009876543\",\n  \"driving_license\": \"DL-12345678\",\n  \"password\": \"Password123\",\n  \"confirm_password\": \"Password123\",\n  \"vehicle_type_id\": \"<vehicle-type-uuid>\",\n  \"vin\": \"1HGBH41JXMN109186\"\n}"
+              "raw": "{\n  \"name\": \"Mohamed Hassan\",\n  \"email\": \"captain@example.com\",\n  \"phone\": \"+201009876543\",\n  \"driving_license\": \"DL-12345678\",\n  \"password\": \"Password123\",\n  \"confirm_password\": \"Password123\",\n  \"vehicle_type\": \"Regular Car\",\n  \"vin\": \"1HGBH41JXMN109186\"\n}"
             }
           }
         },

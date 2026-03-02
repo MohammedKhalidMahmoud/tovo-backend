@@ -30,7 +30,7 @@ const registerUser = async ({ name, email, phone, password }) => {
 // ─────────────────────────────────────────────────────────────────────────────
 //  REGISTER CAPTAIN
 // ─────────────────────────────────────────────────────────────────────────────
-const registerCaptain = async ({ name, email, phone, password, drivingLicense, vehicleTypeId, vin }) => {
+const registerCaptain = async ({ name, email, phone, password, drivingLicense, vehicleTypeName, vin }) => {
   const existingEmail = await repo.findCaptainByEmail(email);
   if (existingEmail) throw { status: 409, message: 'Email already registered' };
 
@@ -39,9 +39,17 @@ const registerCaptain = async ({ name, email, phone, password, drivingLicense, v
 
   const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
 
-  // Resolve serviceId from the chosen vehicle type (one read before the transaction)
-  const vehicleType = await prisma.vehicleType.findUnique({ where: { id: vehicleTypeId }, select: { serviceId: true } });
-  if (!vehicleType) throw { status: 400, message: 'Invalid vehicleTypeId' };
+  // lookup vehicle type by name supplied by frontend
+  // MySQL columns are generally case‑insensitive, so a plain equals is fine
+  const vehicleType = await prisma.vehicleType.findFirst({
+    where: { name: vehicleTypeName },
+    select: { id: true, serviceId: true },
+  });
+  if (!vehicleType) {
+    // differentiate between user sending an id by mistake and a truly unknown name
+    throw { status: 400, message: 'Invalid vehicle type name' };
+  }
+  const vehicleTypeId = vehicleType.id;
   const serviceId = vehicleType.serviceId ?? null;
 
   const captain = await prisma.$transaction(async (tx) => {

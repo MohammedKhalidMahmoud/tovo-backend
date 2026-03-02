@@ -13,11 +13,11 @@ const registerUser = async (req, res, next) => {
 
 const registerCaptain = async (req, res, next) => {
   try {
-    const { driving_license, vehicle_type_id, ...rest } = req.body;
+    const { driving_license, vehicle_type, ...rest } = req.body;
     const data = await authService.registerCaptain({
       ...rest,
       drivingLicense: driving_license,
-      vehicleTypeId: vehicle_type_id,
+      vehicleTypeName: vehicle_type,
     });
     return created(res, data, 'Captain registered successfully');
   } catch (err) {

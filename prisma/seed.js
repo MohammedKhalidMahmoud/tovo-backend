@@ -29,9 +29,16 @@ async function main() {
   await prisma.promotion.deleteMany();
   await prisma.vehicleType.deleteMany();
   await prisma.captain.deleteMany();
-  await prisma.user.deleteMany();
   await prisma.adminUser.deleteMany();
   await prisma.systemSetting.deleteMany();
+
+  // clean up any user-related tables that weren't covered above
+  await prisma.wishlistItem.deleteMany();
+  // sos alerts use SET NULL on delete, so not strictly required, but we can clear them as well
+  await prisma.sosAlert.deleteMany();
+
+  await prisma.user.deleteMany();
+
   console.log('✅ Cleaned existing data\n');
 
   // ─────────────────────────────────────────────
