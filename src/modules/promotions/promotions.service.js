@@ -1,13 +1,27 @@
-// ── SERVICE ───────────────────────────────────────────────────────────────────
-const prisma = require('../../config/prisma');
-const pricingService = require('../admin/pricing/pricing.service');
+// ════════════════════════════════════════════════════════════════════════════════
+// Public Promotions Service
+// Path: src/modules/promotions/promotions.service.js
+// Handles public promotions/coupon queries
+//
+// Admin coupon CRUD operations: src/modules/admin/promotions/promotions.service.js
+// ════════════════════════════════════════════════════════════════════════════════
 
+const prisma = require('../../config/prisma');
+
+/**
+ * Get all active promotions/coupons that haven't expired
+ */
 const getPromotions = () =>
   // return active coupons, honouring expiry_date
   prisma.coupon.findMany({
     where: { status: 1, OR: [{ expiry_date: null }, { expiry_date: { gt: new Date() } }] },
   });
 
+/**
+ * Validate a coupon code
+ * @param {string} code - The coupon code to validate
+ * @throws {Error} If coupon is not found, inactive, expired, or usage limit exceeded
+ */
 const validateCoupon = async (code) => {
   const coupon = await prisma.coupon.findUnique({ where: { code } });
   if (!coupon) throw { status: 404, message: 'Coupon not found' };
@@ -21,10 +35,4 @@ const validateCoupon = async (code) => {
 module.exports = {
   getPromotions,
   validateCoupon,
-  // admin coupon operations (delegated to pricing module)
-  listCoupons: pricingService.listCoupons,
-  createCoupon: pricingService.createCoupon,
-  getCoupon: pricingService.getCoupon,
-  updateCoupon: pricingService.updateCoupon,
-  deleteCoupon: pricingService.deleteCoupon,
 };
