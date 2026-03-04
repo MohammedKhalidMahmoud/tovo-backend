@@ -84,11 +84,8 @@ app.use(`${API}/locations`,     locationsRoutes);
 app.use(`${API}/vehicle-types`, vehiclesRoutes);
 app.use(`${API}/promotions`,    promotionsRoutes);
 app.use(`${API}/notifications`, notificationsRoutes);
-app.use(`${API}/support/tickets`, supportRoutes);
-app.use(`${API}/sos`,             sosRoutes);
-app.use(`${API}/faqs`,            publicFaqsRoutes);
-app.use(`${API}/services`,       servicesRoutes);
-app.use(`${API}/vehicle-models`, vehicleModelsRoutes);
+// Admin-managed modules are mounted under /api/v1/admin via adminRoutes
+// (they used to be mounted at top-level; removed to standardize admin prefix)
 app.use(`${API}/admin`, adminRoutes);
 app.use(`${API}`, dashboardRoutes); // provides /ride-requests/... and /rides/upcoming (and also /admin-dashboard by accident)
 app.use(`${API}/dashboard`, dashboardRoutes);

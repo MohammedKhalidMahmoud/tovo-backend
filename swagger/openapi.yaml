@@ -3048,25 +3048,7 @@ paths:
         '200': { description: Region deleted }
         '404': { description: Region not found }
 
-  # ── PUBLIC SERVICES ────────────────────────────────────────────────────────
-  /services:
-    get:
-      tags: [Services]
-      summary: List active services
-      description: Returns all active service types available for ride/delivery booking. No authentication required.
-      responses:
-        '200':
-          description: Active services retrieved
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  success: { type: boolean, example: true }
-                  data:
-                    type: array
-                    items: { $ref: '#/components/schemas/Service' }
-
+ 
   # ── ADMIN SERVICES ─────────────────────────────────────────────────────────
   /admin/services:
     get:
@@ -3093,7 +3075,46 @@ paths:
                   data:
                     type: array
                     items: { $ref: '#/components/schemas/Service' }
-
+    post:
+      tags: [Services]
+      summary: Create a new service (admin)
+      description: Create a new service with name, baseFare, and activation status.
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                  example: Comfort
+                baseFare:
+                  type: number
+                  example: 25.00
+                isActive:
+                  type: boolean
+                  example: true
+      responses:
+        '201':
+          description: Service created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/Service'
+        '400':
+          description: Validation error or service already exists
+        '401':
+          description: Unauthorized
   /admin/services/{id}:
     get:
       tags: [Services]
@@ -3115,7 +3136,40 @@ paths:
                   success: { type: boolean }
                   data: { $ref: '#/components/schemas/Service' }
         '404': { description: Service not found }
-
+    patch:
+      tags: [Services]
+      summary: Update a service (admin)
+      description: Update name, baseFare, or isActive status of a service.
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:     { type: string, example: Comfort }
+                baseFare: { type: number, example: 25.00 }
+                isActive: { type: boolean, example: true }
+      responses:
+        '200':
+          description: Service updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data: { $ref: '#/components/schemas/Service' }
+        '404': { description: Service not found }
+  
+    
+  
   # ── VEHICLE MODELS (public) ──────────────────────────────────────────────────
   /vehicle-models:
     get:
@@ -3252,34 +3306,4 @@ paths:
       responses:
         '200': { description: Vehicle model deleted }
         '404': { description: Vehicle model not found }
-    patch:
-      tags: [Services]
-      summary: Update a service (admin)
-      description: Update name, baseFare, or isActive status of a service.
-      security: [{ BearerAuth: [] }]
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema: { type: string, format: uuid }
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                name:     { type: string, example: Comfort }
-                baseFare: { type: number, example: 25.00 }
-                isActive: { type: boolean, example: true }
-      responses:
-        '200':
-          description: Service updated
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  success: { type: boolean }
-                  data: { $ref: '#/components/schemas/Service' }
-        '404': { description: Service not found }
+    

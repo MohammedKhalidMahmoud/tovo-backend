@@ -13,6 +13,18 @@ router.get('/', ctrl.listServices);
 
 router.get('/:id', [param('id').isUUID()], validate, ctrl.getService);
 
+// POST /admin/services — create a new service
+router.post(
+  '/',
+  [
+    body('name').notEmpty().trim().withMessage('name is required'),
+    body('baseFare').optional().isFloat({ min: 0 }).withMessage('baseFare must be a non-negative number'),
+    body('isActive').optional().isBoolean(),
+  ],
+  validate,
+  ctrl.createService
+);
+
 router.patch(
   '/:id',
   [
@@ -25,4 +37,7 @@ router.patch(
   ctrl.updateService
 );
 
+router.post(
+  '/', validate, ctrl.createService
+);
 module.exports = router;
