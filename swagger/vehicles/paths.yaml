@@ -1,6 +1,6 @@
 /admin/vehicles:
   get:
-    tags: [Admin]
+    tags: [Vehicles]
     summary: List all vehicles
     description: Paginated list of all captain-assigned vehicles with captain and vehicle model details.
     security: [{ BearerAuth: [] }]
@@ -36,7 +36,7 @@
                       type: array
                       items: { $ref: '#/components/schemas/VehicleDetail' }
   post:
-    tags: [Admin]
+    tags: [Vehicles]
     summary: Assign a vehicle to a captain
     security: [{ BearerAuth: [] }]
     requestBody:
@@ -65,7 +65,7 @@
 
 /admin/vehicles/{id}:
   get:
-    tags: [Admin]
+    tags: [Vehicles]
     summary: Get a vehicle
     security: [{ BearerAuth: [] }]
     parameters:
@@ -86,7 +86,7 @@
                     data: { $ref: '#/components/schemas/VehicleDetail' }
       '404': { description: Vehicle not found }
   put:
-    tags: [Admin]
+    tags: [Vehicles]
     summary: Update a vehicle
     security: [{ BearerAuth: [] }]
     parameters:
@@ -116,7 +116,7 @@
                     data: { $ref: '#/components/schemas/VehicleDetail' }
       '404': { description: Vehicle not found }
   delete:
-    tags: [Admin]
+    tags: [Vehicles]
     summary: Delete a vehicle
     security: [{ BearerAuth: [] }]
     parameters:

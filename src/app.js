@@ -21,16 +21,18 @@ const authRoutes          = require('./modules/auth/auth.routes');
 const usersRoutes         = require('./modules/users/users.routes');
 const captainsRoutes      = require('./modules/captains/captains.routes');
 const tripsRoutes         = require('./modules/trips/trips.routes');
-const locationsRoutes     = require('./modules/locations/locations.routes');
 const promotionsRoutes    = require('./modules/coupons/coupons.routes');
 const sosRoutes           = require('./modules/sos/sos.routes');
 const faqsRoutes          = require('./modules/faqs/faqs.routes');
 const servicesRoutes      = require('./modules/services/services.routes');
 const vehicleModelsRoutes = require('./modules/vehicle-models/vehicleModels.routes');
+const vehiclesRoutes = require('./modules/vehicles/vehicles.routes');
 const notificationsRoutes = require('./modules/notifications/notifications.routes');
 const supportRoutes       = require('./modules/support/support.routes');
+const regionstRoutes       = require('./modules/regions/regions.routes');
 // const adminRoutes         = require('./modules/admin/admin.routes');
 const dashboardRoutes     = require('./modules/dashboard/dashboard.routes');
+const regionsRoutes     = require('./modules/regions/regions.routes');
 
 // ── App Setup ─────────────────────────────────────────────────────────────────
 const app = express();
@@ -84,7 +86,6 @@ app.use(`${API}/admin/users`,   usersRoutes);
 app.use(`${API}/captains`,      captainsRoutes);
 app.use(`${API}/admin/drivers`,      captainsRoutes);
 app.use(`${API}/trips`,         tripsRoutes);
-app.use(`${API}/locations`,     locationsRoutes);
 app.use(`${API}/promotions`,     promotionsRoutes);
 app.use(`${API}/notifications`,  notificationsRoutes);
 app.use(`${API}/support`,        supportRoutes);
@@ -92,9 +93,16 @@ app.use(`${API}/sos`,            sosRoutes);
 app.use(`${API}/faqs`,           faqsRoutes);
 app.use(`${API}/services`,       servicesRoutes);
 app.use(`${API}/vehicle-models`, vehicleModelsRoutes);
+app.use(`${API}/admin/vehicle-models`, vehicleModelsRoutes);
+app.use(`${API}/vehicles`, vehiclesRoutes);
+app.use(`${API}/admin/vehicles`, vehiclesRoutes);
 // app.use(`${API}/admin`,          adminRoutes);
 app.use(`${API}`, dashboardRoutes); // provides /ride-requests/... and /rides/upcoming (and also /admin-dashboard by accident)
 app.use(`${API}/dashboard`, dashboardRoutes);
+app.use(`${API}/admin/regions`, regionsRoutes);
+app.use(`${API}/regions`, regionsRoutes);
+app.use(`${API}/admin/services`, servicesRoutes);
+app.use(`${API}/services`, servicesRoutes);
 
 // ── Health Check ──────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));

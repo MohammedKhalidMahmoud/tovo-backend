@@ -1,6 +1,6 @@
 /admin/rides:
   get:
-    tags: [Admin]
+    tags: [Trips]
     summary: List rides/trips (admin)
     security: [{ BearerAuth: [] }]
     parameters:
@@ -28,7 +28,7 @@
                   items: { $ref: '#/components/schemas/Trip' }
                 pagination: { $ref: '#/components/schemas/Pagination' }
   post:
-    tags: [Admin]
+    tags: [Trips]
     summary: Create a ride (admin)
     security: [{ BearerAuth: [] }]
     requestBody:
@@ -46,7 +46,7 @@
               properties:
                 data: { $ref: '#/components/schemas/Trip' }
   put:
-    tags: [Admin]
+    tags: [Trips]
     summary: Bulk update rides (admin)
     security: [{ BearerAuth: [] }]
     requestBody:
@@ -63,7 +63,7 @@
     responses:
       '200': { description: Rides updated }
   delete:
-    tags: [Admin]
+    tags: [Trips]
     summary: Bulk delete rides (admin)
     security: [{ BearerAuth: [] }]
     parameters:
@@ -86,7 +86,7 @@
 
 /admin/rides/{id}:
   get:
-    tags: [Admin]
+    tags: [Trips]
     summary: Get ride details (admin)
     security: [{ BearerAuth: [] }]
     parameters:
@@ -105,7 +105,7 @@
 
 /admin/rides/{id}/refund:
   post:
-    tags: [Admin]
+    tags: [Trips]
     summary: Issue a refund for a trip
     security: [{ BearerAuth: [] }]
     parameters:
@@ -124,7 +124,7 @@
 
 /admin/rides/{id}/reassign:
   post:
-    tags: [Admin]
+    tags: [Trips]
     summary: Reassign ride to another driver
     security: [{ BearerAuth: [] }]
     parameters:

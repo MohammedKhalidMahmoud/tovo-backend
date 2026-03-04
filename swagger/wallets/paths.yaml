@@ -1,6 +1,6 @@
 /admin/wallets:
   get:
-    tags: [Admin]
+    tags: [Wallets]
     summary: List all wallets
     description: Returns a paginated list of all user and captain wallets, optionally filtered by owner type or a name/email search term.
     security: [{ BearerAuth: [] }]
@@ -44,7 +44,7 @@
 
 /admin/wallets/{id}:
   get:
-    tags: [Admin]
+    tags: [Wallets]
     summary: Get a single wallet
     description: Returns full wallet details including the linked user or captain.
     security: [{ BearerAuth: [] }]
@@ -68,7 +68,7 @@
 
 /admin/wallets/{id}/adjust:
   post:
-    tags: [Admin]
+    tags: [Wallets]
     summary: Adjust wallet balance
     description: Manually credit or debit an internal wallet balance. A `reason` field is required for audit purposes. Debits are rejected if the balance would go negative.
     security: [{ BearerAuth: [] }]

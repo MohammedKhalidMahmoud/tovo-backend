@@ -1,6 +1,6 @@
 /admin/payments:
   get:
-    tags: [Admin]
+    tags: [Payments]
     summary: View payments
     security: [{ BearerAuth: [] }]
     parameters:
@@ -30,7 +30,7 @@
 
 /admin/payments/{id}/refund:
   post:
-    tags: [Admin]
+    tags: [Payments]
     summary: Issue refund
     security: [{ BearerAuth: [] }]
     parameters:

@@ -17,14 +17,12 @@ export function configureSwagger(app) {
   const captainsSchemas = YAML.load(path.resolve(__dirname, "./captains/schemas.yaml"));
   const tripsSchemas = YAML.load(path.resolve(__dirname, "./trips/schemas.yaml"));
   const ridesSchemas = YAML.load(path.resolve(__dirname, "./rides/schemas.yaml"));
-  const locationsSchemas = YAML.load(path.resolve(__dirname, "./locations/schemas.yaml"));
   const servicesSchemas = YAML.load(path.resolve(__dirname, "./services/schemas.yaml"));
   const regionsSchemas = YAML.load(path.resolve(__dirname, "./regions/schemas.yaml"));
   const vehiclesSchemas = YAML.load(path.resolve(__dirname, "./vehicles/schemas.yaml"));
   const vehicleModelsSchemas = YAML.load(path.resolve(__dirname, "./vehicle-models/schemas.yaml"));
   const walletsSchemas = YAML.load(path.resolve(__dirname, "./wallets/schemas.yaml"));
   const paymentsSchemas = YAML.load(path.resolve(__dirname, "./payments/schemas.yaml"));
-  const pricingSchemas = YAML.load(path.resolve(__dirname, "./pricing/schemas.yaml"));
   const couponsSchemas = YAML.load(path.resolve(__dirname, "./coupons/schemas.yaml"));
   const notificationsSchemas = YAML.load(path.resolve(__dirname, "./notifications/schemas.yaml"));
   const complaintsSchemas = YAML.load(path.resolve(__dirname, "./complaints/schemas.yaml"));
@@ -33,7 +31,7 @@ export function configureSwagger(app) {
   const sosSchemas = YAML.load(path.resolve(__dirname, "./sos/schemas.yaml"));
   const dashboardSchemas = YAML.load(path.resolve(__dirname, "./dashboard/schemas.yaml"));
   const analyticsSchemas = YAML.load(path.resolve(__dirname, "./analytics/schemas.yaml"));
-  const adminsSchemas = YAML.load(path.resolve(__dirname, "./admins/schemas.yaml"));
+  
   const settingsSchemas = YAML.load(path.resolve(__dirname, "./settings/schemas.yaml"));
 
   // ===== LOAD PATHS =====
@@ -42,14 +40,13 @@ export function configureSwagger(app) {
   const captainsPaths = YAML.load(path.resolve(__dirname, "./captains/paths.yaml"));
   const tripsPaths = YAML.load(path.resolve(__dirname, "./trips/paths.yaml"));
   const ridesPaths = YAML.load(path.resolve(__dirname, "./rides/paths.yaml"));
-  const locationsPaths = YAML.load(path.resolve(__dirname, "./locations/paths.yaml"));
   const servicesPaths = YAML.load(path.resolve(__dirname, "./services/paths.yaml"));
   const regionsPaths = YAML.load(path.resolve(__dirname, "./regions/paths.yaml"));
   const vehiclesPaths = YAML.load(path.resolve(__dirname, "./vehicles/paths.yaml"));
   const vehicleModelsPaths = YAML.load(path.resolve(__dirname, "./vehicle-models/paths.yaml"));
   const walletsPaths = YAML.load(path.resolve(__dirname, "./wallets/paths.yaml"));
   const paymentsPaths = YAML.load(path.resolve(__dirname, "./payments/paths.yaml"));
-  const pricingPaths = YAML.load(path.resolve(__dirname, "./pricing/paths.yaml"));
+  
   const couponsPaths = YAML.load(path.resolve(__dirname, "./coupons/paths.yaml"));
   const notificationsPaths = YAML.load(path.resolve(__dirname, "./notifications/paths.yaml"));
   const complaintsPaths = YAML.load(path.resolve(__dirname, "./complaints/paths.yaml"));
@@ -58,7 +55,7 @@ export function configureSwagger(app) {
   const sosPaths = YAML.load(path.resolve(__dirname, "./sos/paths.yaml"));
   const dashboardPaths = YAML.load(path.resolve(__dirname, "./dashboard/paths.yaml"));
   const analyticsPaths = YAML.load(path.resolve(__dirname, "./analytics/paths.yaml"));
-  const adminsPaths = YAML.load(path.resolve(__dirname, "./admins/paths.yaml"));
+  
   const settingsPaths = YAML.load(path.resolve(__dirname, "./settings/paths.yaml"));
 
   const swaggerDefinition = {
@@ -70,14 +67,13 @@ export function configureSwagger(app) {
         ...captainsSchemas,
         ...tripsSchemas,
         ...ridesSchemas,
-        ...locationsSchemas,
         ...servicesSchemas,
         ...regionsSchemas,
         ...vehiclesSchemas,
         ...vehicleModelsSchemas,
         ...walletsSchemas,
         ...paymentsSchemas,
-        ...pricingSchemas,
+        
         ...couponsSchemas,
         ...notificationsSchemas,
         ...complaintsSchemas,
@@ -86,7 +82,7 @@ export function configureSwagger(app) {
         ...sosSchemas,
         ...dashboardSchemas,
         ...analyticsSchemas,
-        ...adminsSchemas,
+       
         ...settingsSchemas
       },
       securitySchemes: info.components?.securitySchemes
@@ -97,14 +93,13 @@ export function configureSwagger(app) {
       ...captainsPaths,
       ...tripsPaths,
       ...ridesPaths,
-      ...locationsPaths,
       ...servicesPaths,
       ...regionsPaths,
       ...vehiclesPaths,
       ...vehicleModelsPaths,
       ...walletsPaths,
       ...paymentsPaths,
-      ...pricingPaths,
+      
       ...couponsPaths,
       ...notificationsPaths,
       ...complaintsPaths,
@@ -113,7 +108,7 @@ export function configureSwagger(app) {
       ...sosPaths,
       ...dashboardPaths,
       ...analyticsPaths,
-      ...adminsPaths,
+      
       ...settingsPaths
     }
   };

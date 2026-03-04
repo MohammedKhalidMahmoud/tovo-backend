@@ -1,6 +1,6 @@
 /promotions:
   get:
-    tags: [Promotions]
+    tags: [Coupons]
     summary: List active promotions/coupons (public)
     responses:
       '200':
@@ -15,7 +15,7 @@
 
 /promotions/coupons/validate:
   post:
-    tags: [Promotions]
+    tags: [Coupons]
     summary: Validate a coupon code (public)
     requestBody:
       required: true
@@ -37,7 +37,7 @@
 
 /admin/promotions/coupons:
   get:
-    tags: [Admin]
+    tags: [Coupons]
     summary: List all coupons with filtering (admin)
     security: [{ BearerAuth: [] }]
     parameters:
@@ -67,7 +67,7 @@
       '401': { description: Unauthorized }
       '403': { description: Admin access required }
   post:
-    tags: [Admin]
+    tags: [Coupons]
     summary: Create a new coupon (admin)
     security: [{ BearerAuth: [] }]
     requestBody:
@@ -89,7 +89,7 @@
 
 /admin/promotions/coupons/{id}:
   get:
-    tags: [Admin]
+    tags: [Coupons]
     summary: Get coupon details (admin)
     security: [{ BearerAuth: [] }]
     parameters:
@@ -108,7 +108,7 @@
       '403': { description: Admin access required }
       '404': { description: Coupon not found }
   put:
-    tags: [Admin]
+    tags: [Coupons]
     summary: Update coupon details (admin)
     security: [{ BearerAuth: [] }]
     parameters:
@@ -134,7 +134,7 @@
       '403': { description: Admin access required }
       '404': { description: Coupon not found }
   delete:
-    tags: [Admin]
+    tags: [Coupons]
     summary: Delete a coupon (admin)
     security: [{ BearerAuth: [] }]
     parameters:

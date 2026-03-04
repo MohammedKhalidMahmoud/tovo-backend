@@ -37,7 +37,6 @@ const createTrip = async (req, res, next) => {
     const trip = await service.createTrip(req.actor.id, req.body);
     const io = req.app.get('io');
 
-    // Notify only captains within 10 km who serve the same service category
     const nearbyCaptains = await service.getNearbyCaptains(trip.pickupLat, trip.pickupLng, 10, trip.serviceId);
     nearbyCaptains.forEach((c) => io.to(`captain:${c.id}`).emit('trip.new_request', trip));
 
@@ -81,8 +80,6 @@ const cancelTrip = async (req, res, next) => {
   }
 };
 
-// ── Captain ───────────────────────────────────────────────────────────────────
-
 const getCaptainTrips = async (req, res, next) => {
   try {
     const { page = 1, per_page = 20 } = req.query;
@@ -106,13 +103,8 @@ const acceptTrip = async (req, res, next) => {
   try {
     const trip = await service.acceptTrip(req.params.id, req.actor.id);
     const io = req.app.get('io');
-
-    // Tell the user their captain has been matched
     emitCaptainMatched(io, trip.userId, trip);
-
-    // Tell all other captains this trip is no longer available
     io.to('captains:available').emit('trip.taken', { tripId: trip.id });
-
     return success(res, trip, 'Trip accepted');
   } catch (err) {
     if (err.status) return error(res, err.message, err.status);
@@ -124,10 +116,7 @@ const declineTrip = async (req, res, next) => {
   try {
     await service.declineTrip(req.params.id, req.actor.id);
     const io = req.app.get('io');
-
-    // Hide this trip only for the declining captain — other captains are unaffected
     io.to(`captain:${req.actor.id}`).emit('trip.removed', { tripId: req.params.id });
-
     return success(res, null, 'Trip declined');
   } catch (err) {
     if (err.status) return error(res, err.message, err.status);
@@ -180,8 +169,18 @@ const getCaptainRatings = async (req, res, next) => {
   }
 };
 
+const getNearbyCaptains = (req, res, next) => {
+  try {
+    const { latitude, longitude, radius, serviceId } = req.query;
+    const data = service.getNearbyCaptains(+latitude, +longitude, +(radius || 5), serviceId || null);
+    return success(res, data);
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   estimateFare, getActiveRegions, createTrip, getUserTrips, getTripById, cancelTrip,
   getCaptainTrips, getNewRequests, acceptTrip, declineTrip, startTrip, endTrip,
-  rateTrip, getCaptainRatings,
+  rateTrip, getCaptainRatings, getNearbyCaptains,
 };

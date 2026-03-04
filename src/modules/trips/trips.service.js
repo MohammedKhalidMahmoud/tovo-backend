@@ -60,20 +60,13 @@ const estimateFare = async ({ pickupLat, pickupLng, dropoffLat, dropoffLng, serv
 // ─────────────────────────────────────────────────────────────────────────────
 const validatePickupInRegion = async (pickupLat, pickupLng) => {
   const activeRegions = await regionsService.listActiveRegions();
-  
-  // If no regions are defined, allow the trip (backward compatibility)
-  if (!activeRegions || activeRegions.length === 0) {
-    return true;
-  }
 
-  // Check if pickup location is within any active region
+  if (!activeRegions || activeRegions.length === 0) return true;
+
   const matchingRegion = locationUtils.findPointInRegions(pickupLat, pickupLng, activeRegions);
-  
   if (!matchingRegion) {
     throw Object.assign(
-      new Error(
-        `Pickup location is outside all service regions. Please select a location within the service area.`
-      ),
+      new Error('Pickup location is outside all service regions. Please select a location within the service area.'),
       { statusCode: 422 }
     );
   }
@@ -82,8 +75,7 @@ const validatePickupInRegion = async (pickupLat, pickupLng) => {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  NEARBY CAPTAINS  (used by controller after trip creation)
-//  Reads from the in-memory locationStore — zero DB I/O, synchronous.
+//  NEARBY CAPTAINS
 // ─────────────────────────────────────────────────────────────────────────────
 const getNearbyCaptains = (pickupLat, pickupLng, radiusKm = 10, serviceId = null) =>
   locationStore.getNearby(pickupLat, pickupLng, radiusKm, serviceId);
@@ -94,18 +86,16 @@ const getNearbyCaptains = (pickupLat, pickupLng, radiusKm = 10, serviceId = null
 const createTrip = async (userId, body) => {
   const { pickup_lat, pickup_lng, pickup_address, dropoff_lat, dropoff_lng, dropoff_address, payment_method_id, service_id } = body;
 
-  // Validate service
   const svc = await serviceRepo.findById(service_id);
   if (!svc || !svc.isActive) throw Object.assign(new Error('Service not found or inactive'), { statusCode: 404 });
 
-  // Validate pickup location is within a service region
   await validatePickupInRegion(pickup_lat, pickup_lng);
 
   const distanceKm = haversineKm(pickup_lat, pickup_lng, dropoff_lat, dropoff_lng);
   const baseFare   = parseFloat(svc.baseFare);
   const tripFare   = +(baseFare + distanceKm * FARE_PER_KM).toFixed(2);
   const commission = +(tripFare * COMMISSION_PCT / 100).toFixed(2);
-  const fare       = +(tripFare + commission).toFixed(2); // total charged to user
+  const fare       = +(tripFare + commission).toFixed(2);
 
   return repo.createTrip({
     user: { connect: { id: userId } },
@@ -124,7 +114,7 @@ const createTrip = async (userId, body) => {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  GET TRIP
+//  GET TRIPS
 // ─────────────────────────────────────────────────────────────────────────────
 const getTripById = async (id, actorId) => {
   const trip = await repo.findTripById(id);

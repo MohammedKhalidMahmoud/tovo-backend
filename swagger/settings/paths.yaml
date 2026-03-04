@@ -1,6 +1,6 @@
 /admin/settings:
   get:
-    tags: [Admin]
+    tags: [Settings]
     summary: Get system settings
     security: [{ BearerAuth: [] }]
     responses:
@@ -14,7 +14,7 @@
                   type: array
                   items: { $ref: '#/components/schemas/SystemSetting' }
   put:
-    tags: [Admin]
+    tags: [Settings]
     summary: Update app-wide settings
     security: [{ BearerAuth: [] }]
     requestBody:

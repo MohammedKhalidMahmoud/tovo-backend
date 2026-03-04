@@ -820,7 +820,7 @@
 
 /admin/users/{id}:
   get:
-    tags: [Admin]
+    tags: [Users]
     summary: Get user details (admin)
     security: [{ BearerAuth: [] }]
     parameters:
@@ -837,7 +837,7 @@
               properties:
                 data: { $ref: '#/components/schemas/User' }
   patch:
-    tags: [Admin]
+    tags: [Users]
     summary: Update user (suspend/activate)
     security: [{ BearerAuth: [] }]
     parameters:
@@ -855,7 +855,7 @@
     responses:
       '200': { description: User updated }
   put:
-    tags: [Admin]
+    tags: [Users]
     summary: Replace/Update user (admin)
     security: [{ BearerAuth: [] }]
     parameters:
@@ -878,7 +878,7 @@
               properties:
                 data: { $ref: '#/components/schemas/User' }
   delete:
-    tags: [Admin]
+    tags: [Users]
     summary: Delete user (admin)
     security: [{ BearerAuth: [] }]
     parameters:

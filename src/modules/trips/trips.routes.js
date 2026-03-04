@@ -8,7 +8,7 @@ const userOnly    = [authenticate, authorize('user')];
 const captainOnly = [authenticate, authorize('captain')];
 const bothRoles   = [authenticate, authorize('user', 'captain')];
 
-// ── Public Endpoints ──────────────────────────────────────────────────────────
+// ── Public ────────────────────────────────────────────────────────────────────
 router.get('/regions/active', controller.getActiveRegions);
 
 // ── Fare Estimate ─────────────────────────────────────────────────────────────
@@ -32,9 +32,9 @@ router.post('/', ...userOnly, [
   body('service_id').notEmpty().isUUID().withMessage('service_id is required and must be a valid UUID'),
 ], validate, controller.createTrip);
 
-router.get('/',           ...userOnly,    controller.getUserTrips);
-router.get('/:id',        ...bothRoles,   [param('id').isUUID()], validate, controller.getTripById);
-router.patch('/:id/cancel', ...userOnly, [param('id').isUUID()], validate, controller.cancelTrip);
+router.get('/',             ...userOnly,    controller.getUserTrips);
+router.get('/:id',          ...bothRoles,   [param('id').isUUID()], validate, controller.getTripById);
+router.patch('/:id/cancel', ...userOnly,    [param('id').isUUID()], validate, controller.cancelTrip);
 
 // ── User: Rate a trip ─────────────────────────────────────────────────────────
 router.post('/:id/rating', ...userOnly, [
@@ -52,9 +52,15 @@ router.patch('/:id/decline', ...captainOnly, [param('id').isUUID()], validate, c
 router.patch('/:id/start',   ...captainOnly, [param('id').isUUID()], validate, controller.startTrip);
 router.patch('/:id/end',     ...captainOnly, [param('id').isUUID()], validate, controller.endTrip);
 
-module.exports = router;
+// ── Nearby Captains ───────────────────────────────────────────────────────────
+router.get('/nearby-captains', authenticate, [
+  query('latitude').isFloat().withMessage('latitude is required and must be a float'),
+  query('longitude').isFloat().withMessage('longitude is required and must be a float'),
+  query('radius').optional().isFloat({ min: 0 }).withMessage('radius must be a positive number'),
+  query('serviceId').optional().isUUID().withMessage('serviceId must be a valid UUID'),
+], validate, controller.getNearbyCaptains);
 
-// ── Captain Ratings (public-ish) ──────────────────────────────────────────────
+// ── Captain Ratings ───────────────────────────────────────────────────────────
 router.get('/captains/:captainId/ratings', authenticate, [
   param('captainId').isUUID().withMessage('captainId must be a valid UUID'),
 ], validate, controller.getCaptainRatings);

@@ -1,6 +1,6 @@
 /admin/complaints:
   get:
-    tags: [Admin]
+    tags: [Complaints]
     summary: List all complaints
     security: [{ BearerAuth: [] }]
     parameters:
@@ -24,7 +24,7 @@
 
 /admin/complaints/{id}:
   get:
-    tags: [Admin]
+    tags: [Complaints]
     summary: Get complaint details
     security: [{ BearerAuth: [] }]
     parameters:
@@ -37,7 +37,7 @@
 
 /admin/complaints/{id}/respond:
   post:
-    tags: [Admin]
+    tags: [Complaints]
     summary: Respond to complaint
     security: [{ BearerAuth: [] }]
     parameters:
@@ -57,7 +57,7 @@
 
 /admin/complaints/{id}/resolve:
   post:
-    tags: [Admin]
+    tags: [Complaints]
     summary: Mark complaint resolved
     security: [{ BearerAuth: [] }]
     parameters:

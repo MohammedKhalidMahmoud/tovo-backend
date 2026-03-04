@@ -1,6 +1,6 @@
 /admin/reports/rides:
   get:
-    tags: [Admin]
+    tags: [Analytics]
     summary: Ride statistics
     security: [{ BearerAuth: [] }]
     parameters:
@@ -30,7 +30,7 @@
 
 /admin/reports/drivers:
   get:
-    tags: [Admin]
+    tags: [Analytics]
     summary: Driver performance
     security: [{ BearerAuth: [] }]
     parameters:
@@ -56,7 +56,7 @@
 
 /admin/reports/users:
   get:
-    tags: [Admin]
+    tags: [Analytics]
     summary: User activity
     security: [{ BearerAuth: [] }]
     parameters:
