@@ -118,28 +118,46 @@ model Captain {
 
 model VehicleType {
   id          String    @id @default(uuid())
-  name        String    @unique
+  model       String    @unique
   description String?
   imageUrl    String?
   serviceId   String?
   createdAt   DateTime  @default(now())
 
-  service     Service?  @relation(fields: [serviceId], references: [id])
-  vehicles    Vehicle[]
+  service       Service?       @relation(fields: [serviceId], references: [id])
+  vehicles      Vehicle[]
+  vehicleModels VehicleModel[]
 
   @@map("vehicle_types")
 }
 
-model Vehicle {
-  id          String      @id @default(uuid())
-  captainId   String      @unique
-  typeId      String
-  vin         String      @unique
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+model VehicleModel {
+  id            String       @id @default(uuid())
+  name          String       @unique  // e.g. "Toyota Camry", "Honda Civic"
+  brand         String               // e.g. "Toyota", "Honda"
+  isActive      Boolean      @default(true)
+  vehicleTypeId String?              // optional: which VehicleType (service category) this model maps to
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
 
-  captain     Captain     @relation(fields: [captainId], references: [id])
-  type        VehicleType @relation(fields: [typeId], references: [id])
+  vehicleType   VehicleType? @relation(fields: [vehicleTypeId], references: [id])
+  vehicles      Vehicle[]
+
+  @@map("vehicle_models")
+}
+
+model Vehicle {
+  id             String        @id @default(uuid())
+  captainId      String        @unique
+  typeId         String?       // nullable: derived from vehicleModel.vehicleTypeId
+  vehicleModelId String?
+  vin            String        @unique
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  captain        Captain       @relation(fields: [captainId], references: [id])
+  type           VehicleType?  @relation(fields: [typeId], references: [id])
+  vehicleModel   VehicleModel? @relation(fields: [vehicleModelId], references: [id])
 
   @@map("vehicles")
 }

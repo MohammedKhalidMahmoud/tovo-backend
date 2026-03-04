@@ -29,6 +29,7 @@ const dashboardRoutes     = require('./modules/dashboard/dashboard.routes');
 const sosRoutes           = require('./modules/sos/sos.routes');
 const publicFaqsRoutes    = require('./modules/faqs/faqs.routes');
 const servicesRoutes      = require('./modules/services/services.routes');
+const vehicleModelsRoutes = require('./modules/vehicle-models/vehicleModels.routes');
 
 // ── App Setup ─────────────────────────────────────────────────────────────────
 const app = express();
@@ -86,13 +87,25 @@ app.use(`${API}/notifications`, notificationsRoutes);
 app.use(`${API}/support/tickets`, supportRoutes);
 app.use(`${API}/sos`,             sosRoutes);
 app.use(`${API}/faqs`,            publicFaqsRoutes);
-app.use(`${API}/services`,        servicesRoutes);
+app.use(`${API}/services`,       servicesRoutes);
+app.use(`${API}/vehicle-models`, vehicleModelsRoutes);
 app.use(`${API}/admin`, adminRoutes);
 app.use(`${API}`, dashboardRoutes); // provides /ride-requests/... and /rides/upcoming (and also /admin-dashboard by accident)
 app.use(`${API}/dashboard`, dashboardRoutes);
 
 // ── Health Check ──────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
+
+// ── Debug Endpoints (remove in production) ─────────────────────────────────────
+app.get('/debug/locations', (req, res) => {
+  const locationStore = require('./realtime/locationStore');
+  const storeData = locationStore.getAll();
+  return res.json({
+    timestamp: new Date().toISOString(),
+    captainsOnlineCount: Object.keys(storeData).length,
+    captains: storeData
+  });
+});
 
 // ── 404 Handler ───────────────────────────────────────────────────────────────
 app.use((req, res) => res.status(404).json({ success: false, message: `Route ${req.method} ${req.path} not found` }));

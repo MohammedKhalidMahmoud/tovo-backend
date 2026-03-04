@@ -13,6 +13,8 @@ async function main() {
   await prisma.rating.deleteMany();
   await prisma.tripDecline.deleteMany();
   await prisma.trip.deleteMany();
+  await prisma.vehicle.deleteMany();    // must come before vehicleModel + vehicleType
+  await prisma.vehicleModel.deleteMany();
   await prisma.service.deleteMany();
   await prisma.ticketMessage.deleteMany();
   await prisma.supportTicket.deleteMany();
@@ -58,7 +60,7 @@ async function main() {
   const [regularCar, vipCar] = await Promise.all([
     prisma.vehicleType.create({
       data: {
-        name:        'Regular Car',
+        model:       'Regular Car',
         description: 'Comfortable everyday rides at affordable prices',
         imageUrl:    'https://assets.tovo.app/vehicles/regular.png',
         serviceId:   svcRegular.id,
@@ -66,7 +68,7 @@ async function main() {
     }),
     prisma.vehicleType.create({
       data: {
-        name:        'VIP Car',
+        model:       'VIP Car',
         description: 'Premium vehicles with top-rated captains',
         imageUrl:    'https://assets.tovo.app/vehicles/vip.png',
         serviceId:   svcComfort.id,
@@ -74,6 +76,28 @@ async function main() {
     }),
   ]);
   console.log('✅ Vehicle types created');
+
+  // ─────────────────────────────────────────────
+  //  VEHICLE MODELS (admin-managed whitelist)
+  // ─────────────────────────────────────────────
+  // Create the 3 models referenced by seed vehicles first, then bulk-insert the rest.
+  const [camry, corolla, bmw5] = await Promise.all([
+    prisma.vehicleModel.create({ data: { name: 'Toyota Camry',   brand: 'Toyota', isActive: true, vehicleTypeId: regularCar.id } }),
+    prisma.vehicleModel.create({ data: { name: 'Toyota Corolla', brand: 'Toyota', isActive: true, vehicleTypeId: regularCar.id } }),
+    prisma.vehicleModel.create({ data: { name: 'BMW 5 Series',   brand: 'BMW',    isActive: true, vehicleTypeId: vipCar.id } }),
+  ]);
+
+  // Additional allowed models (not assigned to a seed vehicle)
+  await prisma.vehicleModel.createMany({
+    data: [
+      { name: 'Hyundai Sonata',        brand: 'Hyundai',       isActive: true, vehicleTypeId: regularCar.id },
+      { name: 'Mercedes-Benz E-Class', brand: 'Mercedes-Benz', isActive: true, vehicleTypeId: vipCar.id },
+      { name: 'Honda CB125',           brand: 'Honda',          isActive: true, vehicleTypeId: null },
+      { name: 'Bajaj Pulsar',          brand: 'Bajaj',          isActive: true, vehicleTypeId: null },
+      { name: 'Toyota Hi-Ace',         brand: 'Toyota',         isActive: true, vehicleTypeId: null },
+    ],
+  });
+  console.log('✅ Vehicle models created');
 
   // ─────────────────────────────────────────────
   //  USERS
@@ -211,23 +235,26 @@ async function main() {
   await Promise.all([
     prisma.vehicle.create({
       data: {
-        captainId: kaptan1.id,
-        typeId:    regularCar.id,
-        vin:       '1HGCM82633A123456',
+        captainId:      kaptan1.id,
+        typeId:         regularCar.id,
+        vehicleModelId: camry.id,
+        vin:            '1HGCM82633A123456',
       },
     }),
     prisma.vehicle.create({
       data: {
-        captainId: kaptan2.id,
-        typeId:    vipCar.id,
-        vin:       '2T1BURHE0JC987654',
+        captainId:      kaptan2.id,
+        typeId:         vipCar.id,
+        vehicleModelId: bmw5.id,
+        vin:            '2T1BURHE0JC987654',
       },
     }),
     prisma.vehicle.create({
       data: {
-        captainId: kaptan3.id,
-        typeId:    regularCar.id,
-        vin:       '3VWFE21C04M000001',
+        captainId:      kaptan3.id,
+        typeId:         regularCar.id,
+        vehicleModelId: corolla.id,
+        vin:            '3VWFE21C04M000001',
       },
     }),
   ]);

@@ -69,9 +69,11 @@ const setupSocket = (io) => {
     socket.on('captain.location_update', ({ latitude, longitude, heading, tripId }) => {
       if (role !== 'captain') return;
 
+      logger.info(`Captain ${id} sent location: (${latitude}, ${longitude})`);
       locationStore.set(id, { lat: latitude, lng: longitude, heading, serviceId: socket.captainServiceId });
 
       if (tripId) {
+        logger.info(`Forwarding location to trip room: trip:${tripId}`);
         io.to(`trip:${tripId}`).emit('trip.captain_location', { latitude, longitude, heading, captainId: id });
       }
     });

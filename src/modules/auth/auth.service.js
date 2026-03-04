@@ -30,7 +30,7 @@ const registerUser = async ({ name, email, phone, password }) => {
 // ─────────────────────────────────────────────────────────────────────────────
 //  REGISTER CAPTAIN
 // ─────────────────────────────────────────────────────────────────────────────
-const registerCaptain = async ({ name, email, phone, password, drivingLicense, vehicleTypeName, vin }) => {
+const registerCaptain = async ({ name, email, phone, password, drivingLicense, vehicleModelName, vin }) => {
   const existingEmail = await repo.findCaptainByEmail(email);
   if (existingEmail) throw { status: 409, message: 'Email already registered' };
 
@@ -39,18 +39,22 @@ const registerCaptain = async ({ name, email, phone, password, drivingLicense, v
 
   const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
 
-  // lookup vehicle type by name supplied by frontend
-  // MySQL columns are generally case‑insensitive, so a plain equals is fine
-  const vehicleType = await prisma.vehicleType.findFirst({
-    where: { name: vehicleTypeName },
-    select: { id: true, serviceId: true },
+  // Validate that the vehicle model name is in the admin-managed whitelist
+  const vehicleModel = await prisma.vehicleModel.findUnique({
+    where: { name: vehicleModelName },
+    select: {
+      id: true,
+      isActive: true,
+      vehicleTypeId: true,
+      vehicleType: { select: { id: true, serviceId: true } },
+    },
   });
-  if (!vehicleType) {
-    // differentiate between user sending an id by mistake and a truly unknown name
-    throw { status: 400, message: 'Invalid vehicle type name' };
-  }
-  const vehicleTypeId = vehicleType.id;
-  const serviceId = vehicleType.serviceId ?? null;
+  if (!vehicleModel) throw { status: 400, message: 'Vehicle model is not recognised. Please choose from the available models.' };
+  if (!vehicleModel.isActive) throw { status: 400, message: 'This vehicle model is no longer accepted for registration.' };
+
+  const vehicleModelId = vehicleModel.id;
+  const vehicleTypeId  = vehicleModel.vehicleType?.id      ?? null;
+  const serviceId      = vehicleModel.vehicleType?.serviceId ?? null;
 
   const captain = await prisma.$transaction(async (tx) => {
     const newCaptain = await tx.captain.create({
@@ -58,7 +62,12 @@ const registerCaptain = async ({ name, email, phone, password, drivingLicense, v
     });
 
     await tx.vehicle.create({
-      data: { captainId: newCaptain.id, typeId: vehicleTypeId, vin },
+      data: {
+        captainId:      newCaptain.id,
+        typeId:         vehicleTypeId,   // null if the model has no vehicleType set yet
+        vehicleModelId,
+        vin,
+      },
     });
 
     await tx.wallet.create({ data: { captainId: newCaptain.id, currency: 'EGP' } });

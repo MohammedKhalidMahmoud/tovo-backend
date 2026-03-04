@@ -27,8 +27,8 @@ router.post('/register/captain', [
     if (val !== req.body.password) throw new Error('Passwords do not match');
     return true;
   }),
-  // frontend sends vehicle type **name** instead of id
-  body('vehicle_type').notEmpty().trim(),
+  // frontend sends vehicle model **name** instead of id
+  body('vehicle_model').notEmpty().trim(),
   body('vin').notEmpty().trim(),
 ], validate, controller.registerCaptain);
 

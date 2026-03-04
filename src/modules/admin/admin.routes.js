@@ -25,8 +25,9 @@ const paymentsRoutes = require('./payments/payments.routes');
 const walletsRoutes  = require('./wallets/wallets.routes');
 const sosRoutes      = require('./sos/sos.routes');
 const faqsRoutes     = require('./faqs/faqs.routes');
-const regionsRoutes   = require('./regions/regions.routes');
-const servicesRoutes  = require('./services/services.routes');
+const regionsRoutes       = require('./regions/regions.routes');
+const servicesRoutes      = require('./services/services.routes');
+const vehicleModelsRoutes = require('./vehicle-models/vehicleModels.routes');
 
 // Note: Admin login now uses the main /api/v1/auth/login endpoint with role='admin'
 // Apply admin authentication to all routes
@@ -50,8 +51,9 @@ router.use('/admins', adminsRoutes);
 router.use('/wallets', walletsRoutes);
 router.use('/sos',     sosRoutes);
 router.use('/faqs',    faqsRoutes);
-router.use('/regions',   regionsRoutes);
-router.use('/services',  servicesRoutes);
+router.use('/regions',        regionsRoutes);
+router.use('/services',       servicesRoutes);
+router.use('/vehicle-models', vehicleModelsRoutes);
 
 // Health check
 router.get('/health', (req, res) => {
