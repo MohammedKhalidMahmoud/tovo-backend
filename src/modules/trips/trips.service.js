@@ -84,10 +84,14 @@ const getNearbyCaptains = (pickupLat, pickupLng, radiusKm = 10, serviceId = null
 //  CREATE TRIP
 // ─────────────────────────────────────────────────────────────────────────────
 const createTrip = async (userId, body) => {
-  const { pickup_lat, pickup_lng, pickup_address, dropoff_lat, dropoff_lng, dropoff_address, payment_method_id, service_id } = body;
+  const { pickup_lat, pickup_lng, pickup_address, dropoff_lat, dropoff_lng, dropoff_address, payment_type, payment_method_id, service_id } = body;
 
   const svc = await serviceRepo.findById(service_id);
   if (!svc || !svc.isActive) throw Object.assign(new Error('Service not found or inactive'), { statusCode: 404 });
+
+  if (payment_type === 'card') {
+    if (!payment_method_id) throw Object.assign(new Error('payment_method_id is required when payment_type is card'), { statusCode: 400 });
+  }
 
   await validatePickupInRegion(pickup_lat, pickup_lng);
 
@@ -100,7 +104,7 @@ const createTrip = async (userId, body) => {
   return repo.createTrip({
     user: { connect: { id: userId } },
     service: { connect: { id: service_id } },
-    paymentMethod: payment_method_id ? { connect: { id: payment_method_id } } : undefined,
+    paymentMethod: payment_type === 'card' ? { connect: { id: payment_method_id } } : undefined,
     pickupLat: pickup_lat,
     pickupLng: pickup_lng,
     pickupAddress: pickup_address,

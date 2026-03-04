@@ -42,7 +42,7 @@ const createRefreshToken = (data) =>
   prisma.refreshToken.create({ data });
 
 const findRefreshToken = (token) =>
-  prisma.refreshToken.findUnique({ where: { token } });
+  prisma.refreshToken.findFirst({ where: { token } });
 
 const deleteRefreshToken = (token) =>
   prisma.refreshToken.delete({ where: { token } });

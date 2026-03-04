@@ -438,7 +438,7 @@ model RefreshToken {
   id          String    @id @default(uuid())
   userId      String?
   captainId   String?
-  token       String    @db.Text
+  token       String    @db.text
   expiresAt   DateTime
   createdAt   DateTime  @default(now())
 

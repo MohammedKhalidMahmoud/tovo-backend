@@ -63,14 +63,19 @@
     summary: Create a new trip request
     description: |
       Create a new trip request. The pickup location must be within one of the defined service regions.
-      **Note**: Pickup location is validated against active service regions. If outside all regions, request will be rejected with 422 error.
+
+      **Payment options:**
+      - `payment_type: cash` — no `payment_method_id` required.
+      - `payment_type: card` — `payment_method_id` (UUID of a saved payment method) is required.
+
+      **Note**: Pickup location is validated against active service regions. If outside all regions, request will be rejected with 422.
     security: [{ BearerAuth: [] }]
     requestBody:
       required: true
       content:
         application/json:
           schema:
-            required: [pickup_lat, pickup_lng, pickup_address, dropoff_lat, dropoff_lng, dropoff_address, service_id, payment_method_id]
+            required: [pickup_lat, pickup_lng, pickup_address, dropoff_lat, dropoff_lng, dropoff_address, service_id, payment_type]
             properties:
               pickup_lat:        { type: number, example: 30.0444 }
               pickup_lng:        { type: number, example: 31.2357 }
@@ -79,7 +84,39 @@
               dropoff_lng:       { type: number, example: 31.3100 }
               dropoff_address:   { type: string }
               service_id:        { type: string, format: uuid, description: 'Service/vehicle type ID' }
-              payment_method_id: { type: string, format: uuid }
+              payment_type:
+                type: string
+                enum: [cash, card]
+                example: cash
+                description: 'Payment method type. Use "card" and provide payment_method_id to charge a saved card.'
+              payment_method_id:
+                type: string
+                format: uuid
+                description: 'Required only when payment_type is "card". UUID of the user''s saved payment method.'
+          examples:
+            cash:
+              summary: Pay with cash
+              value:
+                pickup_lat: 30.0444
+                pickup_lng: 31.2357
+                pickup_address: '123 Main St, Cairo'
+                dropoff_lat: 30.1050
+                dropoff_lng: 31.3100
+                dropoff_address: '456 Side St, Cairo'
+                service_id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890'
+                payment_type: cash
+            card:
+              summary: Pay with saved card
+              value:
+                pickup_lat: 30.0444
+                pickup_lng: 31.2357
+                pickup_address: '123 Main St, Cairo'
+                dropoff_lat: 30.1050
+                dropoff_lng: 31.3100
+                dropoff_address: '456 Side St, Cairo'
+                service_id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890'
+                payment_type: card
+                payment_method_id: 'b2c3d4e5-f6a7-8901-bcde-f12345678901'
     responses:
       '201':
         description: Trip created
@@ -88,6 +125,8 @@
             schema:
               properties:
                 data: { $ref: '#/components/schemas/Trip' }
+      '400':
+        description: 'payment_method_id is required when payment_type is card'
       '422':
         description: 'Pickup location is outside all service regions'
         content:
@@ -108,6 +147,51 @@
       - { name: per_page, in: query, schema: { type: integer, default: 20 } }
     responses:
       '200': { description: Trip history }
+
+/trips/nearby-captains:
+  get:
+    tags: [Trips]
+    summary: Get nearby available captains
+    description: Returns a list of captains currently online and within the given radius, optionally filtered by service type. Data is served from the in-memory location store updated in real-time via Socket.io.
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: latitude
+        in: query
+        required: true
+        schema: { type: number, example: 30.0444 }
+      - name: longitude
+        in: query
+        required: true
+        schema: { type: number, example: 31.2357 }
+      - name: radius
+        in: query
+        required: false
+        schema: { type: number, default: 5, example: 10 }
+        description: Search radius in kilometers (default 5)
+      - name: serviceId
+        in: query
+        required: false
+        schema: { type: string, format: uuid }
+        description: Filter captains by service type UUID
+    responses:
+      '200':
+        description: List of nearby captains
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success: { type: boolean, example: true }
+                data:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:        { type: string, format: uuid }
+                      lat:       { type: number, example: 30.0500 }
+                      lng:       { type: number, example: 31.2400 }
+                      serviceId: { type: string, format: uuid }
+      '401': { description: Unauthorized }
 
 /trips/{id}:
   get:
@@ -141,6 +225,86 @@
     responses:
       '200': { description: Trip cancelled }
       '422': { description: Cannot be cancelled }
+
+/trips/{id}/accept:
+  patch:
+    tags: [Trips]
+    summary: Captain accepts a trip
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    responses:
+      '200':
+        description: Trip accepted — status becomes matched
+        content:
+          application/json:
+            schema:
+              properties:
+                data: { $ref: '#/components/schemas/Trip' }
+      '422': { description: Trip is no longer available }
+      '401': { description: Unauthorized }
+
+/trips/{id}/decline:
+  patch:
+    tags: [Trips]
+    summary: Captain declines a trip
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    responses:
+      '200': { description: Trip declined — trip remains visible to other captains }
+      '422': { description: Trip is no longer available }
+      '401': { description: Unauthorized }
+
+/trips/{id}/start:
+  patch:
+    tags: [Trips]
+    summary: Captain starts a trip
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    responses:
+      '200':
+        description: Trip started — status becomes in_progress
+        content:
+          application/json:
+            schema:
+              properties:
+                data: { $ref: '#/components/schemas/Trip' }
+      '422': { description: Trip cannot be started (not in matched or on_way status) }
+      '403': { description: Not the assigned captain }
+      '401': { description: Unauthorized }
+
+/trips/{id}/end:
+  patch:
+    tags: [Trips]
+    summary: Captain ends a trip
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    responses:
+      '200':
+        description: Trip completed — status becomes completed
+        content:
+          application/json:
+            schema:
+              properties:
+                data: { $ref: '#/components/schemas/Trip' }
+      '422': { description: Trip is not in progress }
+      '403': { description: Not the assigned captain }
+      '401': { description: Unauthorized }
 
 /trips/{id}/rating:
   post:
