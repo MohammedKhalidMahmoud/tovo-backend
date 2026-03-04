@@ -1,0 +1,3 @@
+# The locations module does not define standalone domain schemas.
+# All responses for this module are either inline or reference schemas
+# from the captains and common modules.

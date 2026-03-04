@@ -1,0 +1,225 @@
+/admin/login:
+  post:
+    tags: [Admin]
+    summary: Admin login
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [email, password]
+            properties:
+              email:    { type: string, format: email }
+              password: { type: string }
+    responses:
+      '200':
+        description: Login successful
+        content:
+          application/json:
+            schema:
+              properties:
+                data:
+                  properties:
+                    access_token:  { type: string }
+                    refresh_token: { type: string }
+                    role:          { type: string, example: admin }
+
+
+/admin/drivers:
+  get:
+    tags: [Admin]
+    summary: List drivers (admin)
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: page
+        in: query
+        schema: { type: integer, default: 1 }
+      - name: per_page
+        in: query
+        schema: { type: integer, default: 20 }
+      - name: q
+        in: query
+        schema: { type: string }
+    responses:
+      '200':
+        description: Drivers list
+        content:
+          application/json:
+            schema:
+              properties:
+                data:
+                  type: array
+                  items: { $ref: '#/components/schemas/Captain' }
+                pagination: { $ref: '#/components/schemas/Pagination' }
+  post:
+    tags: [Admin]
+    summary: Create a new driver (admin)
+    security: [{ BearerAuth: [] }]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/DriverCreate'
+    responses:
+      '201':
+        description: Driver created
+        content:
+          application/json:
+            schema:
+              properties:
+                data: { $ref: '#/components/schemas/Captain' }
+
+/admin/drivers/{id}:
+  get:
+    tags: [Admin]
+    summary: Get driver details (admin)
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    responses:
+      '200':
+        description: Driver details
+        content:
+          application/json:
+            schema:
+              properties:
+                data: { $ref: '#/components/schemas/Captain' }
+  patch:
+    tags: [Admin]
+    summary: Update driver (verify/ban)
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    requestBody:
+      content:
+        application/json:
+          schema:
+            properties:
+              isVerified: { type: boolean }
+              isBanned:   { type: boolean }
+              notes:      { type: string }
+    responses:
+      '200': { description: Driver updated }
+  put:
+    tags: [Admin]
+    summary: Update driver (admin)
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/DriverUpdate'
+    responses:
+      '200':
+        description: Driver updated
+        content:
+          application/json:
+            schema:
+              properties:
+                data: { $ref: '#/components/schemas/Captain' }
+  delete:
+    tags: [Admin]
+    summary: Delete driver (admin)
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - name: confirm
+        in: query
+        required: true
+        schema: { type: string }
+        description: Must be 'true' to confirm deletion
+    responses:
+      '200': { description: Driver deleted }
+
+/admin/admins:
+  get:
+    tags: [Admin]
+    summary: List all admins
+    security: [{ BearerAuth: [] }]
+    responses:
+      '200':
+        description: Admin users
+        content:
+          application/json:
+            schema:
+              properties:
+                data:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:     { type: string }
+                      name:   { type: string }
+                      email:  { type: string }
+                      role:   { type: string }
+                      status: { type: string }
+  post:
+    tags: [Admin]
+    summary: Add new admin
+    security: [{ BearerAuth: [] }]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            required: [name, email, role, password]
+            properties:
+              name:     { type: string }
+              email:    { type: string, format: email }
+              role:     { type: string }
+              password: { type: string, minLength: 8 }
+    responses:
+      '201': { description: Admin created }
+
+/admin/admins/{id}:
+  put:
+    tags: [Admin]
+    summary: Update admin info
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    requestBody:
+      content:
+        application/json:
+          schema:
+            properties:
+              name:   { type: string }
+              role:   { type: string }
+              status: { type: string }
+    responses:
+      '200': { description: Admin updated }
+  delete:
+    tags: [Admin]
+    summary: Deactivate admin
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - name: confirm
+        in: query
+        required: true
+        schema: { type: string, enum: [true] }
+    responses:
+      '200': { description: Admin deactivated }

@@ -1,0 +1,130 @@
+/vehicle-models:
+  get:
+    tags: [Vehicle Models]
+    summary: List active vehicle models
+    description: Public endpoint — returns all active (whitelisted) models for use in the captain registration screen.
+    responses:
+      '200':
+        description: List of active vehicle models
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success: { type: boolean, example: true }
+                data:
+                  type: array
+                  items: { $ref: '#/components/schemas/VehicleModel' }
+
+/admin/vehicle-models:
+  get:
+    tags: [Vehicle Models]
+    summary: List all vehicle models (admin)
+    description: Returns all models (active and inactive). Requires admin JWT.
+    security: [{ BearerAuth: [] }]
+    responses:
+      '200':
+        description: All vehicle models
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success: { type: boolean }
+                data:
+                  type: array
+                  items: { $ref: '#/components/schemas/VehicleModel' }
+  post:
+    tags: [Vehicle Models]
+    summary: Create a vehicle model (admin)
+    description: Add a new model to the registration whitelist.
+    security: [{ BearerAuth: [] }]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [name, brand]
+            properties:
+              name:        { type: string, example: 'Toyota Camry' }
+              brand:       { type: string, example: 'Toyota' }
+              description: { type: string, nullable: true, example: 'Comfortable everyday rides' }
+              imageUrl:    { type: string, format: uri, nullable: true }
+              serviceId:   { type: string, format: uuid, nullable: true, description: 'Service category this model belongs to' }
+              isActive:    { type: boolean, example: true }
+    responses:
+      '201':
+        description: Vehicle model created
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success: { type: boolean }
+                data:    { $ref: '#/components/schemas/VehicleModel' }
+      '409': { description: Model with this name already exists }
+
+/admin/vehicle-models/{id}:
+  parameters:
+    - name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+  get:
+    tags: [Vehicle Models]
+    summary: Get a vehicle model (admin)
+    security: [{ BearerAuth: [] }]
+    responses:
+      '200':
+        description: Vehicle model details
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success: { type: boolean }
+                data:    { $ref: '#/components/schemas/VehicleModel' }
+      '404': { description: Vehicle model not found }
+  put:
+    tags: [Vehicle Models]
+    summary: Update a vehicle model (admin)
+    description: Update name, brand, or isActive flag. Set isActive=false to block new registrations with this model.
+    security: [{ BearerAuth: [] }]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              name:        { type: string, example: 'Toyota Camry 2024' }
+              brand:       { type: string, example: 'Toyota' }
+              description: { type: string, nullable: true }
+              imageUrl:    { type: string, format: uri, nullable: true }
+              serviceId:   { type: string, format: uuid, nullable: true }
+              isActive:    { type: boolean, example: false }
+    responses:
+      '200':
+        description: Vehicle model updated
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success: { type: boolean }
+                data:    { $ref: '#/components/schemas/VehicleModel' }
+      '404': { description: Vehicle model not found }
+  delete:
+    tags: [Vehicle Models]
+    summary: Delete a vehicle model (admin)
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: confirm
+        in: query
+        required: true
+        schema: { type: string, enum: ['true'] }
+        description: Must be "true" to confirm the deletion.
+    responses:
+      '200': { description: Vehicle model deleted }
+      '404': { description: Vehicle model not found }

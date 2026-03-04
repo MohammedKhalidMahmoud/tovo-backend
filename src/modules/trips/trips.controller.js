@@ -1,5 +1,5 @@
 const service = require('./trips.service');
-const regionsService = require('../admin/regions/regions.service');
+const regionsService = require('../regions/regions.service');
 const { success, created, error, paginate } = require('../../utils/response');
 const {
   emitCaptainMatched,

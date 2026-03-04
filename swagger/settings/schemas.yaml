@@ -1,0 +1,7 @@
+SystemSetting:
+  type: object
+  properties:
+    key:         { type: string }
+    value:       { type: string }
+    description: { type: string, nullable: true }
+    updatedAt:   { type: string, format: date-time }

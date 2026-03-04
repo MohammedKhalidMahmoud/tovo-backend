@@ -1,0 +1,56 @@
+/support/tickets:
+  post:
+    tags: [Support]
+    summary: Create support ticket
+    security: [{ BearerAuth: [] }]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            required: [subject]
+            properties:
+              subject: { type: string }
+    responses:
+      '201': { description: Ticket created }
+  get:
+    tags: [Support]
+    summary: List support tickets
+    security: [{ BearerAuth: [] }]
+    responses:
+      '200': { description: Tickets list }
+
+/support/tickets/{id}:
+  get:
+    tags: [Support]
+    summary: Get ticket details
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+    responses:
+      '200': { description: Ticket }
+      '404': { description: Not found }
+
+/support/tickets/{id}/messages:
+  post:
+    tags: [Support]
+    summary: Reply to a ticket
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            required: [body]
+            properties:
+              body: { type: string }
+    responses:
+      '201': { description: Message sent }

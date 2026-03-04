@@ -1,0 +1,50 @@
+User:
+  type: object
+  properties:
+    id: { type: string, format: uuid }
+    name: { type: string }
+    email: { type: string, format: email }
+    phone: { type: string }
+    avatarUrl: { type: string, nullable: true }
+    role: { type: string, enum: [user] }
+    isVerified: { type: boolean }
+    language: { type: string, example: en }
+    createdAt: { type: string, format: date-time }
+
+UserCreate:
+  type: object
+  required: [name, email]
+  properties:
+    name: { type: string }
+    email: { type: string, format: email }
+    phone: { type: string }
+    password: { type: string }
+    language: { type: string, example: en }
+
+UserUpdate:
+  type: object
+  properties:
+    name: { type: string }
+    email: { type: string, format: email }
+    phone: { type: string }
+    language: { type: string }
+    notificationsEnabled: { type: boolean }
+
+SavedAddress:
+  type: object
+  properties:
+    id: { type: string, format: uuid }
+    label: { type: string, example: Home }
+    address: { type: string }
+    lat: { type: number }
+    lng: { type: number }
+
+PaymentMethod:
+  type: object
+  properties:
+    id: { type: string, format: uuid }
+    brand: { type: string, enum: [visa, mastercard, apple_pay] }
+    lastFour: { type: string, example: '1234' }
+    maskedNumber: { type: string, example: '482 *** ****** ****' }
+    isDefault: { type: boolean }
+    expiry: { type: string, example: '12/26' }

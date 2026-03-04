@@ -9,4 +9,5 @@ const { authenticate } = require('../../middleware/auth.middleware');
 
 router.post('/', authenticate, ctrl.triggerSos);
 
-module.exports = router;
+module.exports 
+= router;

@@ -10,6 +10,8 @@ const YAML = require('yamljs');
 const swaggerUi = require('swagger-ui-express');
 const path = require('path');
 
+const { configureSwagger } = require ('../swagger/swagger.config.js');
+
 const logger = require('./config/logger');
 const errorHandler = require('./middleware/error.middleware');
 const { setupSocket } = require('./realtime/socket');
@@ -20,16 +22,15 @@ const usersRoutes         = require('./modules/users/users.routes');
 const captainsRoutes      = require('./modules/captains/captains.routes');
 const tripsRoutes         = require('./modules/trips/trips.routes');
 const locationsRoutes     = require('./modules/locations/locations.routes');
-const vehiclesRoutes      = require('./modules/vehicles/vehicles.routes');
-const promotionsRoutes    = require('./modules/promotions/promotions.routes');
-const notificationsRoutes = require('./modules/notifications/notifications.routes');
-const supportRoutes       = require('./modules/support/support.routes');
-const adminRoutes         = require('./modules/admin/admin.routes');
-const dashboardRoutes     = require('./modules/dashboard/dashboard.routes');
+const promotionsRoutes    = require('./modules/coupons/coupons.routes');
 const sosRoutes           = require('./modules/sos/sos.routes');
-const publicFaqsRoutes    = require('./modules/faqs/faqs.routes');
+const faqsRoutes          = require('./modules/faqs/faqs.routes');
 const servicesRoutes      = require('./modules/services/services.routes');
 const vehicleModelsRoutes = require('./modules/vehicle-models/vehicleModels.routes');
+const notificationsRoutes = require('./modules/notifications/notifications.routes');
+const supportRoutes       = require('./modules/support/support.routes');
+// const adminRoutes         = require('./modules/admin/admin.routes');
+const dashboardRoutes     = require('./modules/dashboard/dashboard.routes');
 
 // ── App Setup ─────────────────────────────────────────────────────────────────
 const app = express();
@@ -67,26 +68,31 @@ if (!RATE_LIMIT_DISABLED) {
 }
 
 // ── Swagger UI ────────────────────────────────────────────────────────────────
-const swaggerDoc = YAML.load(path.join(__dirname, '../swagger/openapi.yaml'));
-app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerDoc, {
-  customSiteTitle: 'Tovo API Docs',
-  customCss: '.swagger-ui .topbar { background-color: #1A3C5E; }',
-}));
+// const swaggerDoc = YAML.load(path.join(__dirname, '../swagger/openapi.yaml'));
+// app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerDoc, {
+//   customSiteTitle: 'Tovo API Docs',
+//   customCss: '.swagger-ui .topbar { background-color: #1A3C5E; }',
+// }));
+configureSwagger(app);
 
 // ── API Routes ────────────────────────────────────────────────────────────────
 const API = '/api/v1';
 
 app.use(`${API}/auth`,          authRoutes);
 app.use(`${API}/users`,         usersRoutes);
+app.use(`${API}/admin/users`,   usersRoutes);
 app.use(`${API}/captains`,      captainsRoutes);
+app.use(`${API}/admin/drivers`,      captainsRoutes);
 app.use(`${API}/trips`,         tripsRoutes);
 app.use(`${API}/locations`,     locationsRoutes);
-app.use(`${API}/vehicle-types`, vehiclesRoutes);
-app.use(`${API}/promotions`,    promotionsRoutes);
-app.use(`${API}/notifications`, notificationsRoutes);
-// Admin-managed modules are mounted under /api/v1/admin via adminRoutes
-// (they used to be mounted at top-level; removed to standardize admin prefix)
-app.use(`${API}/admin`, adminRoutes);
+app.use(`${API}/promotions`,     promotionsRoutes);
+app.use(`${API}/notifications`,  notificationsRoutes);
+app.use(`${API}/support`,        supportRoutes);
+app.use(`${API}/sos`,            sosRoutes);
+app.use(`${API}/faqs`,           faqsRoutes);
+app.use(`${API}/services`,       servicesRoutes);
+app.use(`${API}/vehicle-models`, vehicleModelsRoutes);
+// app.use(`${API}/admin`,          adminRoutes);
 app.use(`${API}`, dashboardRoutes); // provides /ride-requests/... and /rides/upcoming (and also /admin-dashboard by accident)
 app.use(`${API}/dashboard`, dashboardRoutes);
 

@@ -1,0 +1,8 @@
+Notification:
+  type: object
+  properties:
+    id:        { type: string, format: uuid }
+    title:     { type: string }
+    body:      { type: string }
+    isRead:    { type: boolean }
+    createdAt: { type: string, format: date-time }

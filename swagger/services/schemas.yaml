@@ -1,0 +1,9 @@
+Service:
+  type: object
+  properties:
+    id:        { type: string, format: uuid }
+    name:      { type: string, example: Comfort }
+    baseFare:  { type: number, example: 20.00 }
+    isActive:  { type: boolean, example: true }
+    createdAt: { type: string, format: date-time }
+    updatedAt: { type: string, format: date-time }

@@ -1,0 +1,14 @@
+RefundRequest:
+  type: object
+  properties:
+    amount:   { type: number }
+    currency: { type: string }
+    reason:   { type: string }
+
+RideStats:
+  type: object
+  properties:
+    totalRides: { type: integer }
+    completed:  { type: integer }
+    canceled:   { type: integer }
+    revenue:    { type: number }

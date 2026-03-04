@@ -1,0 +1,140 @@
+/faqs:
+  get:
+    tags: [FAQs]
+    summary: List active FAQs
+    description: Public endpoint — returns all active FAQs sorted by display order. No auth required.
+    responses:
+      '200':
+        description: List of active FAQs
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/SuccessResponse'
+                - type: object
+                  properties:
+                    data:
+                      type: array
+                      items: { $ref: '#/components/schemas/Faq' }
+
+/admin/faqs:
+  get:
+    tags: [FAQs]
+    summary: List all FAQs (admin)
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: isActive
+        in: query
+        schema: { type: boolean }
+      - name: page
+        in: query
+        schema: { type: integer, default: 1 }
+      - name: limit
+        in: query
+        schema: { type: integer, default: 20 }
+    responses:
+      '200':
+        description: Paginated FAQ list
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/SuccessResponse'
+                - type: object
+                  properties:
+                    data:
+                      type: array
+                      items: { $ref: '#/components/schemas/Faq' }
+  post:
+    tags: [FAQs]
+    summary: Create a FAQ
+    security: [{ BearerAuth: [] }]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [question, answer]
+            properties:
+              question: { type: string }
+              answer:   { type: string }
+              order:    { type: integer, default: 0, description: Display order ascending }
+    responses:
+      '201':
+        description: FAQ created
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/SuccessResponse'
+                - type: object
+                  properties:
+                    data: { $ref: '#/components/schemas/Faq' }
+
+/admin/faqs/{id}:
+  get:
+    tags: [FAQs]
+    summary: Get a FAQ
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    responses:
+      '200':
+        description: FAQ details
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/SuccessResponse'
+                - type: object
+                  properties:
+                    data: { $ref: '#/components/schemas/Faq' }
+      '404': { description: FAQ not found }
+  put:
+    tags: [FAQs]
+    summary: Update a FAQ
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              question: { type: string }
+              answer:   { type: string }
+              order:    { type: integer }
+              isActive: { type: boolean }
+    responses:
+      '200':
+        description: Updated FAQ
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/SuccessResponse'
+                - type: object
+                  properties:
+                    data: { $ref: '#/components/schemas/Faq' }
+      '404': { description: FAQ not found }
+  delete:
+    tags: [FAQs]
+    summary: Delete a FAQ
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    responses:
+      '200': { description: FAQ deleted }
+      '404': { description: FAQ not found }

@@ -1,0 +1,30 @@
+/dashboard/admin-dashboard:
+  get:
+    tags: [Dashboard]
+    summary: Admin dashboard summary
+    security: [{ BearerAuth: [] }]
+    responses:
+      '200':
+        description: Dashboard summary
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success: { type: boolean }
+                message: { type: string }
+                data:
+                  type: object
+                  properties:
+                    totalRiders:     { type: integer }
+                    totalDrivers:    { type: integer }
+                    totalFleets:     { type: integer }
+                    totalRides:      { type: integer }
+                    completedRides:  { type: integer }
+                    pendingRides:    { type: integer }
+                    cancelledRides:  { type: integer }
+                    totalRevenue:    { type: number }
+                    todayRevenue:    { type: number }
+                    monthlyRevenue:  { type: number }
+                    activeDrivers:   { type: integer }
+                    activeRiders:    { type: integer }

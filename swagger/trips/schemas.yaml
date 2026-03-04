@@ -1,0 +1,62 @@
+Trip:
+  type: object
+  properties:
+    id: { type: string, format: uuid }
+    status:
+      type: string
+      enum: [searching, matched, on_way, in_progress, completed, cancelled]
+    pickupAddress:    { type: string }
+    dropoffAddress:   { type: string }
+    pickupLat:        { type: number }
+    pickupLng:        { type: number }
+    dropoffLat:       { type: number }
+    dropoffLng:       { type: number }
+    fare:             { type: number, example: 300.00 }
+    currency:         { type: string, example: EGP }
+    distanceKm:       { type: number }
+    durationMinutes:  { type: integer }
+    totalAmount:      { type: number }
+    startAddress:     { type: string }
+    driver:
+      type: object
+      properties:
+        firstName: { type: string }
+        lastName:  { type: string }
+    isSchedule:       { type: boolean }
+    scheduleDatetime: { type: string, format: date-time }
+    captain:
+      $ref: '../captains/schemas.yaml#/Captain'
+    createdAt:  { type: string, format: date-time }
+    startedAt:  { type: string, format: date-time, nullable: true }
+    endedAt:    { type: string, format: date-time, nullable: true }
+
+RideCreate:
+  type: object
+  required: [userId, pickupLat, pickupLng, dropoffLat, dropoffLng, pickupAddress, dropoffAddress]
+  properties:
+    userId:         { type: string, format: uuid }
+    captainId:      { type: string, format: uuid }
+    pickupLat:      { type: number }
+    pickupLng:      { type: number }
+    dropoffLat:     { type: number }
+    dropoffLng:     { type: number }
+    pickupAddress:  { type: string }
+    dropoffAddress: { type: string }
+    fare:           { type: number }
+    distanceKm:     { type: number }
+    status:         { type: string }
+
+RideUpdate:
+  type: object
+  properties:
+    status:    { type: string }
+    fare:      { type: number }
+    captainId: { type: string, format: uuid }
+
+Rating:
+  type: object
+  properties:
+    id:        { type: string, format: uuid }
+    stars:     { type: integer, minimum: 1, maximum: 5 }
+    comment:   { type: string, nullable: true }
+    createdAt: { type: string, format: date-time }

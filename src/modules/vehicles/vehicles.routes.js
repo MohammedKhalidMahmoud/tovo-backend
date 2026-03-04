@@ -1,19 +1,34 @@
-const router = require('express').Router();
+const router   = require('express').Router();
 const { body, param } = require('express-validator');
-const controller = require('./vehicles.controller');
+const ctrl     = require('./vehicles.controller');
 const validate = require('../../middleware/validate.middleware');
-const { authenticate } = require('../../middleware/auth.middleware');
 
-router.get('/', authenticate, controller.getAll);
+router.get('/', ctrl.listVehicles);
 
-router.get('/:id', authenticate, [
-  param('id').isUUID().withMessage('id must be a valid UUID'),
-], validate, controller.getById);
+router.post(
+  '/',
+  [
+    body('captainId').isUUID().withMessage('captainId must be a valid UUID'),
+    body('vehicleModelId').optional().isUUID().withMessage('vehicleModelId must be a valid UUID'),
+    body('vin').trim().isLength({ min: 1 }).withMessage('vin is required'),
+  ],
+  validate,
+  ctrl.createVehicle
+);
 
-router.post('/', authenticate, [
-  body('name').notEmpty().withMessage('name is required').trim(),
-  body('description').optional().isString().trim(),
-  body('imageUrl').optional().isURL().withMessage('imageUrl must be a valid URL'),
-], validate, controller.addNewType);
+router.get('/:id',  [param('id').isUUID()], validate, ctrl.getVehicle);
+
+router.put(
+  '/:id',
+  [
+    param('id').isUUID(),
+    body('vehicleModelId').optional().isUUID().withMessage('vehicleModelId must be a valid UUID'),
+    body('vin').optional().trim().isLength({ min: 1 }).withMessage('vin must not be empty'),
+  ],
+  validate,
+  ctrl.updateVehicle
+);
+
+router.delete('/:id', [param('id').isUUID()], validate, ctrl.deleteVehicle);
 
 module.exports = router;

@@ -1,0 +1,116 @@
+/notifications:
+  get:
+    tags: [Notifications]
+    summary: List notifications
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - { name: page, in: query, schema: { type: integer, default: 1 } }
+    responses:
+      '200': { description: Notifications }
+
+/notifications/{id}/read:
+  patch:
+    tags: [Notifications]
+    summary: Mark notification as read
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+    responses:
+      '200': { description: Marked as read }
+
+/notifications/read-all:
+  patch:
+    tags: [Notifications]
+    summary: Mark all notifications as read
+    security: [{ BearerAuth: [] }]
+    responses:
+      '200': { description: All marked read }
+
+/notifications/device-token:
+  post:
+    tags: [Notifications]
+    summary: Register FCM/APNs device token
+    description: Call this immediately after login to register the device for push notifications. Tokens are upserted so duplicate calls are safe.
+    security: [{ BearerAuth: [] }]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            required: [token, platform]
+            properties:
+              token:    { type: string, example: dGhpcyBpcyBhIHRlc3QgdG9rZW4 }
+              platform: { type: string, enum: [ios, android, web] }
+    responses:
+      '200': { description: Token registered }
+      '422': { description: Validation error }
+
+/notifications/send-to-user:
+  post:
+    tags: [Notifications]
+    summary: Send push notification to a user (Admin)
+    description: Sends an FCM push to all devices registered by the given user. Protected by `X-Admin-Key` header.
+    parameters:
+      - name: X-Admin-Key
+        in: header
+        required: true
+        schema: { type: string }
+        description: Secret admin key from ADMIN_API_KEY env var
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            required: [user_id, title, body]
+            properties:
+              user_id: { type: string, format: uuid }
+              title:   { type: string, example: Your ride is on the way! }
+              body:    { type: string, example: Your captain is 2 minutes away. }
+              data:    { type: object, description: Optional key-value data payload, example: { tripId: abc-123 } }
+    responses:
+      '200':
+        description: Notification sent
+        content:
+          application/json:
+            schema:
+              properties:
+                sent:   { type: integer, example: 2 }
+                failed: { type: integer, example: 0 }
+      '403': { description: Invalid or missing admin key }
+      '422': { description: Validation error }
+
+/notifications/send-to-captain:
+  post:
+    tags: [Notifications]
+    summary: Send push notification to a captain (Admin)
+    description: Sends an FCM push to all devices registered by the given captain. Protected by `X-Admin-Key` header.
+    parameters:
+      - name: X-Admin-Key
+        in: header
+        required: true
+        schema: { type: string }
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            required: [captain_id, title, body]
+            properties:
+              captain_id: { type: string, format: uuid }
+              title:      { type: string, example: New trip request! }
+              body:       { type: string, example: A passenger is waiting 1.2 km away. }
+              data:       { type: object, description: Optional key-value data payload, example: { tripId: abc-123 } }
+    responses:
+      '200':
+        description: Notification sent
+        content:
+          application/json:
+            schema:
+              properties:
+                sent:   { type: integer, example: 1 }
+                failed: { type: integer, example: 0 }
+      '403': { description: Invalid or missing admin key }
+      '422': { description: Validation error }

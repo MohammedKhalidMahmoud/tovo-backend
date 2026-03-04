@@ -1,0 +1,3 @@
+# Auth module does not define its own domain schemas.
+# It references User from ../users/schemas.yaml and Captain from ../captains/schemas.yaml.
+# Token response shapes are defined inline within paths.yaml.

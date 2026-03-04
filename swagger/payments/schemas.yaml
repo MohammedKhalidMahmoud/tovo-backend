@@ -1,0 +1,3 @@
+# Payment method card schema is defined in users/schemas.yaml as PaymentMethod
+# since it is owned and managed by users.
+# This module covers admin-level payment views and refund operations only.

@@ -1,16 +1,71 @@
 const prisma = require('../../config/prisma');
 
+// ── User ──────────────────────────────────────────────────────────────────────
+
 const findById = (id) =>
   prisma.user.findUnique({
     where: { id },
     include: { wallet: true },
   });
 
+const findByEmail = (email) =>
+  prisma.user.findUnique({ where: { email } });
+
+const findByPhone = (phone) =>
+  prisma.user.findUnique({ where: { phone } });
+
+const createUser = (data) =>
+  prisma.user.create({ data });
+
 const updateUser = (id, data) =>
   prisma.user.update({ where: { id }, data });
 
+const deleteUser = (id) =>
+  prisma.user.delete({ where: { id } });
+
+const countUsers = (where) =>
+  prisma.user.count({ where });
+
+const findManyUsers = ({ where, orderBy, skip, take }) =>
+  prisma.user.findMany({
+    where,
+    include: {
+      wallet: true,
+      tripsAsUser: { select: { id: true } },
+      ratings:     { select: { stars: true } },
+    },
+    orderBy,
+    skip,
+    take,
+  });
+
+const findUserWithDetails = (id) =>
+  prisma.user.findUnique({
+    where: { id },
+    include: {
+      wallet:         true,
+      savedAddresses: true,
+      paymentMethods: true,
+      deviceTokens:   true,
+      tripsAsUser:    { select: { id: true, status: true, fare: true, createdAt: true } },
+      ratings:        true,
+      supportTickets: { select: { id: true, status: true } },
+    },
+  });
+
+// ── Wallet ────────────────────────────────────────────────────────────────────
+
 const getWallet = (userId) =>
   prisma.wallet.findUnique({ where: { userId } });
+
+const createWallet = (data) =>
+  prisma.wallet.create({ data });
+
+const incrementWalletBalance = (walletId, amount) =>
+  prisma.wallet.update({
+    where: { id: walletId },
+    data:  { balance: { increment: amount } },
+  });
 
 // ── Saved Addresses ───────────────────────────────────────────────────────────
 
@@ -43,7 +98,28 @@ const setDefaultPayment = async (id, userId) => {
 };
 
 module.exports = {
-  findById, updateUser, getWallet,
-  getSavedAddresses, createAddress, updateAddress, deleteAddress,
-  getPaymentMethods, createPaymentMethod, deletePaymentMethod, setDefaultPayment,
+  // user
+  findById,
+  findByEmail,
+  findByPhone,
+  createUser,
+  updateUser,
+  deleteUser,
+  countUsers,
+  findManyUsers,
+  findUserWithDetails,
+  // wallet
+  getWallet,
+  createWallet,
+  incrementWalletBalance,
+  // addresses
+  getSavedAddresses,
+  createAddress,
+  updateAddress,
+  deleteAddress,
+  // payment methods
+  getPaymentMethods,
+  createPaymentMethod,
+  deletePaymentMethod,
+  setDefaultPayment,
 };

@@ -1,0 +1,11 @@
+Complaint:
+  type: object
+  properties:
+    id:        { type: string, format: uuid }
+    type:      { type: string }
+    userId:    { type: string }
+    driverId:  { type: string }
+    message:   { type: string }
+    status:    { type: string }
+    response:  { type: string, nullable: true }
+    createdAt: { type: string, format: date-time }

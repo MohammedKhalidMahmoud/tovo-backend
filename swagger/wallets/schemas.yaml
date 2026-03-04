@@ -1,0 +1,24 @@
+Wallet:
+  type: object
+  properties:
+    id:       { type: string, format: uuid }
+    balance:  { type: number, example: 350.00 }
+    currency: { type: string, example: EGP }
+    userId:   { type: string, format: uuid, nullable: true }
+    captainId: { type: string, format: uuid, nullable: true }
+    user:
+      nullable: true
+      type: object
+      properties:
+        name:  { type: string }
+        email: { type: string, format: email }
+        phone: { type: string }
+    captain:
+      nullable: true
+      type: object
+      properties:
+        name:  { type: string }
+        email: { type: string, format: email }
+        phone: { type: string }
+    createdAt: { type: string, format: date-time }
+    updatedAt: { type: string, format: date-time }

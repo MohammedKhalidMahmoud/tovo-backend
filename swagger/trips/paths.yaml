@@ -1,0 +1,165 @@
+/trips/estimate:
+  get:
+    tags: [Trips]
+    summary: Get fare estimate
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - { name: pickup_lat,  in: query, required: true,  schema: { type: number } }
+      - { name: pickup_lng,  in: query, required: true,  schema: { type: number } }
+      - { name: dropoff_lat, in: query, required: true,  schema: { type: number } }
+      - { name: dropoff_lng, in: query, required: true,  schema: { type: number } }
+      - { name: service_id,  in: query, required: false, schema: { type: string, format: uuid } }
+    responses:
+      '200':
+        description: Fare estimate with commission breakdown
+        content:
+          application/json:
+            schema:
+              properties:
+                data:
+                  type: object
+                  properties:
+                    distanceKm:    { type: number, example: 4.2 }
+                    farePerKm:     { type: number, example: 5.0 }
+                    baseFare:      { type: number, example: 20.0 }
+                    serviceName:   { type: string, example: Comfort }
+                    tripFare:      { type: number, example: 41.0, description: 'Captain earnings' }
+                    commissionPct: { type: number, example: 15 }
+                    commission:    { type: number, example: 6.15, description: "App's profit" }
+                    totalFare:     { type: number, example: 47.15, description: 'Total charged to user' }
+                    currency:      { type: string, example: EGP }
+
+/trips/regions/active:
+  get:
+    tags: [Trips]
+    summary: Get active service regions
+    description: |
+      Retrieve all active circular service regions where customers can place orders.
+      Returns region boundaries with center coordinates and radius.
+      **No authentication required** - Public endpoint for client apps.
+    responses:
+      '200':
+        description: Active service regions
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success: { type: boolean, example: true }
+                data:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:     { type: string, format: uuid }
+                      name:   { type: string, example: 'Downtown Cairo' }
+                      lat:    { type: number, example: 30.0444, description: 'Center latitude' }
+                      lng:    { type: number, example: 31.2357, description: 'Center longitude' }
+                      radius: { type: number, example: 25.5, description: 'Radius in kilometers' }
+
+/trips:
+  post:
+    tags: [Trips]
+    summary: Create a new trip request
+    description: |
+      Create a new trip request. The pickup location must be within one of the defined service regions.
+      **Note**: Pickup location is validated against active service regions. If outside all regions, request will be rejected with 422 error.
+    security: [{ BearerAuth: [] }]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            required: [pickup_lat, pickup_lng, pickup_address, dropoff_lat, dropoff_lng, dropoff_address, service_id, payment_method_id]
+            properties:
+              pickup_lat:        { type: number, example: 30.0444 }
+              pickup_lng:        { type: number, example: 31.2357 }
+              pickup_address:    { type: string }
+              dropoff_lat:       { type: number, example: 30.1050 }
+              dropoff_lng:       { type: number, example: 31.3100 }
+              dropoff_address:   { type: string }
+              service_id:        { type: string, format: uuid, description: 'Service/vehicle type ID' }
+              payment_method_id: { type: string, format: uuid }
+    responses:
+      '201':
+        description: Trip created
+        content:
+          application/json:
+            schema:
+              properties:
+                data: { $ref: '#/components/schemas/Trip' }
+      '422':
+        description: 'Pickup location is outside all service regions'
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success: { type: boolean, example: false }
+                message:
+                  type: string
+                  example: 'Pickup location is outside all service regions. Please select a location within the service area.'
+  get:
+    tags: [Trips]
+    summary: Get user trip history
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - { name: page,     in: query, schema: { type: integer, default: 1 } }
+      - { name: per_page, in: query, schema: { type: integer, default: 20 } }
+    responses:
+      '200': { description: Trip history }
+
+/trips/{id}:
+  get:
+    tags: [Trips]
+    summary: Get trip details
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+    responses:
+      '200':
+        description: Trip details
+        content:
+          application/json:
+            schema:
+              properties:
+                data: { $ref: '#/components/schemas/Trip' }
+
+/trips/{id}/cancel:
+  patch:
+    tags: [Trips]
+    summary: Cancel a trip
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+    responses:
+      '200': { description: Trip cancelled }
+      '422': { description: Cannot be cancelled }
+
+/trips/{id}/rating:
+  post:
+    tags: [Trips]
+    summary: Rate captain after completed trip
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            required: [rating]
+            properties:
+              rating:  { type: integer, minimum: 1, maximum: 5 }
+              comment: { type: string }
+    responses:
+      '201': { description: Rating submitted }

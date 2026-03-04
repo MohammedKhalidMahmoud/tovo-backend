@@ -1,0 +1,132 @@
+/admin/regions:
+  get:
+    tags: [Regions]
+    summary: List all regions
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: page
+        in: query
+        schema: { type: integer, default: 1 }
+      - name: limit
+        in: query
+        schema: { type: integer, default: 20 }
+      - name: isActive
+        in: query
+        schema: { type: boolean }
+      - name: search
+        in: query
+        description: Search by name, country, or city
+        schema: { type: string }
+    responses:
+      '200':
+        description: Paginated region list
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success: { type: boolean }
+                data:
+                  type: array
+                  items: { $ref: '#/components/schemas/Region' }
+                total: { type: integer, example: 10 }
+                pages: { type: integer, example: 1 }
+  post:
+    tags: [Regions]
+    summary: Create a region
+    description: Create a circular service region with center coordinates and radius
+    security: [{ BearerAuth: [] }]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [name, country]
+            properties:
+              name:     { type: string, example: 'Downtown Cairo' }
+              country:  { type: string, example: Egypt }
+              city:     { type: string, example: Cairo }
+              lat:      { type: number, example: 30.0444, description: 'Center latitude' }
+              lng:      { type: number, example: 31.2357, description: 'Center longitude' }
+              radius:   { type: number, example: 25.5, description: 'Radius in kilometers' }
+              isActive: { type: boolean, default: true }
+    responses:
+      '201':
+        description: Region created
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success: { type: boolean }
+                data:    { $ref: '#/components/schemas/Region' }
+
+/admin/regions/{id}:
+  get:
+    tags: [Regions]
+    summary: Get a single region
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    responses:
+      '200':
+        description: Region details
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success: { type: boolean }
+                data:    { $ref: '#/components/schemas/Region' }
+      '404': { description: Region not found }
+  put:
+    tags: [Regions]
+    summary: Update a region
+    description: Update region details including center coordinates and radius
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              name:     { type: string }
+              country:  { type: string }
+              city:     { type: string }
+              lat:      { type: number, description: 'Center latitude' }
+              lng:      { type: number, description: 'Center longitude' }
+              radius:   { type: number, description: 'Radius in kilometers' }
+              isActive: { type: boolean }
+    responses:
+      '200':
+        description: Updated region
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success: { type: boolean }
+                data:    { $ref: '#/components/schemas/Region' }
+      '404': { description: Region not found }
+  delete:
+    tags: [Regions]
+    summary: Delete a region
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    responses:
+      '200': { description: Region deleted }
+      '404': { description: Region not found }

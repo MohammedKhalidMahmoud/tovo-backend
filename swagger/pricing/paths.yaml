@@ -1,0 +1,34 @@
+/admin/pricing:
+  get:
+    tags: [Admin]
+    summary: Get current pricing rules
+    security: [{ BearerAuth: [] }]
+    responses:
+      '200':
+        description: Pricing rules
+        content:
+          application/json:
+            schema:
+              properties:
+                baseFare:    { type: number }
+                perKm:       { type: number }
+                perMinute:   { type: number }
+                surgeRules:
+                  type: array
+                  items: { type: object }
+  put:
+    tags: [Admin]
+    summary: Update pricing rules
+    security: [{ BearerAuth: [] }]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            properties:
+              baseFare:   { type: number }
+              perKm:      { type: number }
+              perMinute:  { type: number }
+              surgeRules: { type: array, items: { type: object } }
+    responses:
+      '200': { description: Pricing updated }

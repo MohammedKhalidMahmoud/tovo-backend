@@ -1,5 +1,5 @@
 const prisma = require('../../config/prisma');
-const analyticsService = require('../admin/analytics/analytics.service');
+const analyticsService = require('../analytics/analytics.service');
 
 /**
  * Return a consolidated set of analytics that the admin dashboard UI needs.

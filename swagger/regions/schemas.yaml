@@ -1,0 +1,17 @@
+Region:
+  type: object
+  properties:
+    id:        { type: string, format: uuid }
+    name:      { type: string, example: Cairo }
+    country:   { type: string, example: Egypt }
+    city:      { type: string, nullable: true, example: Cairo }
+    lat:       { type: number, nullable: true, example: 30.0444 }
+    lng:       { type: number, nullable: true, example: 31.2357 }
+    radius:
+      type: number
+      nullable: true
+      example: 25.5
+      description: 'Radius in kilometers for circular service area'
+    isActive:  { type: boolean, example: true }
+    createdAt: { type: string, format: date-time }
+    updatedAt: { type: string, format: date-time }

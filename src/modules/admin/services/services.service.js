@@ -24,21 +24,3 @@ exports.updateService = async (id, { name, baseFare, isActive }) => {
 
   return prisma.service.update({ where: { id }, data });
 };
-
-exports.createService = async ({ name, baseFare = 0, isActive = true }) => {
-  try {
-    const svc = await prisma.service.create({
-      data: {
-        name,
-        baseFare: Number(baseFare) || 0,
-        isActive: !!isActive,
-      },
-    });
-    return svc;
-  } catch (err) {
-    if (err && err.code === 'P2002') {
-      throw { status: 400, message: 'Service name already exists' };
-    }
-    throw err;
-  }
-};

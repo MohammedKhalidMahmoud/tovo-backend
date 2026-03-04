@@ -1,0 +1,112 @@
+/admin/wallets:
+  get:
+    tags: [Admin]
+    summary: List all wallets
+    description: Returns a paginated list of all user and captain wallets, optionally filtered by owner type or a name/email search term.
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: page
+        in: query
+        schema: { type: integer, default: 1 }
+      - name: limit
+        in: query
+        schema: { type: integer, default: 20 }
+      - name: ownerType
+        in: query
+        description: Filter by wallet owner type
+        schema: { type: string, enum: [all, user, captain], default: all }
+      - name: search
+        in: query
+        description: Search by owner name or email
+        schema: { type: string }
+    responses:
+      '200':
+        description: Paginated list of wallets
+        headers:
+          X-Total-Count:
+            description: Total number of wallets matching the filter
+            schema: { type: integer }
+          X-Total-Pages:
+            description: Total number of pages
+            schema: { type: integer }
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/SuccessResponse'
+                - type: object
+                  properties:
+                    data:
+                      type: array
+                      items: { $ref: '#/components/schemas/Wallet' }
+      '401': { description: Unauthorized }
+      '403': { description: Forbidden — admin only }
+
+/admin/wallets/{id}:
+  get:
+    tags: [Admin]
+    summary: Get a single wallet
+    description: Returns full wallet details including the linked user or captain.
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    responses:
+      '200':
+        description: Wallet details
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/SuccessResponse'
+                - type: object
+                  properties:
+                    data: { $ref: '#/components/schemas/Wallet' }
+      '404': { description: Wallet not found }
+
+/admin/wallets/{id}/adjust:
+  post:
+    tags: [Admin]
+    summary: Adjust wallet balance
+    description: Manually credit or debit an internal wallet balance. A `reason` field is required for audit purposes. Debits are rejected if the balance would go negative.
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [type, amount, reason]
+            properties:
+              type:
+                type: string
+                enum: [credit, debit]
+                description: Whether to add or subtract from the balance
+              amount:
+                type: number
+                example: 100.00
+                description: Positive amount to credit or debit
+              reason:
+                type: string
+                example: Manual top-up by admin
+    responses:
+      '200':
+        description: Updated wallet after adjustment
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/SuccessResponse'
+                - type: object
+                  properties:
+                    data: { $ref: '#/components/schemas/Wallet' }
+      '400': { description: Invalid type or amount }
+      '422': { description: Insufficient balance (debit exceeds current balance) }
+      '404': { description: Wallet not found }

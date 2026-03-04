@@ -2,7 +2,7 @@ const repo = require('./trips.repository');
 const prisma = require('../../config/prisma');
 const locationStore = require('../../realtime/locationStore');
 const serviceRepo = require('../services/services.repository');
-const regionsService = require('../admin/regions/regions.service');
+const regionsService = require('../regions/regions.service');
 const locationUtils = require('../../utils/location');
 
 // ─────────────────────────────────────────────────────────────────────────────

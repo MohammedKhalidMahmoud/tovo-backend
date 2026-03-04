@@ -1,0 +1,97 @@
+openapi: "3.0.3"
+
+info:
+  title: Tovo Ride-Hailing API
+  version: "1.0.0"
+  description: |
+    Complete REST API documentation for the Tovo ride-hailing platform.
+
+    ## Authentication
+    Protected endpoints require:
+    Authorization: bearer <JWT>
+
+servers:
+  - url: http://localhost:3000/api/v1
+    description: Local Development Server
+  - url: https://api.tovo.app/v1
+    description: Production Server
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - BearerAuth: []
+
+tags:
+  - name: Auth
+    description: Authentication endpoints
+
+  - name: Users
+    description: Passenger profile & management
+
+  - name: Captains
+    description: Driver profile & vehicle management
+
+  - name: Trips
+    description: Trip lifecycle management
+
+  - name: Rides
+    description: Ride administration & refunds
+
+  - name: Locations
+    description: Location search & nearby drivers
+
+  - name: Services
+    description: Ride and delivery service types
+
+  - name: Regions
+    description: Service coverage zones
+
+  - name: Vehicles
+    description: Driver vehicle management
+
+  - name: Vehicle Models
+    description: Vehicle model whitelist
+
+  - name: Wallets
+    description: User & captain wallet management
+
+  - name: Payments
+    description: Payment processing endpoints
+
+  - name: Pricing
+    description: Fare calculation & pricing logic
+
+  - name: Coupons
+    description: Promotions & discount codes
+
+  - name: Notifications
+    description: Push notifications
+
+  - name: Complaints
+    description: Complaints management
+
+  - name: Support
+    description: Support tickets
+
+  - name: FAQs
+    description: Frequently asked questions
+
+  - name: SOS
+    description: Emergency alerts
+
+  - name: Dashboard
+    description: Public & admin dashboard metrics
+
+  - name: Analytics
+    description: Reports & analytics
+
+  - name: Admins
+    description: Admin management endpoints
+
+  - name: Settings
+    description: System settings

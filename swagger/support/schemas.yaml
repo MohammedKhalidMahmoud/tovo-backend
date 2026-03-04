@@ -1,0 +1,16 @@
+SupportTicket:
+  type: object
+  properties:
+    id:      { type: string, format: uuid }
+    subject: { type: string }
+    status:  { type: string, enum: [open, in_progress, resolved, closed] }
+    messages:
+      type: array
+      items:
+        type: object
+        properties:
+          id:        { type: string }
+          senderId:  { type: string }
+          body:      { type: string }
+          createdAt: { type: string, format: date-time }
+    createdAt: { type: string, format: date-time }

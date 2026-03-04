@@ -37,14 +37,44 @@ exports.updateService = async (req, res, next) => {
     return success(res, svc, 'Service updated successfully');
   } catch (err) { next(err); }
 };
+
+
 exports.createService = async (req, res, next) => {
   try {
     const { name, baseFare, isActive } = req.body;
+
     if (!name) {
-      return res.status(400).json({ success: false, message: 'Service name is required' });
+      return res.status(400).json({
+        success: false,
+        message: "Service name is required",
+      });
     }
 
-    const svc = await service.createService({ name, baseFare, isActive });
-    return success(res, svc, 'Service created successfully', 201);
-  } catch (err) { next(err); }
+    const service = await prisma.service.create({
+      data: {
+        name,
+        baseFare: baseFare ?? 0,
+        isActive: isActive ?? true,
+      },
+    });
+
+    return res.status(201).json({
+      success: true,
+      data: service,
+    });
+  } catch (error) {
+    console.error("Create service error:", error);
+
+    if (error.code === "P2002") {
+      return res.status(400).json({
+        success: false,
+        message: "Service name already exists",
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
 };

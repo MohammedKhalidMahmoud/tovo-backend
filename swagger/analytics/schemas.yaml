@@ -1,0 +1,15 @@
+DriverReport:
+  type: object
+  properties:
+    driverId:       { type: string }
+    ridesCompleted: { type: integer }
+    averageRating:  { type: number }
+    totalEarnings:  { type: number }
+
+UserReport:
+  type: object
+  properties:
+    userId:        { type: string }
+    ridesTaken:    { type: integer }
+    totalSpent:    { type: number }
+    averageRating: { type: number }

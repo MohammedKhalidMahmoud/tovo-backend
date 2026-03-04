@@ -1,0 +1,33 @@
+Captain:
+  type: object
+  properties:
+    id: { type: string, format: uuid }
+    name: { type: string }
+    email: { type: string, format: email }
+    phone: { type: string }
+    avatarUrl: { type: string, nullable: true }
+    rating: { type: number, format: float, example: 4.8 }
+    totalTrips: { type: integer }
+    isOnline: { type: boolean }
+    vehicle:
+      $ref: '../vehicles/schemas.yaml#/Vehicle'
+
+DriverCreate:
+  type: object
+  required: [name]
+  properties:
+    name: { type: string }
+    email: { type: string, format: email }
+    phone: { type: string }
+    drivingLicense: { type: string }
+    licenseExpiryDate: { type: string, format: date-time }
+
+DriverUpdate:
+  type: object
+  properties:
+    name: { type: string }
+    email: { type: string, format: email }
+    phone: { type: string }
+    drivingLicense: { type: string }
+    licenseExpiryDate: { type: string, format: date-time }
+    isVerified: { type: boolean }

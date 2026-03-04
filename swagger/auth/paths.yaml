@@ -1,0 +1,205 @@
+/auth/register/user:
+  post:
+    tags: [Auth]
+    summary: Register passenger account
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [name, email, phone, password, confirm_password]
+            properties:
+              name: { type: string, example: Heba Yasser }
+              email: { type: string, format: email }
+              phone: { type: string, example: '+201012345678' }
+              password: { type: string, minLength: 8 }
+              confirm_password: { type: string }
+    responses:
+      '201':
+        description: User registered
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '../common/schemas.yaml#/SuccessResponse'
+                - properties:
+                    data:
+                      $ref: '../users/schemas.yaml#/User'
+      '409': { description: Email or phone already exists }
+
+/auth/register/captain:
+  post:
+    tags: [Auth]
+    summary: Register captain (driver) account
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [name, email, phone, driving_license, password, confirm_password, vehicle_model, vin]
+            properties:
+              name: { type: string }
+              email: { type: string, format: email }
+              phone: { type: string }
+              driving_license: { type: string }
+              password: { type: string, minLength: 8 }
+              confirm_password: { type: string }
+              vehicle_model:
+                type: string
+                example: 'Toyota Camry'
+                description: "Exact name of an active VehicleModel from GET /vehicle-models. Registration is rejected if the model is not in the whitelist or is inactive."
+              vin: { type: string, description: Vehicle Identification Number }
+    responses:
+      '201': { description: Captain registered }
+      '409': { description: Email or phone already exists }
+
+/auth/login:
+  post:
+    tags: [Auth]
+    summary: Login for users and captains
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [email, password, role]
+            properties:
+              email: { type: string, format: email }
+              password: { type: string }
+              role: { type: string, enum: [user, captain] }
+    responses:
+      '200':
+        description: Login successful
+        content:
+          application/json:
+            schema:
+              properties:
+                data:
+                  properties:
+                    access_token: { type: string }
+                    refresh_token: { type: string }
+                    role: { type: string }
+                    user: { $ref: '../users/schemas.yaml#/User' }
+      '401': { description: Invalid credentials }
+
+/auth/logout:
+  post:
+    tags: [Auth]
+    summary: Logout and invalidate refresh token
+    description: Invalidates the refresh token. Optionally pass `fcm_token` to deregister the device from push notifications.
+    security: [{ BearerAuth: [] }]
+    requestBody:
+      content:
+        application/json:
+          schema:
+            properties:
+              refreshToken: { type: string, example: eyJhbGciOi... }
+              fcm_token: { type: string, description: FCM device token to deregister }
+    responses:
+      '200': { description: Logged out }
+
+/auth/token/refresh:
+  post:
+    tags: [Auth]
+    summary: Refresh access token
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            required: [refreshToken]
+            properties:
+              refreshToken: { type: string }
+    responses:
+      '200':
+        description: New access token
+        content:
+          application/json:
+            schema:
+              properties:
+                data:
+                  properties:
+                    access_token: { type: string }
+
+/auth/otp/send:
+  post:
+    tags: [Auth]
+    summary: Send OTP to phone
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            required: [phone]
+            properties:
+              phone: { type: string }
+    responses:
+      '200': { description: OTP sent }
+
+/auth/otp/verify:
+  post:
+    tags: [Auth]
+    summary: Verify 6-digit OTP
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            required: [phone, otp_code]
+            properties:
+              phone: { type: string }
+              otp_code: { type: string, minLength: 6, maxLength: 6 }
+    responses:
+      '200': { description: OTP verified }
+      '400': { description: Invalid or expired OTP }
+
+/auth/forgot-password:
+  post:
+    tags: [Auth]
+    summary: Request password reset
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            required: [email]
+            properties:
+              email: { type: string, format: email }
+    responses:
+      '200': { description: Reset email sent }
+
+/auth/reset-password:
+  post:
+    tags: [Auth]
+    summary: Reset password with token
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            required: [token, password]
+            properties:
+              token: { type: string }
+              password: { type: string, minLength: 8 }
+    responses:
+      '200': { description: Password reset }
+
+/auth/social:
+  post:
+    tags: [Auth]
+    summary: OAuth social login
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            required: [provider, access_token, role]
+            properties:
+              provider: { type: string, enum: [facebook, apple, google] }
+              access_token: { type: string }
+              role: { type: string, enum: [user, captain] }
+    responses:
+      '200': { description: Social login successful }
