@@ -3,7 +3,7 @@ const prisma = require('../../config/prisma');
 const findById = (id) =>
   prisma.captain.findUnique({
     where: { id },
-    include: { vehicle: { include: { type: true } }, wallet: true },
+    include: { vehicle: { include: { vehicleModel: true } }, wallet: true },
   });
 
 const updateCaptain = (id, data) =>

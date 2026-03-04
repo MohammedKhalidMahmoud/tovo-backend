@@ -4,7 +4,7 @@
 // ════════════════════════════════════════════════════════════════════════════════
 
 const service = require('./regions.service');
-const { success } = require('../../../utils/response');
+const { success, error } = require('../../../utils/response');
 
 /**
  * GET /api/v1/admin/regions
@@ -35,7 +35,10 @@ exports.getRegion = async (req, res, next) => {
   try {
     const region = await service.getRegion(req.params.id);
     return success(res, region, 'Region retrieved successfully');
-  } catch (err) { next(err); }
+  } catch (err) {
+    if (err.statusCode) return error(res, err.message, err.statusCode);
+    next(err);
+  }
 };
 
 /**
@@ -55,7 +58,10 @@ exports.updateRegion = async (req, res, next) => {
   try {
     const region = await service.updateRegion(req.params.id, req.body);
     return success(res, region, 'Region updated successfully');
-  } catch (err) { next(err); }
+  } catch (err) {
+    if (err.statusCode) return error(res, err.message, err.statusCode);
+    next(err);
+  }
 };
 
 /**
@@ -65,5 +71,8 @@ exports.deleteRegion = async (req, res, next) => {
   try {
     await service.deleteRegion(req.params.id);
     return success(res, null, 'Region deleted successfully');
-  } catch (err) { next(err); }
+  } catch (err) {
+    if (err.statusCode) return error(res, err.message, err.statusCode);
+    next(err);
+  }
 };

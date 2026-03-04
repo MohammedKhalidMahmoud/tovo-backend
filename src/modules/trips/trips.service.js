@@ -2,6 +2,8 @@ const repo = require('./trips.repository');
 const prisma = require('../../config/prisma');
 const locationStore = require('../../realtime/locationStore');
 const serviceRepo = require('../services/services.repository');
+const regionsService = require('../admin/regions/regions.service');
+const locationUtils = require('../../utils/location');
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  HELPERS
@@ -54,6 +56,32 @@ const estimateFare = async ({ pickupLat, pickupLng, dropoffLat, dropoffLng, serv
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
+//  REGION VALIDATION
+// ─────────────────────────────────────────────────────────────────────────────
+const validatePickupInRegion = async (pickupLat, pickupLng) => {
+  const activeRegions = await regionsService.listActiveRegions();
+  
+  // If no regions are defined, allow the trip (backward compatibility)
+  if (!activeRegions || activeRegions.length === 0) {
+    return true;
+  }
+
+  // Check if pickup location is within any active region
+  const matchingRegion = locationUtils.findPointInRegions(pickupLat, pickupLng, activeRegions);
+  
+  if (!matchingRegion) {
+    throw Object.assign(
+      new Error(
+        `Pickup location is outside all service regions. Please select a location within the service area.`
+      ),
+      { statusCode: 422 }
+    );
+  }
+
+  return true;
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 //  NEARBY CAPTAINS  (used by controller after trip creation)
 //  Reads from the in-memory locationStore — zero DB I/O, synchronous.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -69,6 +97,9 @@ const createTrip = async (userId, body) => {
   // Validate service
   const svc = await serviceRepo.findById(service_id);
   if (!svc || !svc.isActive) throw Object.assign(new Error('Service not found or inactive'), { statusCode: 404 });
+
+  // Validate pickup location is within a service region
+  await validatePickupInRegion(pickup_lat, pickup_lng);
 
   const distanceKm = haversineKm(pickup_lat, pickup_lng, dropoff_lat, dropoff_lng);
   const baseFare   = parseFloat(svc.baseFare);

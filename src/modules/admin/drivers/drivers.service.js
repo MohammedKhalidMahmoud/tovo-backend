@@ -33,7 +33,7 @@ exports.listDrivers = async (filters) => {
 
   const drivers = await prisma.captain.findMany({
     where,
-    include: { vehicle: { include: { type: true } }, wallet: true },
+    include: { vehicle: { include: { vehicleModel: true } }, wallet: true },
     orderBy: { [sortBy]: sortOrder },
     skip: (page - 1) * limit,
     take: limit,
@@ -45,7 +45,7 @@ exports.listDrivers = async (filters) => {
     email: d.email,
     phone: d.phone,
     licenseNumber: d.drivingLicense,
-    vehicleType: d.vehicle?.type?.name || null,
+    vehicleType: d.vehicle?.vehicleModel?.name || null,
     status: d.isVerified ? 'active' : 'pending',
     rating: d.rating,
     ridesCompleted: d.totalTrips,
@@ -61,7 +61,7 @@ exports.getDriverDetails = async (driverId) => {
   const driver = await prisma.captain.findUnique({
     where: { id: driverId },
     include: {
-      vehicle: { include: { type: true } },
+      vehicle: { include: { vehicleModel: true } },
       tripsAsCaptain: true,
       ratingsReceived: true,
       wallet: true,
@@ -77,7 +77,7 @@ exports.getDriverDetails = async (driverId) => {
     email: driver.email,
     phone: driver.phone,
     licenseNumber: driver.drivingLicense,
-    vehicleType: driver.vehicle?.type?.name || null,
+    vehicleType: driver.vehicle?.vehicleModel?.name || null,
     status: driver.isVerified ? 'active' : 'pending',
     rating: driver.rating,
     totalTrips: driver.totalTrips,

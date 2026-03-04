@@ -15,7 +15,7 @@ router.post(
   '/',
   [
     body('captainId').isUUID().withMessage('captainId must be a valid UUID'),
-    body('typeId').isUUID().withMessage('typeId must be a valid UUID'),
+    body('vehicleModelId').optional().isUUID().withMessage('vehicleModelId must be a valid UUID'),
     body('vin').trim().isLength({ min: 1 }).withMessage('vin is required'),
   ],
   validate,
@@ -28,7 +28,7 @@ router.put(
   '/:id',
   [
     param('id').isUUID(),
-    body('typeId').optional().isUUID().withMessage('typeId must be a valid UUID'),
+    body('vehicleModelId').optional().isUUID().withMessage('vehicleModelId must be a valid UUID'),
     body('vin').optional().trim().isLength({ min: 1 }).withMessage('vin must not be empty'),
   ],
   validate,

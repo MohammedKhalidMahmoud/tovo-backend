@@ -24,8 +24,8 @@ const reverseGeocode = async (req, res, next) => {
 
 const getNearbyCaptains = async (req, res, next) => {
   try {
-    const { lat, lng, radius_km } = req.query;
-    const data = service.getNearbyCaptains(+lat, +lng, +(radius_km || 5));
+    const { latitude, longitude, radius, serviceId } = req.query;
+    const data = service.getNearbyCaptains(+latitude, +longitude, +(radius || 5), serviceId || null);
     return success(res, data);
   } catch (err) {
     next(err);

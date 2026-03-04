@@ -17,10 +17,10 @@ router.post('/reverse-geocode', authenticate, [
 ], validate, controller.reverseGeocode);
 
 router.get('/nearby-captains', authenticate, [
-  query('lat').isFloat().withMessage('lat is required and must be a float'),
-  query('lng').isFloat().withMessage('lng is required and must be a float'),
-  query('vehicle_type_id').optional().isUUID().withMessage('vehicle_type_id must be a valid UUID'),
-  query('radius_km').optional().isFloat({ min: 0 }).withMessage('radius_km must be a positive number'),
+  query('latitude').isFloat().withMessage('latitude is required and must be a float'),
+  query('longitude').isFloat().withMessage('longitude is required and must be a float'),
+  query('radius').optional().isFloat({ min: 0 }).withMessage('radius must be a positive number'),
+  query('serviceId').optional().isUUID().withMessage('serviceId must be a valid UUID'),
 ], validate, controller.getNearbyCaptains);
 
 module.exports = router;

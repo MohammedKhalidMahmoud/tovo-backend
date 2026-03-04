@@ -116,32 +116,19 @@ model Captain {
 //  VEHICLE
 // ─────────────────────────────────────────────
 
-model VehicleType {
+model VehicleModel {
   id          String    @id @default(uuid())
-  model       String    @unique
+  name        String    @unique  // e.g. "Toyota Camry", "Honda Civic"
+  brand       String             // e.g. "Toyota", "Honda"
   description String?
   imageUrl    String?
   serviceId   String?
+  isActive    Boolean   @default(true)
   createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
-  service       Service?       @relation(fields: [serviceId], references: [id])
-  vehicles      Vehicle[]
-  vehicleModels VehicleModel[]
-
-  @@map("vehicle_types")
-}
-
-model VehicleModel {
-  id            String       @id @default(uuid())
-  name          String       @unique  // e.g. "Toyota Camry", "Honda Civic"
-  brand         String               // e.g. "Toyota", "Honda"
-  isActive      Boolean      @default(true)
-  vehicleTypeId String?              // optional: which VehicleType (service category) this model maps to
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
-
-  vehicleType   VehicleType? @relation(fields: [vehicleTypeId], references: [id])
-  vehicles      Vehicle[]
+  service  Service?  @relation(fields: [serviceId], references: [id])
+  vehicles Vehicle[]
 
   @@map("vehicle_models")
 }
@@ -149,15 +136,13 @@ model VehicleModel {
 model Vehicle {
   id             String        @id @default(uuid())
   captainId      String        @unique
-  typeId         String?       // nullable: derived from vehicleModel.vehicleTypeId
   vehicleModelId String?
   vin            String        @unique
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 
-  captain        Captain       @relation(fields: [captainId], references: [id])
-  type           VehicleType?  @relation(fields: [typeId], references: [id])
-  vehicleModel   VehicleModel? @relation(fields: [vehicleModelId], references: [id])
+  captain      Captain       @relation(fields: [captainId], references: [id])
+  vehicleModel VehicleModel? @relation(fields: [vehicleModelId], references: [id])
 
   @@map("vehicles")
 }
@@ -528,6 +513,7 @@ model Region {
   city      String?
   lat       Float?
   lng       Float?
+  radius    Float?   // Radius in kilometers for circular service area
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -547,9 +533,9 @@ model Service {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  trips        Trip[]
-  vehicleTypes VehicleType[]
-  captains     Captain[]
+  trips         Trip[]
+  vehicleModels VehicleModel[]
+  captains      Captain[]
 
   @@map("services")
 }

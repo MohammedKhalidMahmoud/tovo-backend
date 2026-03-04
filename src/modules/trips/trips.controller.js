@@ -1,4 +1,5 @@
 const service = require('./trips.service');
+const regionsService = require('../admin/regions/regions.service');
 const { success, created, error, paginate } = require('../../utils/response');
 const {
   emitCaptainMatched,
@@ -18,6 +19,15 @@ const estimateFare = async (req, res, next) => {
   } catch (err) {
     if (err.statusCode) return error(res, err.message, err.statusCode);
     if (err.status) return error(res, err.message, err.status);
+    next(err);
+  }
+};
+
+const getActiveRegions = async (req, res, next) => {
+  try {
+    const regions = await regionsService.listActiveRegions();
+    return success(res, regions, 'Active service regions retrieved successfully');
+  } catch (err) {
     next(err);
   }
 };
@@ -171,7 +181,7 @@ const getCaptainRatings = async (req, res, next) => {
 };
 
 module.exports = {
-  estimateFare, createTrip, getUserTrips, getTripById, cancelTrip,
+  estimateFare, getActiveRegions, createTrip, getUserTrips, getTripById, cancelTrip,
   getCaptainTrips, getNewRequests, acceptTrip, declineTrip, startTrip, endTrip,
   rateTrip, getCaptainRatings,
 };

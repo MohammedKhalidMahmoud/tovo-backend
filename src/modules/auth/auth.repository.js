@@ -23,7 +23,7 @@ const findCaptainByPhone = (phone) =>
   prisma.captain.findUnique({ where: { phone } });
 
 const findCaptainById = (id) =>
-  prisma.captain.findUnique({ where: { id }, include: { vehicle: { include: { type: true } } } });
+  prisma.captain.findUnique({ where: { id }, include: { vehicle: { include: { vehicleModel: true } } } });
 
 const createCaptain = (data) =>
   prisma.captain.create({ data });

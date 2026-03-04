@@ -8,6 +8,9 @@ const userOnly    = [authenticate, authorize('user')];
 const captainOnly = [authenticate, authorize('captain')];
 const bothRoles   = [authenticate, authorize('user', 'captain')];
 
+// ── Public Endpoints ──────────────────────────────────────────────────────────
+router.get('/regions/active', controller.getActiveRegions);
+
 // ── Fare Estimate ─────────────────────────────────────────────────────────────
 router.get('/estimate', ...userOnly, [
   query('pickup_lat').isFloat(),
@@ -48,6 +51,8 @@ router.patch('/:id/accept',  ...captainOnly, [param('id').isUUID()], validate, c
 router.patch('/:id/decline', ...captainOnly, [param('id').isUUID()], validate, controller.declineTrip);
 router.patch('/:id/start',   ...captainOnly, [param('id').isUUID()], validate, controller.startTrip);
 router.patch('/:id/end',     ...captainOnly, [param('id').isUUID()], validate, controller.endTrip);
+
+module.exports = router;
 
 // ── Captain Ratings (public-ish) ──────────────────────────────────────────────
 router.get('/captains/:captainId/ratings', authenticate, [

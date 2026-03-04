@@ -35,13 +35,29 @@ exports.getRegion = async (id) => {
   return region;
 };
 
-exports.createRegion = async ({ name, country, city, lat, lng, isActive = true }) => {
-  return prisma.region.create({
-    data: { name, country, city: city || null, lat: lat ?? null, lng: lng ?? null, isActive },
+exports.listActiveRegions = async () => {
+  return prisma.region.findMany({
+    where: { isActive: true },
+    select: { id: true, name: true, lat: true, lng: true, radius: true },
+    orderBy: { name: 'asc' },
   });
 };
 
-exports.updateRegion = async (id, { name, country, city, lat, lng, isActive }) => {
+exports.createRegion = async ({ name, country, city, lat, lng, radius, isActive = true }) => {
+  return prisma.region.create({
+    data: {
+      name,
+      country,
+      city: city || null,
+      lat: lat ?? null,
+      lng: lng ?? null,
+      radius: radius ?? null,
+      isActive,
+    },
+  });
+};
+
+exports.updateRegion = async (id, { name, country, city, lat, lng, radius, isActive }) => {
   await exports.getRegion(id); // ensure exists
 
   const data = {};
@@ -50,6 +66,7 @@ exports.updateRegion = async (id, { name, country, city, lat, lng, isActive }) =
   if (city     !== undefined) data.city     = city;
   if (lat      !== undefined) data.lat      = lat;
   if (lng      !== undefined) data.lng      = lng;
+  if (radius   !== undefined) data.radius   = radius;
   if (isActive !== undefined) data.isActive = isActive;
 
   return prisma.region.update({ where: { id }, data });

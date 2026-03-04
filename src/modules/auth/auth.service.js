@@ -42,19 +42,13 @@ const registerCaptain = async ({ name, email, phone, password, drivingLicense, v
   // Validate that the vehicle model name is in the admin-managed whitelist
   const vehicleModel = await prisma.vehicleModel.findUnique({
     where: { name: vehicleModelName },
-    select: {
-      id: true,
-      isActive: true,
-      vehicleTypeId: true,
-      vehicleType: { select: { id: true, serviceId: true } },
-    },
+    select: { id: true, isActive: true, serviceId: true },
   });
   if (!vehicleModel) throw { status: 400, message: 'Vehicle model is not recognised. Please choose from the available models.' };
   if (!vehicleModel.isActive) throw { status: 400, message: 'This vehicle model is no longer accepted for registration.' };
 
   const vehicleModelId = vehicleModel.id;
-  const vehicleTypeId  = vehicleModel.vehicleType?.id      ?? null;
-  const serviceId      = vehicleModel.vehicleType?.serviceId ?? null;
+  const serviceId      = vehicleModel.serviceId ?? null;
 
   const captain = await prisma.$transaction(async (tx) => {
     const newCaptain = await tx.captain.create({
@@ -62,12 +56,7 @@ const registerCaptain = async ({ name, email, phone, password, drivingLicense, v
     });
 
     await tx.vehicle.create({
-      data: {
-        captainId:      newCaptain.id,
-        typeId:         vehicleTypeId,   // null if the model has no vehicleType set yet
-        vehicleModelId,
-        vin,
-      },
+      data: { captainId: newCaptain.id, vehicleModelId, vin },
     });
 
     await tx.wallet.create({ data: { captainId: newCaptain.id, currency: 'EGP' } });

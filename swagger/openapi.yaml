@@ -35,8 +35,6 @@ tags:
     description: Trip booking lifecycle
   - name: Locations
     description: Location search & nearby captains
-  - name: Vehicle Types
-    description: Available vehicle categories
   - name: Promotions
     description: Offers, banners, and coupons
   - name: Notifications
@@ -121,23 +119,11 @@ components:
           $ref: '#/components/schemas/Vehicle'
 
     # ── VEHICLE ─────────────────────────────────────────────────────────────
-    VehicleType:
-      type: object
-      properties:
-        id: { type: string, format: uuid }
-        name: { type: string, example: Regular Car }
-        description: { type: string }
-        imageUrl: { type: string }
-        baseFare: { type: number, example: 15.00 }
-        perKmRate: { type: number, example: 5.00 }
-
     Vehicle:
       type: object
       properties:
         id:  { type: string, format: uuid }
         vin: { type: string }
-        type:
-          $ref: '#/components/schemas/VehicleType'
         vehicleModel:
           $ref: '#/components/schemas/VehicleModel'
 
@@ -148,8 +134,8 @@ components:
         vin:       { type: string, example: 1HGCM82633A123456 }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
-        type:
-          $ref: '#/components/schemas/VehicleType'
+        vehicleModel:
+          $ref: '#/components/schemas/VehicleModel'
         captain:
           type: object
           properties:
@@ -176,8 +162,6 @@ components:
         currency: { type: string, example: EGP }
         distanceKm: { type: number }
         durationMinutes: { type: integer }
-        vehicleType:
-          $ref: '#/components/schemas/VehicleType'
         # additional helpers for dashboard responses
         totalAmount: { type: number }
         startAddress: { type: string }
@@ -255,6 +239,7 @@ components:
         city:      { type: string, nullable: true, example: Cairo }
         lat:       { type: number, nullable: true, example: 30.0444 }
         lng:       { type: number, nullable: true, example: 31.2357 }
+        radius:    { type: number, nullable: true, example: 25.5, description: 'Radius in kilometers for circular service area' }
         isActive:  { type: boolean, example: true }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
@@ -300,13 +285,15 @@ components:
     VehicleModel:
       type: object
       properties:
-        id:            { type: string, format: uuid }
-        name:          { type: string, example: 'Toyota Camry' }
-        brand:         { type: string, example: 'Toyota' }
-        isActive:      { type: boolean, example: true }
-        vehicleTypeId: { type: string, format: uuid, nullable: true }
-        createdAt:     { type: string, format: date-time }
-        updatedAt:     { type: string, format: date-time }
+        id:          { type: string, format: uuid }
+        name:        { type: string, example: 'Toyota Camry' }
+        brand:       { type: string, example: 'Toyota' }
+        description: { type: string, nullable: true, example: 'Comfortable everyday rides' }
+        imageUrl:    { type: string, nullable: true, example: 'https://assets.tovo.app/vehicles/camry.png' }
+        serviceId:   { type: string, format: uuid, nullable: true }
+        isActive:    { type: boolean, example: true }
+        createdAt:   { type: string, format: date-time }
+        updatedAt:   { type: string, format: date-time }
 
     # ── ADDRESS ─────────────────────────────────────────────────────────────
     SavedAddress:
@@ -1059,27 +1046,57 @@ paths:
                       totalFare:     { type: number, example: 47.15, description: 'Total charged to user' }
                       currency:      { type: string, example: EGP }
 
+  /trips/regions/active:
+    get:
+      tags: [Trips]
+      summary: Get active service regions
+      description: |
+        Retrieve all active circular service regions where customers can place orders.
+        Returns region boundaries with center coordinates and radius.
+        **No authentication required** - Public endpoint for client apps.
+      responses:
+        '200':
+          description: Active service regions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:     { type: string, format: uuid }
+                        name:   { type: string, example: 'Downtown Cairo' }
+                        lat:    { type: number, example: 30.0444, description: 'Center latitude' }
+                        lng:    { type: number, example: 31.2357, description: 'Center longitude' }
+                        radius: { type: number, example: 25.5, description: 'Radius in kilometers' }
+
   /trips:
     post:
       tags: [Trips]
       summary: Create a new trip request
+      description: |
+        Create a new trip request. The pickup location must be within one of the defined service regions.
+        **Note**: Pickup location is validated against active service regions. If outside all regions, request will be rejected with 422 error.
       security: [{ BearerAuth: [] }]
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              required: [pickup_lat, pickup_lng, pickup_address, dropoff_lat, dropoff_lng, dropoff_address, vehicle_type_id, payment_method_id]
+              required: [pickup_lat, pickup_lng, pickup_address, dropoff_lat, dropoff_lng, dropoff_address, service_id, payment_method_id]
               properties:
-                pickup_lat: { type: number }
-                pickup_lng: { type: number }
+                pickup_lat: { type: number, example: 30.0444 }
+                pickup_lng: { type: number, example: 31.2357 }
                 pickup_address: { type: string }
-                dropoff_lat: { type: number }
-                dropoff_lng: { type: number }
+                dropoff_lat: { type: number, example: 30.1050 }
+                dropoff_lng: { type: number, example: 31.3100 }
                 dropoff_address: { type: string }
-                plan_id: { type: string, format: uuid }
+                service_id: { type: string, format: uuid, description: 'Service/vehicle type ID' }
                 payment_method_id: { type: string, format: uuid }
-                promo_code: { type: string }
       responses:
         '201':
           description: Trip created
@@ -1088,6 +1105,15 @@ paths:
               schema:
                 properties:
                   data: { $ref: '#/components/schemas/Trip' }
+        '422':
+          description: 'Pickup location is outside all service regions'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: false }
+                  message: { type: string, example: 'Pickup location is outside all service regions. Please select a location within the service area.' }
     get:
       tags: [Trips]
       summary: Get user trip history
@@ -1173,12 +1199,26 @@ paths:
       summary: Get nearby available captains
       security: [{ BearerAuth: [] }]
       parameters:
-        - { name: lat,             in: query, required: true,  schema: { type: number } }
-        - { name: lng,             in: query, required: true,  schema: { type: number } }
-        - { name: vehicle_type_id, in: query, required: false, schema: { type: string } }
-        - { name: radius_km,       in: query, required: false, schema: { type: number, default: 5 } }
+        - { name: latitude,  in: query, required: true,  schema: { type: number }, description: Pickup latitude }
+        - { name: longitude, in: query, required: true,  schema: { type: number }, description: Pickup longitude }
+        - { name: radius,    in: query, required: false, schema: { type: number, default: 5 }, description: Search radius in km (default 5) }
+        - { name: serviceId, in: query, required: false, schema: { type: string, format: uuid }, description: Filter captains by service category }
       responses:
-        '200': { description: Nearby captains list }
+        '200':
+          description: Nearby captains matching location and service
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id: { type: string, format: uuid }
 
   /locations/reverse-geocode:
     post:
@@ -1196,37 +1236,6 @@ paths:
                 lng: { type: number }
       responses:
         '200': { description: Address string }
-
-  # ── VEHICLE TYPES ───────────────────────────────────────────────────────────
-  /vehicle-types:
-    get:
-      tags: [Vehicle Types]
-      summary: List all vehicle types
-      security: [{ BearerAuth: [] }]
-      responses:
-        '200':
-          description: Vehicle types
-          content:
-            application/json:
-              schema:
-                properties:
-                  data:
-                    type: array
-                    items: { $ref: '#/components/schemas/VehicleType' }
-
-  /vehicle-types/{id}:
-    get:
-      tags: [Vehicle Types]
-      summary: Get specific vehicle type
-      security: [{ BearerAuth: [] }]
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema: { type: string }
-      responses:
-        '200': { description: Vehicle type }
-        '404': { description: Not found }
 
   # ── PROMOTIONS ──────────────────────────────────────────────────────────────
   /promotions:
@@ -2236,107 +2245,12 @@ paths:
       responses:
         '200': { description: Refund issued }
 
-  # ── Vehicle Types ─────────────────────────────────────────────────────────────
-  /admin/vehicle-types:
-    get:
-      tags: [Admin]
-      summary: List all vehicle types
-      security: [{ BearerAuth: [] }]
-      responses:
-        '200':
-          description: Vehicle types
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/SuccessResponse'
-                  - type: object
-                    properties:
-                      data:
-                        type: array
-                        items: { $ref: '#/components/schemas/VehicleType' }
-    post:
-      tags: [Admin]
-      summary: Create a vehicle type
-      security: [{ BearerAuth: [] }]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [name]
-              properties:
-                name:        { type: string, example: Regular Car }
-                description: { type: string }
-                imageUrl:    { type: string, format: uri }
-      responses:
-        '201':
-          description: Vehicle type created
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/SuccessResponse'
-                  - type: object
-                    properties:
-                      data: { $ref: '#/components/schemas/VehicleType' }
-
-  /admin/vehicle-types/{id}:
-    put:
-      tags: [Admin]
-      summary: Update a vehicle type
-      security: [{ BearerAuth: [] }]
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema: { type: string, format: uuid }
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                name:        { type: string }
-                description: { type: string }
-                imageUrl:    { type: string, format: uri }
-      responses:
-        '200':
-          description: Vehicle type updated
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/SuccessResponse'
-                  - type: object
-                    properties:
-                      data: { $ref: '#/components/schemas/VehicleType' }
-        '404': { description: Vehicle type not found }
-    delete:
-      tags: [Admin]
-      summary: Delete a vehicle type
-      description: Requires `?confirm=true` query parameter.
-      security: [{ BearerAuth: [] }]
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema: { type: string, format: uuid }
-        - name: confirm
-          in: query
-          required: true
-          schema: { type: string, enum: [true] }
-      responses:
-        '200': { description: Vehicle type deleted }
-        '404': { description: Vehicle type not found }
-
   # ── Individual Vehicles ────────────────────────────────────────────────────────
   /admin/vehicles:
     get:
       tags: [Admin]
       summary: List all vehicles
-      description: Paginated list of all captain-assigned vehicles with captain and type details.
+      description: Paginated list of all captain-assigned vehicles with captain and vehicle model details.
       security: [{ BearerAuth: [] }]
       parameters:
         - name: page
@@ -2345,9 +2259,9 @@ paths:
         - name: limit
           in: query
           schema: { type: integer, default: 20 }
-        - name: typeId
+        - name: vehicleModelId
           in: query
-          description: Filter by vehicle type UUID
+          description: Filter by vehicle model UUID
           schema: { type: string, format: uuid }
         - name: search
           in: query
@@ -2379,11 +2293,11 @@ paths:
           application/json:
             schema:
               type: object
-              required: [captainId, typeId, vin]
+              required: [captainId, vin]
               properties:
-                captainId: { type: string, format: uuid }
-                typeId:    { type: string, format: uuid }
-                vin:       { type: string, example: 1HGCM82633A123456 }
+                captainId:      { type: string, format: uuid }
+                vehicleModelId: { type: string, format: uuid, nullable: true }
+                vin:            { type: string, example: 1HGCM82633A123456 }
       responses:
         '201':
           description: Vehicle assigned
@@ -2395,7 +2309,7 @@ paths:
                   - type: object
                     properties:
                       data: { $ref: '#/components/schemas/VehicleDetail' }
-        '404': { description: Captain or vehicle type not found }
+        '404': { description: Captain or vehicle model not found }
 
   /admin/vehicles/{id}:
     get:
@@ -2435,8 +2349,8 @@ paths:
             schema:
               type: object
               properties:
-                typeId: { type: string, format: uuid }
-                vin:    { type: string }
+                vehicleModelId: { type: string, format: uuid, nullable: true }
+                vin:            { type: string }
       responses:
         '200':
           description: Updated vehicle
@@ -2984,7 +2898,7 @@ paths:
   # ── ADMIN REGIONS ─────────────────────────────────────────────────────────────
   /admin/regions:
     get:
-      tags: [Admin]
+      tags: [Regions]
       summary: List all regions
       security: [{ BearerAuth: [] }]
       parameters:
@@ -3004,22 +2918,21 @@ paths:
       responses:
         '200':
           description: Paginated region list
-          headers:
-            X-Total-Count: { schema: { type: integer } }
-            X-Total-Pages: { schema: { type: integer } }
           content:
             application/json:
               schema:
-                allOf:
-                  - $ref: '#/components/schemas/SuccessResponse'
-                  - type: object
-                    properties:
-                      data:
-                        type: array
-                        items: { $ref: '#/components/schemas/Region' }
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Region' }
+                  total: { type: integer, example: 10 }
+                  pages: { type: integer, example: 1 }
     post:
-      tags: [Admin]
+      tags: [Regions]
       summary: Create a region
+      description: Create a circular service region with center coordinates and radius
       security: [{ BearerAuth: [] }]
       requestBody:
         required: true
@@ -3029,11 +2942,12 @@ paths:
               type: object
               required: [name, country]
               properties:
-                name:     { type: string, example: Cairo }
+                name:     { type: string, example: 'Downtown Cairo' }
                 country:  { type: string, example: Egypt }
                 city:     { type: string, example: Cairo }
-                lat:      { type: number, example: 30.0444 }
-                lng:      { type: number, example: 31.2357 }
+                lat:      { type: number, example: 30.0444, description: 'Center latitude' }
+                lng:      { type: number, example: 31.2357, description: 'Center longitude' }
+                radius:   { type: number, example: 25.5, description: 'Radius in kilometers' }
                 isActive: { type: boolean, default: true }
       responses:
         '201':
@@ -3041,16 +2955,15 @@ paths:
           content:
             application/json:
               schema:
-                allOf:
-                  - $ref: '#/components/schemas/SuccessResponse'
-                  - type: object
-                    properties:
-                      data: { $ref: '#/components/schemas/Region' }
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data: { $ref: '#/components/schemas/Region' }
 
   /admin/regions/{id}:
     get:
-      tags: [Admin]
-      summary: Get a region
+      tags: [Regions]
+      summary: Get a single region
       security: [{ BearerAuth: [] }]
       parameters:
         - name: id
@@ -3063,15 +2976,15 @@ paths:
           content:
             application/json:
               schema:
-                allOf:
-                  - $ref: '#/components/schemas/SuccessResponse'
-                  - type: object
-                    properties:
-                      data: { $ref: '#/components/schemas/Region' }
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data: { $ref: '#/components/schemas/Region' }
         '404': { description: Region not found }
     put:
-      tags: [Admin]
+      tags: [Regions]
       summary: Update a region
+      description: Update region details including center coordinates and radius
       security: [{ BearerAuth: [] }]
       parameters:
         - name: id
@@ -3088,8 +3001,9 @@ paths:
                 name:     { type: string }
                 country:  { type: string }
                 city:     { type: string }
-                lat:      { type: number }
-                lng:      { type: number }
+                lat:      { type: number, description: 'Center latitude' }
+                lng:      { type: number, description: 'Center longitude' }
+                radius:   { type: number, description: 'Radius in kilometers' }
                 isActive: { type: boolean }
       responses:
         '200':
@@ -3097,14 +3011,13 @@ paths:
           content:
             application/json:
               schema:
-                allOf:
-                  - $ref: '#/components/schemas/SuccessResponse'
-                  - type: object
-                    properties:
-                      data: { $ref: '#/components/schemas/Region' }
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data: { $ref: '#/components/schemas/Region' }
         '404': { description: Region not found }
     delete:
-      tags: [Admin]
+      tags: [Regions]
       summary: Delete a region
       security: [{ BearerAuth: [] }]
       parameters:
@@ -3236,10 +3149,12 @@ paths:
               type: object
               required: [name, brand]
               properties:
-                name:          { type: string, example: 'Toyota Camry' }
-                brand:         { type: string, example: 'Toyota' }
-                isActive:      { type: boolean, example: true }
-                vehicleTypeId: { type: string, format: uuid, nullable: true, description: 'Link to VehicleType so the captain is auto-assigned to the correct service category.' }
+                name:        { type: string, example: 'Toyota Camry' }
+                brand:       { type: string, example: 'Toyota' }
+                description: { type: string, nullable: true, example: 'Comfortable everyday rides' }
+                imageUrl:    { type: string, format: uri, nullable: true }
+                serviceId:   { type: string, format: uuid, nullable: true, description: 'Service category this model belongs to' }
+                isActive:    { type: boolean, example: true }
       responses:
         '201':
           description: Vehicle model created
@@ -3278,7 +3193,7 @@ paths:
     put:
       tags: [Vehicle Models]
       summary: Update a vehicle model (admin)
-      description: Update name, brand, isActive flag, or vehicleTypeId. Set isActive=false to block new registrations with this model.
+      description: Update name, brand, or isActive flag. Set isActive=false to block new registrations with this model.
       security: [{ BearerAuth: [] }]
       requestBody:
         required: true
@@ -3287,10 +3202,12 @@ paths:
             schema:
               type: object
               properties:
-                name:          { type: string, example: 'Toyota Camry 2024' }
-                brand:         { type: string, example: 'Toyota' }
-                isActive:      { type: boolean, example: false }
-                vehicleTypeId: { type: string, format: uuid, nullable: true }
+                name:        { type: string, example: 'Toyota Camry 2024' }
+                brand:       { type: string, example: 'Toyota' }
+                description: { type: string, nullable: true }
+                imageUrl:    { type: string, format: uri, nullable: true }
+                serviceId:   { type: string, format: uuid, nullable: true }
+                isActive:    { type: boolean, example: false }
       responses:
         '200':
           description: Vehicle model updated
