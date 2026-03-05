@@ -33,6 +33,7 @@ export function configureSwagger(app) {
   const analyticsSchemas = YAML.load(path.resolve(__dirname, "./analytics/schemas.yaml"));
   
   const settingsSchemas = YAML.load(path.resolve(__dirname, "./settings/schemas.yaml"));
+  const commissionsSchemas = YAML.load(path.resolve(__dirname, "./commissions/schemas.yaml"));
 
   // ===== LOAD PATHS =====
   const authPaths = YAML.load(path.resolve(__dirname, "./auth/paths.yaml"));
@@ -57,6 +58,7 @@ export function configureSwagger(app) {
   const analyticsPaths = YAML.load(path.resolve(__dirname, "./analytics/paths.yaml"));
   
   const settingsPaths = YAML.load(path.resolve(__dirname, "./settings/paths.yaml"));
+  const commissionsPaths = YAML.load(path.resolve(__dirname, "./commissions/paths.yaml"));
 
   const swaggerDefinition = {
     ...info,
@@ -83,7 +85,8 @@ export function configureSwagger(app) {
         ...dashboardSchemas,
         ...analyticsSchemas,
        
-        ...settingsSchemas
+        ...settingsSchemas,
+        ...commissionsSchemas
       },
       securitySchemes: info.components?.securitySchemes
     },
@@ -109,7 +112,8 @@ export function configureSwagger(app) {
       ...dashboardPaths,
       ...analyticsPaths,
       
-      ...settingsPaths
+      ...settingsPaths,
+      ...commissionsPaths
     }
   };
 

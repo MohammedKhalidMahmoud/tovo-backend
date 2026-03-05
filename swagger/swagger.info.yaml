@@ -84,3 +84,6 @@ tags:
 
   - name: Settings
     description: System settings
+
+  - name: Commissions
+    description: Admin commission rule management

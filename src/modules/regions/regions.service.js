@@ -7,7 +7,7 @@ const prisma = require('../../config/prisma');
 
 exports.listRegions = async ({ page = 1, limit = 20, isActive, search } = {}) => {
   const where = {};
-  if (isActive !== undefined) where.isActive = isActive;
+  if (isActive !== undefined) where.status = isActive;
   if (search) {
     where.OR = [
       { name:    { contains: search, mode: 'insensitive' } },
@@ -37,7 +37,7 @@ exports.getRegion = async (id) => {
 
 exports.listActiveRegions = async () => {
   return prisma.region.findMany({
-    where: { isActive: true },
+    where: { status: true },
     select: { id: true, name: true, lat: true, lng: true, radius: true },
     orderBy: { name: 'asc' },
   });
@@ -67,7 +67,7 @@ exports.updateRegion = async (id, { name, country, city, lat, lng, radius, isAct
   if (lat      !== undefined) data.lat      = lat;
   if (lng      !== undefined) data.lng      = lng;
   if (radius   !== undefined) data.radius   = radius;
-  if (isActive !== undefined) data.isActive = isActive;
+  if (isActive !== undefined) data.status = isActive;
 
   return prisma.region.update({ where: { id }, data });
 };

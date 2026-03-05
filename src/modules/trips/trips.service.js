@@ -4,6 +4,8 @@ const locationStore = require('../../realtime/locationStore');
 const serviceRepo = require('../services/services.repository');
 const regionsService = require('../regions/regions.service');
 const locationUtils = require('../../utils/location');
+const commissionService = require('../commissions/commissions.service');
+const walletsRepo = require('../wallets/wallets.repository');
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  HELPERS
@@ -23,8 +25,7 @@ const haversineKm = (lat1, lng1, lat2, lng2) => {
 // ─────────────────────────────────────────────────────────────────────────────
 //  FARE ESTIMATE
 // ─────────────────────────────────────────────────────────────────────────────
-const FARE_PER_KM    = Number(process.env.FARE_PER_KM)    || 5.0;
-const COMMISSION_PCT = Number(process.env.COMMISSION_PCT) || 15;
+const FARE_PER_KM = Number(process.env.FARE_PER_KM) || 5.0;
 
 const estimateFare = async ({ pickupLat, pickupLng, dropoffLat, dropoffLng, serviceId }) => {
   const distanceKm = haversineKm(pickupLat, pickupLng, dropoffLat, dropoffLng);
@@ -38,19 +39,17 @@ const estimateFare = async ({ pickupLat, pickupLng, dropoffLat, dropoffLng, serv
     serviceName = svc.name;
   }
 
-  const tripFare   = +(baseFare + distanceKm * FARE_PER_KM).toFixed(2);
-  const commission = +(tripFare * COMMISSION_PCT / 100).toFixed(2);
-  const totalFare  = +(tripFare + commission).toFixed(2);
+  const fare = +(baseFare + distanceKm * FARE_PER_KM).toFixed(2);
+  const { commission, driverEarnings } = await commissionService.calculateCommission(fare, serviceId);
 
   return {
     distanceKm:    +distanceKm.toFixed(2),
     farePerKm:     FARE_PER_KM,
     baseFare,
     serviceName,
-    tripFare,
-    commissionPct: COMMISSION_PCT,
+    fare,
     commission,
-    totalFare,
+    driverEarnings,
     currency:      'EGP',
   };
 };
@@ -97,23 +96,25 @@ const createTrip = async (userId, body) => {
 
   const distanceKm = haversineKm(pickup_lat, pickup_lng, dropoff_lat, dropoff_lng);
   const baseFare   = parseFloat(svc.baseFare);
-  const tripFare   = +(baseFare + distanceKm * FARE_PER_KM).toFixed(2);
-  const commission = +(tripFare * COMMISSION_PCT / 100).toFixed(2);
-  const fare       = +(tripFare + commission).toFixed(2);
+  const fare       = +(baseFare + distanceKm * FARE_PER_KM).toFixed(2);
+  const { commission, driverEarnings } = await commissionService.calculateCommission(fare, service_id);
 
   return repo.createTrip({
     user: { connect: { id: userId } },
     service: { connect: { id: service_id } },
     paymentMethod: payment_type === 'card' ? { connect: { id: payment_method_id } } : undefined,
-    pickupLat: pickup_lat,
-    pickupLng: pickup_lng,
-    pickupAddress: pickup_address,
-    dropoffLat: dropoff_lat,
-    dropoffLng: dropoff_lng,
+    pickupLat:      pickup_lat,
+    pickupLng:      pickup_lng,
+    pickupAddress:  pickup_address,
+    dropoffLat:     dropoff_lat,
+    dropoffLng:     dropoff_lng,
     dropoffAddress: dropoff_address,
-    distanceKm: +distanceKm.toFixed(2),
+    distanceKm:     +distanceKm.toFixed(2),
     fare,
-    status: 'searching',
+    commission,
+    driverEarnings,
+    paymentType:    payment_type,
+    status:         'searching',
   });
 };
 
@@ -189,7 +190,20 @@ const endTrip = async (tripId, captainId) => {
 
   await prisma.captain.update({ where: { id: captainId }, data: { totalTrips: { increment: 1 } } });
 
-  return repo.updateTrip(tripId, { status: 'completed', endedAt: new Date() });
+  const completed = await repo.updateTrip(tripId, { status: 'completed', endedAt: new Date() });
+
+  // Wallet settlement based on payment type
+  if (trip.commission !== null && trip.driverEarnings !== null) {
+    if (trip.paymentType === 'cash') {
+      // Captain collected full cash fare — deduct commission from wallet
+      await walletsRepo.adjustCaptainWallet(captainId, -Number(trip.commission));
+    } else {
+      // Platform collected payment — credit captain with driver earnings
+      await walletsRepo.adjustCaptainWallet(captainId, +Number(trip.driverEarnings));
+    }
+  }
+
+  return completed;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────

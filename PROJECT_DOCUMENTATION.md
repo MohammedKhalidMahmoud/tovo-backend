@@ -16,8 +16,10 @@ Tovo is a **ride-hailing and package delivery** REST API backend. It connects ri
 - Fare estimation using haversine distance formula
 - Service-area region validation (pickup must be inside a defined region)
 - In-memory captain location tracking (zero DB writes for GPS)
-- Wallet system for balance management and refunds
+- Wallet system for balance management and automatic trip settlement
 - Payment methods (saved cards) + cash payment support
+- DB-driven commission rules with admin management panel
+- Automatic captain wallet settlement on trip completion (cash vs card logic)
 - Push notifications via Firebase Admin SDK
 - SOS alerts from users or captains
 - Support ticket system with threaded messages
@@ -127,6 +129,7 @@ tovo-backend/
 │       ├── vehicle-models/
 │       ├── wallets/
 │       ├── payments/
+│       ├── commissions/       # NEW — commission rule management
 │       ├── coupons/
 │       ├── notifications/
 │       ├── support/
@@ -162,6 +165,15 @@ Every module under `src/modules/<name>/` follows this pattern:
 - **`validate`** — Runs after express-validator chains, returns `400 Validation failed` with error array if any field fails.
 - **`errorHandler`** — Global catch-all error middleware, formats unhandled errors as JSON.
 
+### Helmet Configuration
+Helmet is applied to all routes **except** `/api/docs` to avoid CSP blocking Swagger UI cross-origin requests:
+```js
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api/docs')) return next();
+  helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } })(req, res, next);
+});
+```
+
 ### Utilities
 - **`response.js`** — All controllers use these helpers: `success(res, data, msg, statusCode, pagination)`, `created(res, data, msg)`, `error(res, msg, statusCode)`, `notFound(res, msg)`, `paginate(page, perPage, total)`.
 - **`jwt.js`** — Issues and verifies access tokens (short-lived) and refresh tokens (long-lived).
@@ -187,7 +199,8 @@ Prisma v5 with MySQL. Schema at `prisma/schema.prisma`.
 | `TripDecline` | `trip_declines` | Composite key `(tripId, captainId)` — tracks which captains declined |
 | `Rating` | `ratings` | One per trip, user rates captain (1–5 stars) |
 | `PaymentMethod` | `payment_methods` | Saved cards per user (visa, mastercard, apple_pay) |
-| `Wallet` | `wallets` | Balance for user or captain. Used for refunds |
+| `Wallet` | `wallets` | Balance for user or captain. Credited/debited automatically on trip completion |
+| `CommissionRule` | `commission_rules` | DB-driven commission rules with type, config JSON, and per-service scoping |
 | `Promotion` | `promotions` | Marketing banners/promotions |
 | `Coupon` | `coupons` | Discount codes with usage limits and expiry |
 | `SupportTicket` | `support_tickets` | Ticket raised by user or captain |
@@ -209,24 +222,43 @@ Prisma v5 with MySQL. Schema at `prisma/schema.prisma`.
 - `PaymentBrand`: `visa | mastercard | apple_pay`
 - `SupportTicketStatus`: `open | in_progress | resolved | closed`
 - `DiscountType`: `percentage | amount`
+- `CommissionType`: `fixed_amount | percentage | tiered_fixed | tiered_percentage`
 
 ### Key Relationships
 ```
-User         ──< Trip (as rider)
-Captain      ──< Trip (as driver)
-Service      ──< Trip
-Service      ──< Captain
-Service      ──< VehicleModel
-VehicleModel ──< Vehicle
-Captain      ──1 Vehicle
-User/Captain ──1 Wallet
-Trip         ──1 Rating
-Trip         ──< TripDecline
-User         ──< PaymentMethod
+User          ──< Trip (as rider)
+Captain       ──< Trip (as driver)
+Service       ──< Trip
+Service       ──< Captain
+Service       ──< VehicleModel
+Service       ──< CommissionRule (optional — null = global rule)
+VehicleModel  ──< Vehicle
+Captain       ──1 Vehicle
+User/Captain  ──1 Wallet
+Trip          ──1 Rating
+Trip          ──< TripDecline
+User          ──< PaymentMethod
 PaymentMethod ──< Trip
-User/Captain ──1 SupportTicket (many)
+User/Captain  ──1 SupportTicket (many)
 SupportTicket ──< TicketMessage
 ```
+
+### Trip Model — Key Fields
+| Field | Type | Description |
+|---|---|---|
+| `fare` | Decimal | Total amount charged to the passenger |
+| `commission` | Decimal? | Platform cut (deducted from fare) |
+| `driverEarnings` | Decimal? | What the captain receives (fare − commission) |
+| `paymentType` | String? | `'cash'` or `'card'` |
+
+### CommissionRule Model
+| Field | Type | Description |
+|---|---|---|
+| `name` | String | Human-readable label |
+| `type` | CommissionType | Rule evaluation strategy |
+| `serviceId` | String? | null = global; non-null = applies to specific service only |
+| `status` | Boolean | `false` by default; only one rule can be `true` per serviceId at a time |
+| `config` | Json | Rule-specific payload (see commission system section) |
 
 ---
 
@@ -234,7 +266,8 @@ SupportTicket ──< TicketMessage
 
 ### Base URL
 ```
-http://localhost:<PORT>/api/v1
+http://localhost:<PORT>/api/v1        (local)
+https://tovo-b.developteam.site/api/v1  (production)
 ```
 
 ### Authentication Flow
@@ -292,7 +325,7 @@ http://localhost:<PORT>/api/v1
 | PATCH | `/:id/accept` | captain | Accept trip |
 | PATCH | `/:id/decline` | captain | Decline trip |
 | PATCH | `/:id/start` | captain | Start trip |
-| PATCH | `/:id/end` | captain | End trip |
+| PATCH | `/:id/end` | captain | End trip + settle captain wallet |
 
 **Trip Creation Body:**
 ```json
@@ -308,6 +341,30 @@ http://localhost:<PORT>/api/v1
   "payment_method_id": "<uuid>  (required only when payment_type = card)"
 }
 ```
+
+**Fare Estimate Response Shape:**
+```json
+{
+  "distanceKm": 12.5,
+  "farePerKm": 5.0,
+  "baseFare": 10.0,
+  "serviceName": "Economy",
+  "fare": 72.5,
+  "commission": 5.0,
+  "driverEarnings": 67.5,
+  "currency": "EGP"
+}
+```
+
+#### Commission Rules — `/api/v1/admin/commissions`
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/` | admin | List all commission rules |
+| POST | `/` | admin | Create a new rule (starts inactive) |
+| GET | `/:id` | admin | Get a single rule |
+| PATCH | `/:id` | admin | Update rule fields (name, type, config, serviceId) |
+| PATCH | `/:id/activate` | admin | Activate rule — atomically deactivates current active rule for same service |
+| DELETE | `/:id` | admin | Delete rule |
 
 #### Services — `/api/v1/services`
 | Method | Path | Auth | Description |
@@ -342,7 +399,7 @@ http://localhost:<PORT>/api/v1
 #### Wallets — `/api/v1/admin/wallets`
 - `GET /` — List all wallets
 - `GET /:id` — Wallet detail
-- `POST /:id/adjust` — Credit or debit balance
+- `POST /:id/adjust` — Credit or debit balance manually
 
 #### Notifications — `/api/v1/notifications`
 - `GET /` — List own notifications
@@ -414,11 +471,12 @@ This is a **backend-only repository**. No frontend code exists in this project.
 
 ### Ride Request Flow
 ```
-1. User calls GET /trips/estimate  →  receives fare breakdown
+1. User calls GET /trips/estimate  →  receives fare + commission + driverEarnings breakdown
 2. User calls POST /trips          →  trip created with status: searching
    - Service validated (active)
    - Pickup validated inside an active Region (haversine check)
-   - Fare calculated: (baseFare + distanceKm × FARE_PER_KM) × (1 + COMMISSION_PCT/100)
+   - fare = baseFare + distanceKm × FARE_PER_KM
+   - commission + driverEarnings calculated via commission rules (see below)
    - Nearby online captains found from in-memory locationStore
    - Each nearby captain receives 'trip.new_request' via Socket.io
 
@@ -436,6 +494,7 @@ This is a **backend-only repository**. No frontend code exists in this project.
 
 7. Captain calls PATCH /trips/:id/end   → status: completed
    - Captain's totalTrips incremented
+   - Captain wallet settled (see Wallet Settlement below)
 
 8. User calls POST /trips/:id/rating    → Rating created
    - Captain's average rating recalculated
@@ -455,14 +514,48 @@ This is a **backend-only repository**. No frontend code exists in this project.
 
 ### Fare Calculation
 ```
-distanceKm   = haversine(pickupLat, pickupLng, dropoffLat, dropoffLng)
-baseFare     = Service.baseFare
-tripFare     = baseFare + (distanceKm × FARE_PER_KM)
-commission   = tripFare × (COMMISSION_PCT / 100)
-totalFare    = tripFare + commission   ← charged to user
+distanceKm     = haversine(pickupLat, pickupLng, dropoffLat, dropoffLng)
+baseFare       = Service.baseFare
+fare           = baseFare + (distanceKm × FARE_PER_KM)   ← what passenger pays
+commission     = calculateCommission(fare, serviceId)      ← platform cut
+driverEarnings = fare − commission                         ← what captain earns
 ```
 - `FARE_PER_KM` defaults to `5.0` (override via env var)
-- `COMMISSION_PCT` defaults to `15` (override via env var)
+- Commission is now DB-driven (see Commission System below)
+
+### Commission System
+Commission rules are stored in the `CommissionRule` table and managed by admins.
+
+**Rule selection priority:**
+1. Active (`status = true`) rule with matching `serviceId`
+2. Active global rule (`serviceId = null`)
+3. Fallback: `COMMISSION_PCT` env var as a percentage (if no DB rules active)
+
+**Rule types and config shapes:**
+
+| type | config |
+|---|---|
+| `percentage` | `{ "pct": 15 }` |
+| `fixed_amount` | `[{ "minFare": 0, "maxFare": 99.99, "amount": 5 }, { "minFare": 100, "maxFare": null, "amount": 10 }]` |
+| `tiered_fixed` | Same array shape as `fixed_amount` |
+| `tiered_percentage` | `[{ "minFare": 0, "maxFare": 100, "pct": 8 }, { "minFare": 100, "maxFare": null, "pct": 12 }]` |
+
+**Activation rules:**
+- New rules are always created with `status = false`
+- Activating a rule via `PATCH /admin/commissions/:id/activate` runs an atomic transaction:
+  1. Deactivates any currently active rule for the same `serviceId`
+  2. Activates the requested rule
+- Only one rule can be active per `serviceId` (including `null`) at any time
+
+### Wallet Settlement on Trip Completion
+When `PATCH /trips/:id/end` is called:
+
+| Payment type | Action |
+|---|---|
+| `cash` | Passenger paid captain directly — **deduct `commission`** from captain wallet |
+| `card` | Platform received payment — **credit `driverEarnings`** to captain wallet |
+
+Settlement is skipped if `commission` or `driverEarnings` is null on the trip record.
 
 ### Real-Time Location Tracking
 - Captain GPS is stored in `locationStore` — a Node.js `Map` in process memory
@@ -485,7 +578,7 @@ totalFare    = tripFare + commission   ← charged to user
 | `JWT_ACCESS_EXPIRES_IN` | Access token TTL | e.g. `15m` |
 | `JWT_REFRESH_EXPIRES_IN` | Refresh token TTL | e.g. `7d` |
 | `FARE_PER_KM` | Fare multiplier per kilometre | `5.0` |
-| `COMMISSION_PCT` | Platform commission percentage | `15` |
+| `COMMISSION_PCT` | Fallback commission % (used only when no active DB rule exists) | `15` |
 | `RATE_LIMIT_DISABLED` | Set `true` to disable rate limiter | `false` |
 | `RATE_LIMIT_WINDOW_MINUTES` | Rate limit window | `15` |
 | `RATE_LIMIT_MAX` | Max requests per window | `100` |
@@ -494,6 +587,7 @@ totalFare    = tripFare + commission   ← charged to user
 ### Important Config Files
 - `prisma/schema.prisma` — Single source of truth for the database schema
 - `swagger/swagger.config.js` — Merges all YAML swagger files at startup
+- `swagger/swagger.info.yaml` — Server URLs (local + production)
 - `src/config/prisma.js` — Singleton Prisma client (import from here everywhere)
 - `src/config/logger.js` — Winston logger instance
 
@@ -526,7 +620,8 @@ npm run prisma:studio
 ```
 
 ### Swagger UI
-Available at: `http://localhost:<PORT>/api/docs`
+- Local: `http://localhost:<PORT>/api/docs`
+- Production: `https://tovo-b.developteam.site/api/docs`
 
 ### Debug Endpoint
 `GET /debug/locations` — Returns current in-memory captain location store (remove in production).
@@ -538,7 +633,6 @@ Available at: `http://localhost:<PORT>/api/docs`
 ### Known Pending Work
 - **Admin routes not fully mounted**: `admin.routes.js` is commented out in `app.js`. FAQs admin, complaints, and some other admin sub-routes have controller/service code written but not wired up.
 - **`regions.service.js` fix**: The `status` field must be cast to `Boolean` when creating a region — currently causes a Prisma type error when client sends `1` instead of `true`.
-- **No `paymentType` column on Trip**: Cash vs card is currently inferred by `paymentMethodId` being null. A future migration should add an explicit `paymentType` enum column for cleaner querying.
 - **Admin authentication**: The admin module uses `authorize('admin')` but the JWT payload role needs to match. Admin login flow should be verified end-to-end.
 
 ### Designed for Scalability
@@ -546,9 +640,10 @@ Available at: `http://localhost:<PORT>/api/docs`
 - **Repository pattern** makes it straightforward to swap Prisma for another ORM or add caching
 - **Socket.io rooms** are already structured (`user:{id}`, `captain:{id}`, `trip:{id}`) for easy migration to Redis adapter
 - **Module-per-feature** structure makes adding new domains (e.g., scheduled rides, surge pricing) isolated
+- **Commission rules** are fully DB-driven — new rule types can be added without code changes by extending the `config` JSON shape
 
 ---
 
 ## Context Summary for AI Assistants
 
-Tovo is a Node.js/Express ride-hailing and package delivery backend. Stack: Express 4, Prisma ORM v5, MySQL, Socket.io, JWT auth, Firebase push notifications, Swagger/OpenAPI docs at `/api/docs`. The project is backend-only with no frontend. Architecture is strictly layered: **Controller → Service → Repository** — only repositories access Prisma. Auth middleware sets `req.actor = { id, role }` (not `req.user`). Three roles: `user` (riders), `captain` (drivers), `admin`. All modules live under `src/modules/<name>/` with four files each: routes, controller, service, repository. Swagger docs are loaded from YAML files in `swagger/<module>/paths.yaml` and merged in `swagger/swagger.config.js`. Real-time captain GPS is stored in an in-memory `locationStore` (never written to DB); Socket.io rooms are `user:{id}`, `captain:{id}`, `trip:{id}`, `captains:available`. Trip lifecycle states: `searching → matched → on_way → in_progress → completed | cancelled`. Fare = `(baseFare + distanceKm × FARE_PER_KM) × (1 + COMMISSION_PCT/100)`. Pickup location is validated against active `Region` records (circular areas defined by lat/lng/radius). Trips support `payment_type: cash | card`; when `card`, a `payment_method_id` (UUID of saved PaymentMethod) is required. The `payments.routes.js` uses `module.exports = router` (default export). Response utility is at `src/utils/response.js` and exports `success, created, error, notFound, paginate`. Middleware paths are always `../../middleware/` from inside a module. The `regionstRoutes` variable in `app.js` is a typo duplicate of `regionsRoutes` — both point to the same file and can be ignored.
+Tovo is a Node.js/Express ride-hailing and package delivery backend. Stack: Express 4, Prisma ORM v5, MySQL, Socket.io, JWT auth, Firebase push notifications, Swagger/OpenAPI docs at `/api/docs`. The project is backend-only with no frontend. Architecture is strictly layered: **Controller → Service → Repository** — only repositories access Prisma. Auth middleware sets `req.actor = { id, role }` (not `req.user`). Three roles: `user` (riders), `captain` (drivers), `admin`. All modules live under `src/modules/<name>/` with four files each: routes, controller, service, repository. Swagger docs are loaded from YAML files in `swagger/<module>/paths.yaml` and merged in `swagger/swagger.config.js`. Swagger server URLs: local = `http://localhost:3000/api/v1`, production = `https://tovo-b.developteam.site/api/v1`. Real-time captain GPS is stored in an in-memory `locationStore` (never written to DB); Socket.io rooms are `user:{id}`, `captain:{id}`, `trip:{id}`, `captains:available`. Trip lifecycle states: `searching → matched → on_way → in_progress → completed | cancelled`. Fare = `baseFare + distanceKm × FARE_PER_KM` (what passenger pays). Commission is deducted from fare via DB-driven `CommissionRule` records — NOT added on top. `driverEarnings = fare − commission`. Captain wallet is automatically settled on `endTrip`: cash trips deduct commission, card trips credit driverEarnings. Commission rules are managed at `/api/v1/admin/commissions`; activate endpoint atomically swaps the active rule per service. Fallback when no active rule: `COMMISSION_PCT` env var as percentage. Trips store `paymentType` (`cash`/`card`), `commission`, and `driverEarnings` as explicit columns. Wallets repository is at `src/modules/wallets/wallets.repository.js` — exports `adjustCaptainWallet(captainId, delta)`. Helmet is bypassed for `/api/docs` to allow Swagger UI cross-origin requests; all other routes use `crossOriginResourcePolicy: cross-origin`. Response utility is at `src/utils/response.js` and exports `success, created, error, notFound, paginate`. Middleware paths are always `../../middleware/` from inside a module. The `regionstRoutes` variable in `app.js` is a typo duplicate of `regionsRoutes` — both point to the same file and can be ignored.

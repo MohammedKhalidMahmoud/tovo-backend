@@ -26,6 +26,13 @@ enum TripStatus {
   cancelled
 }
 
+enum CommissionType {
+  fixed_amount
+  percentage
+  tiered_fixed
+  tiered_percentage
+}
+
 enum PaymentBrand {
   visa
   mastercard
@@ -183,7 +190,10 @@ model Trip {
   dropoffLat      Float
   dropoffLng      Float
   dropoffAddress  String
+  paymentType     String?
   fare            Decimal?    @db.Decimal(10, 2)
+  commission      Decimal?    @db.Decimal(10, 2)
+  driverEarnings  Decimal?    @db.Decimal(10, 2)
   currency        String      @default("EGP")
   distanceKm      Float?
   durationMinutes Int?
@@ -533,9 +543,29 @@ model Service {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  trips         Trip[]
-  vehicleModels VehicleModel[]
-  captains      Captain[]
+  trips           Trip[]
+  vehicleModels   VehicleModel[]
+  captains        Captain[]
+  commissionRules CommissionRule[]
 
   @@map("services")
+}
+
+// ─────────────────────────────────────────────
+//  COMMISSION RULES
+// ─────────────────────────────────────────────
+
+model CommissionRule {
+  id        String         @id @default(uuid())
+  name      String
+  type      CommissionType
+  serviceId String?
+  status    Boolean        @default(false)
+  config    Json
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  service   Service?       @relation(fields: [serviceId], references: [id])
+
+  @@map("commission_rules")
 }

@@ -34,6 +34,7 @@ const regionstRoutes       = require('./modules/regions/regions.routes');
 const dashboardRoutes     = require('./modules/dashboard/dashboard.routes');
 const regionsRoutes     = require('./modules/regions/regions.routes');
 const paymentsRoutes      = require('./modules/payments/payments.routes.js');
+const commissionsRoutes   = require('./modules/commissions/commissions.routes');
 // ── App Setup ─────────────────────────────────────────────────────────────────
 const app = express();
 const server = http.createServer(app);
@@ -46,7 +47,10 @@ setupSocket(io);
 app.set('io', io); // make io available in controllers via req.app.get('io')
 
 // ── Security & Middleware ─────────────────────────────────────────────────────
-app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api/docs')) return next();
+  helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } })(req, res, next);
+});
 app.use(cors({ origin: '*' }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -105,6 +109,7 @@ app.use(`${API}/admin/services`, servicesRoutes);
 app.use(`${API}/services`, servicesRoutes);
 app.use(`${API}/admin/payments`, paymentsRoutes);
 app.use(`${API}/payments`, paymentsRoutes);
+app.use(`${API}/admin/commissions`, commissionsRoutes);
 
 // ── Health Check ──────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
