@@ -15,12 +15,12 @@ router.post(
   '/',
   [
     body('name').trim().isLength({ min: 1 }).withMessage('name is required'),
-    body('country').trim().isLength({ min: 1 }).withMessage('country is required'),
+    // body('country').trim().isLength({ min: 1 }).withMessage('country is required'),
     body('city').optional().trim(),
     body('lat').optional().isFloat({ min: -90,  max: 90  }).withMessage('lat must be between -90 and 90'),
     body('lng').optional().isFloat({ min: -180, max: 180 }).withMessage('lng must be between -180 and 180'),
     body('radius').optional().isFloat({ min: 0.1 }).withMessage('radius must be a positive number (in km)'),
-    body('isActive').optional().isBoolean(),
+    body('status').optional().isBoolean(),
   ],
   validate,
   ctrl.createRegion

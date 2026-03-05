@@ -43,16 +43,16 @@ exports.listActiveRegions = async () => {
   });
 };
 
-exports.createRegion = async ({ name, country, city, lat, lng, radius, isActive = true }) => {
+exports.createRegion = async ({ name, country, city, lat, lng, radius, status = true }) => {
   return prisma.region.create({
     data: {
       name,
-      country,
+      // country,
       city: city || null,
       lat: lat ?? null,
       lng: lng ?? null,
       radius: radius ?? null,
-      isActive,
+      status,
     },
   });
 };
