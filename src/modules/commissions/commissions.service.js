@@ -38,26 +38,26 @@ const validateConfig = (type, config) => {
 // ─────────────────────────────────────────────────────────────────────────────
 //  RULE EVALUATION
 // ─────────────────────────────────────────────────────────────────────────────
-const evaluateRule = (rule, tripFare) => {
+const evaluateRule = (rule, baseAmount) => {
   const { type, config } = rule;
 
   if (type === 'percentage') {
-    return +(tripFare * config.pct / 100).toFixed(2);
+    return +(baseAmount * config.pct / 100).toFixed(2);
   }
 
   // bracket-based types
   const bracket = config.find(
-    (b) => tripFare >= b.minFare && (b.maxFare === null || tripFare <= b.maxFare)
+    (b) => baseAmount >= b.minFare && (b.maxFare === null || baseAmount <= b.maxFare)
   );
   if (!bracket) {
     throw Object.assign(
-      new Error('No matching commission bracket found for fare: ' + tripFare),
+      new Error('No matching commission bracket found for amount: ' + baseAmount),
       { statusCode: 422 }
     );
   }
 
   if (type === 'tiered_percentage') {
-    return +(tripFare * bracket.pct / 100).toFixed(2);
+    return +(baseAmount * bracket.pct / 100).toFixed(2);
   }
 
   // fixed_amount | tiered_fixed
@@ -67,22 +67,23 @@ const evaluateRule = (rule, tripFare) => {
 // ─────────────────────────────────────────────────────────────────────────────
 //  CALCULATE COMMISSION  (called by trips.service.js)
 // ─────────────────────────────────────────────────────────────────────────────
-const calculateCommission = async (tripFare, serviceId) => {
+// baseAmount = driverEarnings (what the driver earns before commission).
+// Returns commission to add on top. Caller computes: fare = baseAmount + commission.
+const calculateCommission = async (baseAmount, serviceId) => {
   const rule = await repo.findActiveRule(serviceId);
 
   let commission;
   if (!rule) {
     // Fallback to env var
-    commission = +(tripFare * COMMISSION_PCT / 100).toFixed(2);
+    commission = +(baseAmount * COMMISSION_PCT / 100).toFixed(2);
   } else {
-    commission = evaluateRule(rule, tripFare);
+    commission = evaluateRule(rule, baseAmount);
   }
 
-  // Clamp to [0, tripFare]
-  commission = Math.max(0, Math.min(commission, tripFare));
-  const driverEarnings = +(tripFare - commission).toFixed(2);
+  // Clamp to >= 0
+  commission = Math.max(0, commission);
 
-  return { commission, driverEarnings };
+  return { commission };
 };
 
 // ─────────────────────────────────────────────────────────────────────────────

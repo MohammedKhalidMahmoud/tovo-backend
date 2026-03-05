@@ -9,11 +9,13 @@ const {
 
 const estimateFare = async (req, res, next) => {
   try {
-    const { pickup_lat, pickup_lng, dropoff_lat, dropoff_lng, service_id } = req.query;
+    const trip = await service.getTripById(req.query.trip_id, req.actor.id);
     const data = await service.estimateFare({
-      pickupLat: +pickup_lat, pickupLng: +pickup_lng,
-      dropoffLat: +dropoff_lat, dropoffLng: +dropoff_lng,
-      serviceId: service_id,
+      pickupLat:  trip.pickupLat,
+      pickupLng:  trip.pickupLng,
+      dropoffLat: trip.dropoffLat,
+      dropoffLng: trip.dropoffLng,
+      serviceId:  trip.serviceId,
     });
     return success(res, data);
   } catch (err) {

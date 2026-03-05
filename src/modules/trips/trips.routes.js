@@ -12,12 +12,8 @@ const bothRoles   = [authenticate, authorize('user', 'captain')];
 router.get('/regions/active', controller.getActiveRegions);
 
 // ── Fare Estimate ─────────────────────────────────────────────────────────────
-router.get('/estimate', ...userOnly, [
-  query('pickup_lat').isFloat(),
-  query('pickup_lng').isFloat(),
-  query('dropoff_lat').isFloat(),
-  query('dropoff_lng').isFloat(),
-  query('service_id').optional().isUUID().withMessage('service_id must be a valid UUID'),
+router.get('/estimate', ...bothRoles, [
+  query('trip_id').isUUID().withMessage('trip_id must be a valid UUID'),
 ], validate, controller.estimateFare);
 
 // ── User: Create & List Trips ─────────────────────────────────────────────────

@@ -30,22 +30,20 @@ const FARE_PER_KM = Number(process.env.FARE_PER_KM) || 5.0;
 const estimateFare = async ({ pickupLat, pickupLng, dropoffLat, dropoffLng, serviceId }) => {
   const distanceKm = haversineKm(pickupLat, pickupLng, dropoffLat, dropoffLng);
 
-  let baseFare = 0;
   let serviceName = null;
   if (serviceId) {
     const svc = await serviceRepo.findById(serviceId);
     if (!svc || !svc.isActive) throw Object.assign(new Error('Service not found or inactive'), { statusCode: 404 });
-    baseFare = parseFloat(svc.baseFare);
     serviceName = svc.name;
   }
 
-  const fare = +(baseFare + distanceKm * FARE_PER_KM).toFixed(2);
-  const { commission, driverEarnings } = await commissionService.calculateCommission(fare, serviceId);
+  const driverEarnings = +(distanceKm * FARE_PER_KM).toFixed(2);
+  const { commission } = await commissionService.calculateCommission(driverEarnings, serviceId);
+  const fare = +(driverEarnings + commission).toFixed(2);
 
   return {
     distanceKm:    +distanceKm.toFixed(2),
     farePerKm:     FARE_PER_KM,
-    baseFare,
     serviceName,
     fare,
     commission,
@@ -94,10 +92,10 @@ const createTrip = async (userId, body) => {
 
   await validatePickupInRegion(pickup_lat, pickup_lng);
 
-  const distanceKm = haversineKm(pickup_lat, pickup_lng, dropoff_lat, dropoff_lng);
-  const baseFare   = parseFloat(svc.baseFare);
-  const fare       = +(baseFare + distanceKm * FARE_PER_KM).toFixed(2);
-  const { commission, driverEarnings } = await commissionService.calculateCommission(fare, service_id);
+  const distanceKm     = haversineKm(pickup_lat, pickup_lng, dropoff_lat, dropoff_lng);
+  const driverEarnings = +(distanceKm * FARE_PER_KM).toFixed(2);
+  const { commission } = await commissionService.calculateCommission(driverEarnings, service_id);
+  const fare           = +(driverEarnings + commission).toFixed(2);
 
   return repo.createTrip({
     user: { connect: { id: userId } },

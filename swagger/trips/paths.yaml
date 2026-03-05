@@ -1,14 +1,14 @@
 /trips/estimate:
   get:
     tags: [Trips]
-    summary: Get fare estimate
+    summary: Get fare estimate for an existing trip (users & captains)
     security: [{ BearerAuth: [] }]
     parameters:
-      - { name: pickup_lat,  in: query, required: true,  schema: { type: number } }
-      - { name: pickup_lng,  in: query, required: true,  schema: { type: number } }
-      - { name: dropoff_lat, in: query, required: true,  schema: { type: number } }
-      - { name: dropoff_lng, in: query, required: true,  schema: { type: number } }
-      - { name: service_id,  in: query, required: false, schema: { type: string, format: uuid } }
+      - name: trip_id
+        in: query
+        required: true
+        schema: { type: string, format: uuid }
+        description: ID of the trip to estimate fare for
     responses:
       '200':
         description: Fare estimate with commission breakdown
@@ -19,15 +19,15 @@
                 data:
                   type: object
                   properties:
-                    distanceKm:    { type: number, example: 4.2 }
+                    distanceKm:    { type: number, example: 10.69 }
                     farePerKm:     { type: number, example: 5.0 }
-                    baseFare:      { type: number, example: 20.0 }
-                    serviceName:   { type: string, example: Comfort }
-                    tripFare:      { type: number, example: 41.0, description: 'Captain earnings' }
-                    commissionPct: { type: number, example: 15 }
-                    commission:    { type: number, example: 6.15, description: "App's profit" }
-                    totalFare:     { type: number, example: 47.15, description: 'Total charged to user' }
+                    serviceName:   { type: string, example: Normal }
+                    driverEarnings: { type: number, example: 53.45, description: 'What the driver receives' }
+                    commission:    { type: number, example: 9.52, description: "Platform commission added on top" }
+                    fare:          { type: number, example: 62.97, description: 'Total charged to the customer' }
                     currency:      { type: string, example: EGP }
+      '403': { description: Trip does not belong to the authenticated user }
+      '404': { description: Trip not found }
 
 /trips/regions/active:
   get:
