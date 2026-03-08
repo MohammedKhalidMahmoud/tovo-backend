@@ -20,8 +20,8 @@ const getModel = async (req, res, next) => {
 
 const createModel = async (req, res, next) => {
   try {
-    const { name, brand, isActive } = req.body;
-    const data = await service.createModel({ name, brand, isActive });
+    const { name, brand, serviceId, isActive } = req.body;
+    const data = await service.createModel({ name, brand, serviceId, isActive });
     return created(res, data, 'Vehicle model created');
   } catch (err) {
     if (err.status) return error(res, err.message, err.status);
@@ -31,8 +31,8 @@ const createModel = async (req, res, next) => {
 
 const updateModel = async (req, res, next) => {
   try {
-    const { name, brand, isActive } = req.body;
-    const data = await service.updateModel(req.params.id, { name, brand, isActive });
+    const { name, brand, serviceId, isActive } = req.body;
+    const data = await service.updateModel(req.params.id, { name, brand, serviceId, isActive });
     return success(res, data, 'Vehicle model updated');
   } catch (err) {
     if (err.status) return error(res, err.message, err.status);

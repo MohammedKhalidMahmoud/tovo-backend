@@ -1,5 +1,6 @@
 const service = require('./users.service');
 const { success, created, error } = require('../../utils/response');
+const { deleteLocalFile } = require('../../utils/uploads');
 
 // ════════════════════════════════════════════════════════════════════════════
 // USER-FACING CONTROLLERS
@@ -27,9 +28,9 @@ const updateProfile = async (req, res, next) => {
 const updateAvatar = async (req, res, next) => {
   try {
     if (!req.file) return error(res, 'No file uploaded', 400);
-    // In production: upload to S3/Cloudinary and get URL
     const avatarUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
-    await service.updateAvatar(req.actor.id, avatarUrl);
+    const oldUrl = await service.updateAvatar(req.actor.id, avatarUrl);
+    deleteLocalFile(oldUrl);
     return success(res, { avatarUrl }, 'Avatar updated');
   } catch (err) {
     next(err);

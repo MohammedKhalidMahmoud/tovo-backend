@@ -32,3 +32,11 @@ exports.updateService = async (id, { name, baseFare, isActive }) => {
   if (isActive !== undefined) data.isActive = isActive;
   return prisma.service.update({ where: { id }, data });
 };
+
+exports.updateServiceImage = async (id, imageUrl) => {
+  const svc = await repo.findById(id);
+  if (!svc) throw Object.assign(new Error('Service not found'), { statusCode: 404 });
+  const oldImageUrl = svc.imageUrl;
+  await repo.updateImageUrl(id, imageUrl);
+  return oldImageUrl; // returned so the controller can delete the old file
+};

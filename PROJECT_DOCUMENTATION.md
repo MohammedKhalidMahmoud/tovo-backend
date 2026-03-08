@@ -1,6 +1,6 @@
 # Tovo Backend — Project Documentation
 
-> Last updated: 2026-03-05
+> Last updated: 2026-03-08
 > Purpose: Persistent technical reference for developers and AI assistants continuing development across sessions.
 
 ---
@@ -16,8 +16,9 @@ Tovo is a **ride-hailing and package delivery** REST API backend. It connects ri
 - Fare estimation using haversine distance formula
 - Service-area region validation (pickup must be inside a defined region)
 - In-memory captain location tracking (zero DB writes for GPS)
-- Wallet system for balance management and automatic trip settlement
+- Wallet system for balance management, automatic trip settlement, and full transaction history log
 - Payment methods (saved cards) + cash payment support
+- Wallet refund system for card payments (admin-issued, with duplicate guard and transaction log)
 - DB-driven commission rules with admin management panel
 - Automatic captain wallet settlement on trip completion (cash vs card logic)
 - Push notifications via Firebase Admin SDK
@@ -200,6 +201,7 @@ Prisma v5 with MySQL. Schema at `prisma/schema.prisma`.
 | `Rating` | `ratings` | One per trip, user rates captain (1–5 stars) |
 | `PaymentMethod` | `payment_methods` | Saved cards per user (visa, mastercard, apple_pay) |
 | `Wallet` | `wallets` | Balance for user or captain. Credited/debited automatically on trip completion |
+| `WalletTransaction` | `wallet_transactions` | Immutable log of every credit/debit on a wallet. Created atomically with every balance change |
 | `CommissionRule` | `commission_rules` | DB-driven commission rules with type, config JSON, and per-service scoping |
 | `Promotion` | `promotions` | Marketing banners/promotions |
 | `Coupon` | `coupons` | Discount codes with usage limits and expiry |
@@ -223,6 +225,7 @@ Prisma v5 with MySQL. Schema at `prisma/schema.prisma`.
 - `SupportTicketStatus`: `open | in_progress | resolved | closed`
 - `DiscountType`: `percentage | amount`
 - `CommissionType`: `fixed_amount | percentage | tiered_fixed | tiered_percentage`
+- `TransactionType`: `credit | debit`
 
 ### Key Relationships
 ```
@@ -250,6 +253,15 @@ SupportTicket ──< TicketMessage
 | `commission` | Decimal? | Platform cut (deducted from fare) |
 | `driverEarnings` | Decimal? | What the captain receives (fare − commission) |
 | `paymentType` | String? | `'cash'` or `'card'` |
+
+### WalletTransaction Model
+| Field | Type | Description |
+|---|---|---|
+| `walletId` | String | FK to the wallet being affected |
+| `type` | TransactionType | `credit` or `debit` |
+| `amount` | Decimal | Absolute (always positive) amount of the change |
+| `reason` | String | Standard values: `trip_earnings_credit`, `trip_commission_deduction`, `refund`, or the admin-supplied reason string |
+| `tripId` | String? | Set when transaction originated from a trip settlement or refund |
 
 ### CommissionRule Model
 | Field | Type | Description |
@@ -383,10 +395,14 @@ https://tovo-b.developteam.site/api/v1  (production)
 | DELETE | `/:id` | Delete region |
 
 #### Payments — `/api/v1/payments` and `/api/v1/admin/payments`
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/` | List payments (filterable) |
-| POST | `/:id/refund` | Issue refund |
+Both paths served by the same router (`payments.routes.js`). Auth enforced per route inline.
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/payments/me` | user | Own payment history (completed trips only) |
+| GET | `/payments/:id` | user / admin | Single payment detail — users can only access their own |
+| GET | `/admin/payments` | admin | All payments, filterable by `userId`, `driverId`, `paymentType`, `dateFrom`, `dateTo` |
+| POST | `/admin/payments/:id/refund` | admin | Issue wallet refund for a card payment — guards: trip must be `completed`, type must be `card`, amount ≤ fare, no duplicate refund. Creates a `WalletTransaction` atomically |
 
 #### Support — `/api/v1/support`
 | Method | Path | Auth | Description |
@@ -396,10 +412,17 @@ https://tovo-b.developteam.site/api/v1  (production)
 | GET | `/:id` | any | Ticket detail |
 | POST | `/:id/messages` | any | Add message to ticket |
 
-#### Wallets — `/api/v1/admin/wallets`
-- `GET /` — List all wallets
-- `GET /:id` — Wallet detail
-- `POST /:id/adjust` — Credit or debit balance manually
+#### Wallets — `/api/v1/wallets` and `/api/v1/admin/wallets`
+Both paths are served by the same router (`wallets.routes.js`). Auth is enforced per route inline.
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/wallets/me` | user / captain | Own wallet balance and details |
+| GET | `/wallets/me/transactions` | user / captain | Own paginated wallet transaction history |
+| GET | `/admin/wallets` | admin | List all wallets (filterable by ownerType, search) |
+| GET | `/admin/wallets/:id` | admin | Single wallet detail |
+| GET | `/admin/wallets/:id/transactions` | admin | Transaction history for any wallet |
+| POST | `/admin/wallets/:id/adjust` | admin | Credit or debit a wallet manually (logged as WalletTransaction) |
 
 #### Notifications — `/api/v1/notifications`
 - `GET /` — List own notifications
@@ -558,12 +581,29 @@ Commission rules are stored in the `CommissionRule` table and managed by admins.
 ### Wallet Settlement on Trip Completion
 When `PATCH /trips/:id/end` is called:
 
-| Payment type | Action |
-|---|---|
-| `cash` | Passenger paid captain directly — **deduct `commission`** from captain wallet |
-| `card` | Platform received payment — **credit `driverEarnings`** to captain wallet |
+| Payment type | Action | WalletTransaction reason |
+|---|---|---|
+| `cash` | Passenger paid captain directly — **deduct `commission`** from captain wallet | `trip_commission_deduction` |
+| `card` | Platform received payment — **credit `driverEarnings`** to captain wallet | `trip_earnings_credit` |
 
-Settlement is skipped if `commission` or `driverEarnings` is null on the trip record.
+Settlement is skipped if `commission` or `driverEarnings` is null on the trip record. Every settlement is recorded atomically as a `WalletTransaction` (balance update + log entry in a single Prisma `$transaction`).
+
+### Wallet Transaction Log
+Every balance change — whether from trip settlement, admin manual adjustment, or a refund — creates an immutable `WalletTransaction` record atomically with the balance update. This provides a full audit trail. The `reason` field distinguishes the source:
+- `trip_earnings_credit` — card trip settled, captain credited
+- `trip_commission_deduction` — cash trip settled, commission deducted from captain
+- `refund` — admin issued a refund to a user's wallet
+- Any free-text string — admin manual adjustment via `POST /admin/wallets/:id/adjust`
+
+### Refund Flow
+Admin calls `POST /admin/payments/:id/refund` with `{ amount, reason }`. Guards checked in order:
+1. Trip must exist
+2. Trip status must be `completed`
+3. `paymentType` must be `card` (cash payments were not collected by the platform)
+4. `amount` must not exceed the original `fare`
+5. No existing refund `WalletTransaction` for this `tripId` (prevents duplicates — returns `409`)
+
+On success: user wallet balance incremented + `WalletTransaction { type: credit, reason: refund }` created atomically.
 
 ### Real-Time Location Tracking
 - Captain GPS is stored in `locationStore` — a Node.js `Map` in process memory
@@ -636,7 +676,14 @@ Uploaded avatar images are served as static files via:
 ```js
 app.use('/uploads', express.static('uploads'));
 ```
-Files are stored in the `uploads/` directory at the project root (managed by Multer). Avatar URLs returned by the API are always full URLs in the form `http(s)://<host>/uploads/<filename>`, constructed using `req.protocol` and `req.get('host')` in the controller — not relative paths. This applies to both `PATCH /captains/me/avatar` and `PATCH /users/me/avatar`.
+Files are stored in the `uploads/` directory at the project root. Multer uses `diskStorage` with a custom `filename` function that preserves the original file extension:
+```js
+filename: (req, file, cb) => {
+  const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+  cb(null, `avatar-${unique}${path.extname(file.originalname)}`);
+}
+```
+Example stored filename: `avatar-1741427600000-482910372.jpg`. Avatar URLs returned by the API are always full URLs in the form `http(s)://<host>/uploads/<filename>`, constructed using `req.protocol` and `req.get('host')` in the controller — not relative paths. This applies to both `PATCH /captains/me/avatar` and `PATCH /users/me/avatar`.
 
 ### Critical: Prisma Client Regeneration
 **`npx prisma generate` must be re-run on the server after every schema change.** Skipping this causes `Cannot read properties of undefined (reading 'findFirst'|'findUnique'|...)` errors at runtime because the generated client is out of sync with `schema.prisma`. Always run `prisma generate` + `prisma migrate deploy` when deploying schema changes.
@@ -649,9 +696,11 @@ Files are stored in the `uploads/` directory at the project root (managed by Mul
 ## 10. Future Extensions
 
 ### Known Pending Work
-- **Admin routes not fully mounted**: `admin.routes.js` is commented out in `app.js`. FAQs admin, complaints, and some other admin sub-routes have controller/service code written but not wired up.
+- **Admin routes not fully mounted**: `admin.routes.js` is commented out in `app.js`. Complaints and some other admin sub-routes have controller/service code written but not wired up.
 - **`regions.service.js` fix**: The `status` field must be cast to `Boolean` when creating a region — currently causes a Prisma type error when client sends `1` instead of `true`.
 - **Admin authentication**: The admin module uses `authorize('admin')` but the JWT payload role needs to match. Admin login flow should be verified end-to-end.
+- **Wallet top-up / captain withdrawal**: No endpoint exists for users to top up their wallet or captains to request a payout. Requires payment gateway integration.
+- **Prisma client regeneration required**: After the `WalletTransaction` migration (`20260308101042_add_wallet_transactions`), run `npx prisma generate` with the server stopped to sync the generated client. Skipping this causes runtime errors on `prisma.walletTransaction.*` calls.
 
 ### Designed for Scalability
 - **locationStore** can be replaced with Redis (same interface) for multi-instance deployments without code changes to the service layer
@@ -664,4 +713,4 @@ Files are stored in the `uploads/` directory at the project root (managed by Mul
 
 ## Context Summary for AI Assistants
 
-Tovo is a Node.js/Express ride-hailing and package delivery backend. Stack: Express 4, Prisma ORM v5, MySQL, Socket.io, JWT auth, Firebase push notifications, Swagger/OpenAPI docs at `/api/docs`. The project is backend-only with no frontend. Architecture is strictly layered: **Controller → Service → Repository** — only repositories access Prisma. Auth middleware sets `req.actor = { id, role }` (not `req.user`). Three roles: `user` (riders), `captain` (drivers), `admin`. All modules live under `src/modules/<name>/` with four files each: routes, controller, service, repository. Swagger docs are loaded from YAML files in `swagger/<module>/paths.yaml` and merged in `swagger/swagger.config.js`. Swagger server URLs: local = `http://localhost:3000/api/v1`, production = `https://tovo-b.developteam.site/api/v1`. Real-time captain GPS is stored in an in-memory `locationStore` (never written to DB); Socket.io rooms are `user:{id}`, `captain:{id}`, `trip:{id}`, `captains:available`. Trip lifecycle states: `searching → matched → on_way → in_progress → completed | cancelled`. Fare = `driverEarnings + commission` (what passenger pays). `driverEarnings = distanceKm × FARE_PER_KM`. Commission is **added on top** of driverEarnings via DB-driven `CommissionRule` records — NOT deducted from fare. `Service.baseFare` exists on the model but is not used in the current calculation. Captain wallet is automatically settled on `endTrip`: cash trips deduct commission, card trips credit driverEarnings. Commission rules are managed at `/api/v1/admin/commissions`; activate endpoint atomically swaps the active rule per service. Fallback when no active rule: `COMMISSION_PCT` env var as percentage. Trips store `paymentType` (`cash`/`card`), `commission`, and `driverEarnings` as explicit columns. Wallets repository is at `src/modules/wallets/wallets.repository.js` — exports `adjustCaptainWallet(captainId, delta)`. Helmet is bypassed for `/api/docs` to allow Swagger UI cross-origin requests; all other routes use `crossOriginResourcePolicy: cross-origin`. Response utility is at `src/utils/response.js` and exports `success, created, error, notFound, paginate`. Middleware paths are always `../../middleware/` from inside a module. The `regionstRoutes` variable in `app.js` is a typo duplicate of `regionsRoutes` — both point to the same file and can be ignored. Settings module is fully implemented: `settings.routes.js` (single file for public + admin routes), `settings.controller.js`, `settings.service.js`, `settings.repository.js`. Public `GET /settings` returns a flat `{ key: value }` map; admin routes are protected by inline `authenticate + authorize('admin')` and mounted at `/api/v1/admin/settings`. The `SystemSetting` model uses a UUID `id` primary key with `key` as a unique field — value is always stored as a plain string (client parses type). Avatar uploads are handled by Multer (stored in `uploads/` at project root); the `uploads/` directory is served as static files via `app.use('/uploads', express.static('uploads'))`. Avatar URLs returned by `PATCH /captains/me/avatar` and `PATCH /users/me/avatar` are always full backend URLs built with `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}` — never relative paths. Always run `npx prisma generate` + `npx prisma migrate deploy` after any schema change on the server, or Prisma model accessors will be undefined at runtime.
+Tovo is a Node.js/Express ride-hailing and package delivery backend. Stack: Express 4, Prisma ORM v5, MySQL, Socket.io, JWT auth, Firebase push notifications, Swagger/OpenAPI docs at `/api/docs`. The project is backend-only with no frontend. Architecture is strictly layered: **Controller → Service → Repository** — only repositories access Prisma. Auth middleware sets `req.actor = { id, role }` (not `req.user`). Three roles: `user` (riders), `captain` (drivers), `admin`. All modules live under `src/modules/<name>/` with four files each: routes, controller, service, repository. Swagger docs are loaded from YAML files in `swagger/<module>/paths.yaml` and merged in `swagger/swagger.config.js`. Swagger server URLs: local = `http://localhost:3000/api/v1`, production = `https://tovo-b.developteam.site/api/v1`. Real-time captain GPS is stored in an in-memory `locationStore` (never written to DB); Socket.io rooms are `user:{id}`, `captain:{id}`, `trip:{id}`, `captains:available`. Trip lifecycle states: `searching → matched → on_way → in_progress → completed | cancelled`. Fare = `driverEarnings + commission` (what passenger pays). `driverEarnings = distanceKm × FARE_PER_KM`. Commission is **added on top** of driverEarnings via DB-driven `CommissionRule` records — NOT deducted from fare. `Service.baseFare` exists on the model but is not used in the current calculation. Captain wallet is automatically settled on `endTrip`: cash trips deduct commission (`reason: trip_commission_deduction`), card trips credit driverEarnings (`reason: trip_earnings_credit`). Every wallet balance change (trip settlement, admin adjust, refund) creates a `WalletTransaction` record atomically via Prisma `$transaction`. Commission rules are managed at `/api/v1/admin/commissions`; activate endpoint atomically swaps the active rule per service. Fallback when no active rule: `COMMISSION_PCT` env var as percentage. Trips store `paymentType` (`cash`/`card`), `commission`, and `driverEarnings` as explicit columns. Wallets module is at `src/modules/wallets/` — routes mounted at both `/api/v1/wallets` (user/captain) and `/api/v1/admin/wallets` (admin); auth is enforced inline per route. `adjustCaptainWallet(captainId, delta, { reason, tripId })` in `wallets.repository.js` now accepts a reason and tripId to log the transaction. Payments module is at `src/modules/payments/` — has a `payments.repository.js`. Refund endpoint guards: trip completed, card payment only, amount ≤ fare, no duplicate (checked via `WalletTransaction` with `reason: refund` for same `tripId`). Helmet is bypassed for `/api/docs` to allow Swagger UI cross-origin requests; all other routes use `crossOriginResourcePolicy: cross-origin`. Response utility is at `src/utils/response.js` and exports `success, created, error, notFound, paginate`. Middleware paths are always `../../middleware/` from inside a module. The `regionstRoutes` variable in `app.js` is a typo duplicate of `regionsRoutes` — both point to the same file and can be ignored. Settings module is fully implemented: `settings.routes.js` (single file for public + admin routes), `settings.controller.js`, `settings.service.js`, `settings.repository.js`. Public `GET /settings` returns a flat `{ key: value }` map; admin routes are protected by inline `authenticate + authorize('admin')` and mounted at `/api/v1/admin/settings`. The `SystemSetting` model uses a UUID `id` primary key with `key` as a unique field — value is always stored as a plain string (client parses type). Avatar uploads use `multer.diskStorage` with a custom `filename` function that preserves the original file extension (`path.extname(file.originalname)`) — produces filenames like `avatar-1741427600000-482910372.jpg`. The `uploads/` directory is served as static files. Avatar URLs are always full backend URLs built with `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`. Seed file (`prisma/seed.js`) includes: 3 users, 3 captains, 1 admin, 4 services, 8 vehicle models, 3 vehicles, 6 wallets, 3 coupons (WELCOME50 active, TOVO2025 expired Jan 2026, EXPIRED10 inactive), 4 trips (completed/cancelled/on_way/searching), 12 FAQs, 12 system settings. Always run `npx prisma generate` + `npx prisma migrate deploy` after any schema change on the server, or Prisma model accessors will be undefined at runtime. The `WalletTransaction` migration name is `20260308101042_add_wallet_transactions`.

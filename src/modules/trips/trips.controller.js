@@ -75,6 +75,7 @@ const cancelTrip = async (req, res, next) => {
     const trip = await service.cancelTrip(req.params.id, req.actor.id);
     const io = req.app.get('io');
     emitTripCancelled(io, trip.id, trip.userId, trip.captainId, req.actor.id);
+    io.in(`trip:${trip.id}`).socketsLeave(`trip:${trip.id}`);
     return success(res, trip, 'Trip cancelled');
   } catch (err) {
     if (err.status) return error(res, err.message, err.status);
@@ -105,6 +106,14 @@ const acceptTrip = async (req, res, next) => {
   try {
     const trip = await service.acceptTrip(req.params.id, req.actor.id);
     const io = req.app.get('io');
+
+    // Server-side: join both parties to the trip room so location tracking
+    // starts immediately without waiting for the client to emit trip.join.
+    // This also acts as the authorization gate for captain.location_update
+    // tripId validation (socket.rooms.has check in socket.js).
+    io.in(`captain:${trip.captainId}`).socketsJoin(`trip:${trip.id}`);
+    io.in(`user:${trip.userId}`).socketsJoin(`trip:${trip.id}`);
+
     emitCaptainMatched(io, trip.userId, trip);
     io.to('captains:available').emit('trip.taken', { tripId: trip.id });
     return success(res, trip, 'Trip accepted');
@@ -143,6 +152,7 @@ const endTrip = async (req, res, next) => {
     const trip = await service.endTrip(req.params.id, req.actor.id);
     const io = req.app.get('io');
     emitTripStatusChanged(io, trip.id, trip.userId, trip.captainId, trip.status, trip);
+    io.in(`trip:${trip.id}`).socketsLeave(`trip:${trip.id}`);
     return success(res, trip, 'Trip completed');
   } catch (err) {
     if (err.status) return error(res, err.message, err.status);

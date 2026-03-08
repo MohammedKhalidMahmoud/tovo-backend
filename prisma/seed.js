@@ -12,9 +12,11 @@ async function main() {
   // ─────────────────────────────────────────────
   await prisma.rating.deleteMany();
   await prisma.tripDecline.deleteMany();
+  await prisma.walletTransaction.deleteMany();  // before trip + wallet
   await prisma.trip.deleteMany();
   await prisma.vehicle.deleteMany();
   await prisma.vehicleModel.deleteMany();
+  await prisma.commissionRule.deleteMany();
   await prisma.service.deleteMany();
   await prisma.ticketMessage.deleteMany();
   await prisma.supportTicket.deleteMany();
@@ -25,17 +27,17 @@ async function main() {
   await prisma.otp.deleteMany();
   await prisma.refreshToken.deleteMany();
   await prisma.insuranceCard.deleteMany();
-  await prisma.vehicle.deleteMany();
   await prisma.wallet.deleteMany();
   await prisma.coupon.deleteMany();
   await prisma.promotion.deleteMany();
+  await prisma.faq.deleteMany();
+  await prisma.region.deleteMany();
   await prisma.captain.deleteMany();
   await prisma.adminUser.deleteMany();
   await prisma.systemSetting.deleteMany();
 
   // clean up any user-related tables that weren't covered above
   await prisma.wishlistItem.deleteMany();
-  // sos alerts use SET NULL on delete, so not strictly required, but we can clear them as well
   await prisma.sosAlert.deleteMany();
 
   await prisma.user.deleteMany();
@@ -222,9 +224,21 @@ async function main() {
   // insert some default system configuration values
   await prisma.systemSetting.createMany({
     data: [
-      { key: 'maintenance_mode', value: JSON.stringify(false) },
-      { key: 'default_currency', value: JSON.stringify('EGP') },
-      { key: 'support_email', value: JSON.stringify('support@tovo.app') },
+      // App behaviour
+      { key: 'maintenance_mode',        value: 'false' },
+      { key: 'default_currency',        value: 'EGP' },
+      { key: 'fare_per_km',             value: '5' },
+      { key: 'commission_pct',          value: '15' },
+      // Contact & branding
+      { key: 'support_email',           value: 'support@tovo.app' },
+      { key: 'support_phone',           value: '+20222345678' },
+      { key: 'app_name',                value: 'Tovo' },
+      { key: 'app_version_android',     value: '1.2.0' },
+      { key: 'app_version_ios',         value: '1.2.0' },
+      // Policies
+      { key: 'cancellation_window_sec', value: '60' },
+      { key: 'max_search_radius_km',    value: '10' },
+      { key: 'min_trip_distance_km',    value: '0.5' },
     ],
   });
   console.log('✅ System settings seeded');
@@ -642,6 +656,87 @@ console.log('✅ Trips created');
     }),
   ]);
   console.log('✅ OTPs created');
+
+  // ─────────────────────────────────────────────
+  //  FAQs
+  // ─────────────────────────────────────────────
+  await prisma.faq.createMany({
+    data: [
+      {
+        question: 'How do I book a ride?',
+        answer:   'Open the Tovo app, enter your pickup and drop-off locations, choose a service type, and tap "Request Ride". Nearby captains will be notified instantly.',
+        order:    1,
+        isActive: true,
+      },
+      {
+        question: 'How is my fare calculated?',
+        answer:   'Your fare is based on the distance of your trip multiplied by the fare per kilometre, plus a platform commission. You can always see the estimated fare before confirming your booking.',
+        order:    2,
+        isActive: true,
+      },
+      {
+        question: 'What payment methods are accepted?',
+        answer:   'Tovo accepts cash, Visa, Mastercard, and Apple Pay. You can manage your saved cards from the Payment Methods section in your profile.',
+        order:    3,
+        isActive: true,
+      },
+      {
+        question: 'How do I cancel a ride?',
+        answer:   'You can cancel a ride from the trip screen before the captain arrives. Note that cancellations after the captain is on the way may incur a small fee.',
+        order:    4,
+        isActive: true,
+      },
+      {
+        question: 'How does the wallet work?',
+        answer:   'Your Tovo wallet holds your balance for in-app use. Refunds for card payments are credited to your wallet. You can view your balance and full transaction history in the Wallet section.',
+        order:    5,
+        isActive: true,
+      },
+      {
+        question: 'How do I rate my captain?',
+        answer:   'After your trip is completed, you will be prompted to rate your captain from 1 to 5 stars. You can also leave an optional comment. Ratings help us maintain service quality.',
+        order:    6,
+        isActive: true,
+      },
+      {
+        question: 'What should I do in an emergency?',
+        answer:   'Use the SOS button inside the trip screen to send an emergency alert with your location to our safety team. We will contact you immediately.',
+        order:    7,
+        isActive: true,
+      },
+      {
+        question: 'How do I apply a coupon code?',
+        answer:   'At the booking confirmation screen, tap "Add Coupon" and enter your code. Valid codes will automatically apply the discount to your fare.',
+        order:    8,
+        isActive: true,
+      },
+      {
+        question: 'How do I become a captain?',
+        answer:   'Download Tovo, register with the captain role, upload your driving licence, and wait for admin verification. Once approved, register your vehicle and go online to start accepting trips.',
+        order:    9,
+        isActive: true,
+      },
+      {
+        question: 'Is my payment information secure?',
+        answer:   'Yes. Tovo does not store your full card number. All payment data is tokenised and handled securely. We never share your financial details with third parties.',
+        order:    10,
+        isActive: true,
+      },
+      {
+        question: 'What areas does Tovo operate in?',
+        answer:   'Tovo currently operates in defined service regions. Your pickup location must be within an active region. Check the app map to see coverage in your area.',
+        order:    11,
+        isActive: true,
+      },
+      {
+        question: 'How do I contact support?',
+        answer:   'You can reach our support team by opening a ticket inside the app under Help & Support, or by emailing support@tovo.app. We aim to respond within 24 hours.',
+        order:    12,
+        isActive: true,
+      },
+    ],
+  });
+  console.log('✅ FAQs seeded');
 
   console.log('\n🎉 Seeding complete!\n');
   console.log('──────────────────────────────────────────');

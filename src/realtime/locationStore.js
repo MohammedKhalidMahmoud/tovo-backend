@@ -10,7 +10,7 @@
  */
 
 const store = new Map();
-const STALE_MS = 30_000; // entries older than 30 s are considered stale
+const STALE_MS = 120_000; // entries older than 2 min are considered stale
 
 const set = (captainId, { lat, lng, heading = null, serviceId = null }) => {
   // Preserve existing serviceId across location updates if not re-supplied
@@ -74,4 +74,7 @@ const cleanup = () => {
 /** Returns the full store contents — useful for debugging. */
 const getAll = () => Object.fromEntries(store);
 
-module.exports = { set, remove, getNearby, cleanup, getAll };
+/** Returns the location entry for a single captain, or undefined if not present. */
+const get = (captainId) => store.get(captainId);
+
+module.exports = { set, get, remove, getNearby, cleanup, getAll };

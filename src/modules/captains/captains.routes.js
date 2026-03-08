@@ -1,13 +1,21 @@
 const router = require('express').Router();
 const { body, param, query } = require('express-validator');
 const multer = require('multer');
+const path   = require('path');
 const captainController      = require('./captains.controller');
 // const captainController = require('./captains.admin.captainController');
 const tripsController = require('../trips/trips.controller');
 const validate = require('../../middleware/validate.middleware');
 const { authenticate, authorize } = require('../../middleware/auth.middleware');
 
-const upload      = multer({ dest: 'uploads/' });
+const storage = multer.diskStorage({
+  destination: 'uploads/',
+  filename: (req, file, cb) => {
+    const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+    cb(null, `avatar-${unique}${path.extname(file.originalname)}`);
+  },
+});
+const upload = multer({ storage });
 const captainOnly = [authenticate, authorize('captain')];
 
 // ── Profile ───────────────────────────────────────────────────────────────────

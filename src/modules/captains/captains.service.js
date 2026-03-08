@@ -17,8 +17,11 @@ exports.updateProfile = async (captainId, data) => {
   return safe;
 };
 
-exports.updateAvatar = (captainId, avatarUrl) =>
-  repo.updateCaptain(captainId, { avatarUrl });
+exports.updateAvatar = async (captainId, avatarUrl) => {
+  const existing = await repo.findById(captainId);
+  await repo.updateCaptain(captainId, { avatarUrl });
+  return existing?.avatarUrl ?? null;
+};
 
 exports.startDuty = (captainId) =>
   repo.updateCaptain(captainId, { isOnline: true });

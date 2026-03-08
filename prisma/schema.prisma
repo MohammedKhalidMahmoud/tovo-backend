@@ -105,7 +105,7 @@ model Captain {
   totalTrips      Int       @default(0)
   language        String    @default("en")
   notificationsEnabled Boolean @default(true)
-  serviceId       String?
+  serviceId       String
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
@@ -134,7 +134,7 @@ model VehicleModel {
   brand       String             // e.g. "Toyota", "Honda"
   description String?
   imageUrl    String?
-  serviceId   String?
+  serviceId   String
   isActive    Boolean   @default(true)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -562,6 +562,7 @@ model Service {
   id        String   @id @default(uuid())
   name      String   @unique
   baseFare  Decimal  @default(0) @db.Decimal(10, 2)
+  imageUrl  String?  @db.Text
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

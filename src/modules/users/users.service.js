@@ -18,8 +18,11 @@ const updateProfile = async (userId, data) => {
   return safe;
 };
 
-const updateAvatar = (userId, avatarUrl) =>
-  repo.updateUser(userId, { avatarUrl });
+const updateAvatar = async (userId, avatarUrl) => {
+  const existing = await repo.findById(userId);
+  await repo.updateUser(userId, { avatarUrl });
+  return existing?.avatarUrl ?? null;
+};
 
 const getWallet = async (userId) => {
   const wallet = await repo.getWallet(userId);

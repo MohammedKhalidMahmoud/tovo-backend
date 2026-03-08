@@ -73,18 +73,49 @@ const setupSocket = (io) => {
       locationStore.set(id, { lat: latitude, lng: longitude, heading, serviceId: socket.captainServiceId });
 
       if (tripId) {
+        // Guard: only forward if this socket is actually in the trip room.
+        // The server joins the captain to the room on trip accept, so this
+        // check acts as zero-DB authorization — a spoofed tripId is silently ignored.
+        if (!socket.rooms.has(`trip:${tripId}`)) return;
         logger.info(`Forwarding location to trip room: trip:${tripId}`);
         io.to(`trip:${tripId}`).emit('trip.captain_location', { latitude, longitude, heading, captainId: id });
       }
     });
 
     /**
-     * User joins a trip room to receive live updates.
+     * User (or captain on reconnect) joins a trip room to receive live updates.
      * Payload: { tripId }
+     * On join we immediately push the captain's last known position from the
+     * in-memory store so the map isn't blank while waiting for the next update.
      */
-    socket.on('trip.join', ({ tripId }) => {
+    socket.on('trip.join', async ({ tripId }) => {
       socket.join(`trip:${tripId}`);
       logger.info(`${role}:${id} joined trip room: trip:${tripId}`);
+
+      // Push last known captain position immediately on join (reconnect-safe)
+      try {
+        const prisma = require('../config/prisma');
+        const trip = await prisma.trip.findUnique({
+          where: { id: tripId },
+          select: { captainId: true, status: true },
+        });
+        if (
+          trip?.captainId &&
+          ['matched', 'on_way', 'in_progress'].includes(trip.status)
+        ) {
+          const loc = locationStore.get(trip.captainId);
+          if (loc) {
+            socket.emit('trip.captain_location', {
+              latitude: loc.lat,
+              longitude: loc.lng,
+              heading: loc.heading,
+              captainId: trip.captainId,
+            });
+          }
+        }
+      } catch (e) {
+        logger.error('Failed to push last known location on trip.join', e);
+      }
     });
 
     /**
