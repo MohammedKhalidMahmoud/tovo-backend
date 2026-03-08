@@ -28,7 +28,7 @@ const updateAvatar = async (req, res, next) => {
   try {
     if (!req.file) return error(res, 'No file uploaded', 400);
     // In production: upload to S3/Cloudinary and get URL
-    const avatarUrl = `/uploads/${req.file.filename}`;
+    const avatarUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
     await service.updateAvatar(req.actor.id, avatarUrl);
     return success(res, { avatarUrl }, 'Avatar updated');
   } catch (err) {

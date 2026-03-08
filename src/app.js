@@ -35,6 +35,7 @@ const dashboardRoutes     = require('./modules/dashboard/dashboard.routes');
 const regionsRoutes     = require('./modules/regions/regions.routes');
 const paymentsRoutes      = require('./modules/payments/payments.routes.js');
 const commissionsRoutes   = require('./modules/commissions/commissions.routes');
+const settingsRoutes      = require('./modules/settings/settings.routes');
 // ── App Setup ─────────────────────────────────────────────────────────────────
 const app = express();
 const server = http.createServer(app);
@@ -55,6 +56,7 @@ app.use(cors({ origin: '*' }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan('combined', { stream: { write: (msg) => logger.info(msg.trim()) } }));
+app.use('/uploads', express.static('uploads'));
 
 // Rate limiting - configurable via environment variables
 const RATE_LIMIT_DISABLED = process.env.RATE_LIMIT_DISABLED === 'true';
@@ -110,6 +112,8 @@ app.use(`${API}/services`, servicesRoutes);
 app.use(`${API}/admin/payments`, paymentsRoutes);
 app.use(`${API}/payments`, paymentsRoutes);
 app.use(`${API}/admin/commissions`, commissionsRoutes);
+app.use(`${API}/settings`,         settingsRoutes);
+app.use(`${API}/admin/settings`,   settingsRoutes);
 
 // ── Health Check ──────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
