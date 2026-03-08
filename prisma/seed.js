@@ -222,9 +222,9 @@ async function main() {
   // insert some default system configuration values
   await prisma.systemSetting.createMany({
     data: [
-      { key: 'maintenance_mode', value: JSON.stringify(false), description: 'Toggle system-wide maintenance mode' },
-      { key: 'default_currency', value: JSON.stringify('EGP'), description: 'Currency used throughout the platform' },
-      { key: 'support_email', value: JSON.stringify('support@tovo.app'), description: 'Email address for user support' },
+      { key: 'maintenance_mode', value: JSON.stringify(false) },
+      { key: 'default_currency', value: JSON.stringify('EGP') },
+      { key: 'support_email', value: JSON.stringify('support@tovo.app') },
     ],
   });
   console.log('✅ System settings seeded');
