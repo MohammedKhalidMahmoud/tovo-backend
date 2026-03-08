@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(node -e \":*)",
-      "Bash(npx prisma migrate dev --name commission_rules_and_trip_fields)"
+      "Bash(npx prisma migrate dev --name commission_rules_and_trip_fields)",
+      "Bash(npx prisma migrate dev --name add_wallet_transactions)"
     ]
   }
 }

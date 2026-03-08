@@ -1,3 +1,22 @@
+WalletTransaction:
+  type: object
+  properties:
+    id:        { type: string, format: uuid }
+    walletId:  { type: string, format: uuid }
+    type:
+      type: string
+      enum: [credit, debit]
+    amount:    { type: number, example: 50.00 }
+    reason:
+      type: string
+      example: trip_earnings_credit
+      description: >
+        Standard values: `trip_earnings_credit` (card trip settlement),
+        `trip_commission_deduction` (cash trip settlement),
+        `admin_adjustment` (manual admin change).
+    tripId:    { type: string, format: uuid, nullable: true }
+    createdAt: { type: string, format: date-time }
+
 Wallet:
   type: object
   properties:

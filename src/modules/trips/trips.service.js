@@ -194,10 +194,16 @@ const endTrip = async (tripId, captainId) => {
   if (trip.commission !== null && trip.driverEarnings !== null) {
     if (trip.paymentType === 'cash') {
       // Captain collected full cash fare — deduct commission from wallet
-      await walletsRepo.adjustCaptainWallet(captainId, -Number(trip.commission));
+      await walletsRepo.adjustCaptainWallet(captainId, -Number(trip.commission), {
+        reason: 'trip_commission_deduction',
+        tripId,
+      });
     } else {
       // Platform collected payment — credit captain with driver earnings
-      await walletsRepo.adjustCaptainWallet(captainId, +Number(trip.driverEarnings));
+      await walletsRepo.adjustCaptainWallet(captainId, +Number(trip.driverEarnings), {
+        reason: 'trip_earnings_credit',
+        tripId,
+      });
     }
   }
 

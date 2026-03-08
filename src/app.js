@@ -36,6 +36,7 @@ const regionsRoutes     = require('./modules/regions/regions.routes');
 const paymentsRoutes      = require('./modules/payments/payments.routes.js');
 const commissionsRoutes   = require('./modules/commissions/commissions.routes');
 const settingsRoutes      = require('./modules/settings/settings.routes');
+const walletsRoutes       = require('./modules/wallets/wallets.routes');
 // ── App Setup ─────────────────────────────────────────────────────────────────
 const app = express();
 const server = http.createServer(app);
@@ -114,6 +115,8 @@ app.use(`${API}/payments`, paymentsRoutes);
 app.use(`${API}/admin/commissions`, commissionsRoutes);
 app.use(`${API}/settings`,         settingsRoutes);
 app.use(`${API}/admin/settings`,   settingsRoutes);
+app.use(`${API}/wallets`,          walletsRoutes);
+app.use(`${API}/admin/wallets`,    walletsRoutes);
 
 // ── Health Check ──────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));

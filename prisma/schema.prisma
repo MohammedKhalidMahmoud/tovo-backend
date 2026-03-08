@@ -33,6 +33,11 @@ enum CommissionType {
   tiered_percentage
 }
 
+enum TransactionType {
+  credit
+  debit
+}
+
 enum PaymentBrand {
   visa
   mastercard
@@ -167,10 +172,26 @@ model Wallet {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  user        User?     @relation(fields: [userId], references: [id])
-  captain     Captain?  @relation(fields: [captainId], references: [id])
+  user         User?               @relation(fields: [userId], references: [id])
+  captain      Captain?            @relation(fields: [captainId], references: [id])
+  transactions WalletTransaction[]
 
   @@map("wallets")
+}
+
+model WalletTransaction {
+  id        String          @id @default(uuid())
+  walletId  String
+  type      TransactionType
+  amount    Decimal         @db.Decimal(10, 2)
+  reason    String
+  tripId    String?
+  createdAt DateTime        @default(now())
+
+  wallet    Wallet          @relation(fields: [walletId], references: [id])
+  trip      Trip?           @relation(fields: [tripId], references: [id])
+
+  @@map("wallet_transactions")
 }
 
 // ─────────────────────────────────────────────
@@ -208,8 +229,9 @@ model Trip {
   captain         Captain?    @relation("CaptainTrips", fields: [captainId], references: [id])
   service         Service?    @relation(fields: [serviceId], references: [id])
   paymentMethod   PaymentMethod? @relation(fields: [paymentMethodId], references: [id])
-  rating          Rating?
-  declines        TripDecline[]
+  rating              Rating?
+  declines            TripDecline[]
+  walletTransactions  WalletTransaction[]
 
   @@map("trips")
 }

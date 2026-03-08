@@ -1,3 +1,50 @@
-# Payment method card schema is defined in users/schemas.yaml as PaymentMethod
-# since it is owned and managed by users.
-# This module covers admin-level payment views and refund operations only.
+Payment:
+  type: object
+  description: A completed trip record representing a payment transaction.
+  properties:
+    id:             { type: string, format: uuid }
+    fare:           { type: number, example: 72.50 }
+    commission:     { type: number, example: 5.00, nullable: true }
+    driverEarnings: { type: number, example: 67.50, nullable: true }
+    paymentType:    { type: string, enum: [cash, card], nullable: true }
+    currency:       { type: string, example: EGP }
+    distanceKm:     { type: number, example: 12.5, nullable: true }
+    status:         { type: string, example: completed }
+    createdAt:      { type: string, format: date-time }
+    endedAt:        { type: string, format: date-time, nullable: true }
+    user:
+      nullable: true
+      type: object
+      properties:
+        id:    { type: string, format: uuid }
+        name:  { type: string }
+        email: { type: string, format: email }
+        phone: { type: string }
+    captain:
+      nullable: true
+      type: object
+      properties:
+        id:    { type: string, format: uuid }
+        name:  { type: string }
+        email: { type: string, format: email }
+        phone: { type: string }
+    service:
+      nullable: true
+      type: object
+      properties:
+        id:   { type: string, format: uuid }
+        name: { type: string }
+    paymentMethod:
+      nullable: true
+      type: object
+      properties:
+        brand:        { type: string, enum: [visa, mastercard, apple_pay] }
+        lastFour:     { type: string, example: "4242" }
+        maskedNumber: { type: string, example: "**** **** **** 4242" }
+
+RefundResponse:
+  type: object
+  properties:
+    tripId:         { type: string, format: uuid }
+    refundedAmount: { type: number, example: 50.00 }
+    reason:         { type: string, example: Customer request }

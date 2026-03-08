@@ -1,13 +1,21 @@
 // ════════════════════════════════════════════════════════════════════════════════
-// Wallets - Admin Service
-// Path: src/modules/admin/wallets/wallets.service.js
+// Wallets - Service
+// Path: src/modules/wallets/wallets.service.js
 // ════════════════════════════════════════════════════════════════════════════════
 
 const prisma = require('../../config/prisma');
+const { findWalletByOwner, listTransactions, countTransactions, createTransaction } = require('./wallets.repository');
 
 const ownerInclude = {
   user:    { select: { name: true, email: true, phone: true } },
   captain: { select: { name: true, email: true, phone: true } },
+};
+
+exports.getMyWallet = async (actorId, role) => {
+  const query = role === 'captain' ? { captainId: actorId } : { userId: actorId };
+  const wallet = await findWalletByOwner(query);
+  if (!wallet) throw Object.assign(new Error('Wallet not found'), { statusCode: 404 });
+  return wallet;
 };
 
 exports.listWallets = async (filters) => {
@@ -61,9 +69,41 @@ exports.adjustWallet = async (id, { type, amount, reason }) => {
   if (type === 'debit' && parseFloat(wallet.balance) < amount)
     throw Object.assign(new Error('Insufficient wallet balance'), { statusCode: 422 });
 
-  return prisma.wallet.update({
-    where: { id },
-    data:  { balance: type === 'credit' ? { increment: amount } : { decrement: amount } },
-    include: ownerInclude,
-  });
+  const [updated] = await prisma.$transaction([
+    prisma.wallet.update({
+      where: { id },
+      data:  { balance: type === 'credit' ? { increment: amount } : { decrement: amount } },
+      include: ownerInclude,
+    }),
+    prisma.walletTransaction.create({
+      data: { walletId: id, type, amount, reason: reason.trim() },
+    }),
+  ]);
+
+  return updated;
+};
+
+exports.listMyTransactions = async (actorId, role, { page = 1, limit = 20 } = {}) => {
+  const query = role === 'captain' ? { captainId: actorId } : { userId: actorId };
+  const wallet = await findWalletByOwner(query);
+  if (!wallet) throw Object.assign(new Error('Wallet not found'), { statusCode: 404 });
+
+  const [total, data] = await Promise.all([
+    countTransactions(wallet.id),
+    listTransactions(wallet.id, { page, limit }),
+  ]);
+
+  return { data, total, pages: Math.ceil(total / limit) };
+};
+
+exports.listWalletTransactions = async (walletId, { page = 1, limit = 20 } = {}) => {
+  const wallet = await prisma.wallet.findUnique({ where: { id: walletId } });
+  if (!wallet) throw Object.assign(new Error('Wallet not found'), { statusCode: 404 });
+
+  const [total, data] = await Promise.all([
+    countTransactions(walletId),
+    listTransactions(walletId, { page, limit }),
+  ]);
+
+  return { data, total, pages: Math.ceil(total / limit) };
 };

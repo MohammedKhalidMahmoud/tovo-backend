@@ -303,8 +303,8 @@ https://tovo-b.developteam.site/api/v1  (production)
 |--------|------|------|-------------|
 | GET | `/me` | captain | Own profile |
 | PATCH | `/me` | captain | Update profile |
-| POST | `/duty/start` | captain | Go online (sets `isOnline = true`) |
-| POST | `/duty/end` | captain | Go offline |
+| POST | `/me/duty/start` | captain | Go online (sets `isOnline = true`) |
+| POST | `/me/duty/end` | captain | Go offline |
 | GET | `/me/vehicle` | captain | Own vehicle |
 | POST | `/me/vehicle` | captain | Register vehicle |
 
@@ -522,13 +522,14 @@ This is a **backend-only repository**. No frontend code exists in this project.
 ### Fare Calculation
 ```
 distanceKm     = haversine(pickupLat, pickupLng, dropoffLat, dropoffLng)
-baseFare       = Service.baseFare
-fare           = baseFare + (distanceKm × FARE_PER_KM)   ← what passenger pays
-commission     = calculateCommission(fare, serviceId)      ← platform cut
-driverEarnings = fare − commission                         ← what captain earns
+driverEarnings = distanceKm × FARE_PER_KM                 ← what captain earns
+commission     = calculateCommission(driverEarnings, serviceId)  ← platform cut (added on top)
+fare           = driverEarnings + commission               ← what passenger pays
 ```
 - `FARE_PER_KM` defaults to `5.0` (override via env var)
-- Commission is now DB-driven (see Commission System below)
+- `Service.baseFare` exists on the model but is **not used** in the current fare calculation
+- Commission is **added on top** of driverEarnings to produce the fare — it is NOT deducted from fare
+- Commission is DB-driven (see Commission System below)
 
 ### Commission System
 Commission rules are stored in the `CommissionRule` table and managed by admins.
@@ -630,6 +631,16 @@ npm run prisma:studio
 - Local: `http://localhost:<PORT>/api/docs`
 - Production: `https://tovo-b.developteam.site/api/docs`
 
+### Static File Serving
+Uploaded avatar images are served as static files via:
+```js
+app.use('/uploads', express.static('uploads'));
+```
+Files are stored in the `uploads/` directory at the project root (managed by Multer). Avatar URLs returned by the API are always full URLs in the form `http(s)://<host>/uploads/<filename>`, constructed using `req.protocol` and `req.get('host')` in the controller — not relative paths. This applies to both `PATCH /captains/me/avatar` and `PATCH /users/me/avatar`.
+
+### Critical: Prisma Client Regeneration
+**`npx prisma generate` must be re-run on the server after every schema change.** Skipping this causes `Cannot read properties of undefined (reading 'findFirst'|'findUnique'|...)` errors at runtime because the generated client is out of sync with `schema.prisma`. Always run `prisma generate` + `prisma migrate deploy` when deploying schema changes.
+
 ### Debug Endpoint
 `GET /debug/locations` — Returns current in-memory captain location store (remove in production).
 
@@ -653,4 +664,4 @@ npm run prisma:studio
 
 ## Context Summary for AI Assistants
 
-Tovo is a Node.js/Express ride-hailing and package delivery backend. Stack: Express 4, Prisma ORM v5, MySQL, Socket.io, JWT auth, Firebase push notifications, Swagger/OpenAPI docs at `/api/docs`. The project is backend-only with no frontend. Architecture is strictly layered: **Controller → Service → Repository** — only repositories access Prisma. Auth middleware sets `req.actor = { id, role }` (not `req.user`). Three roles: `user` (riders), `captain` (drivers), `admin`. All modules live under `src/modules/<name>/` with four files each: routes, controller, service, repository. Swagger docs are loaded from YAML files in `swagger/<module>/paths.yaml` and merged in `swagger/swagger.config.js`. Swagger server URLs: local = `http://localhost:3000/api/v1`, production = `https://tovo-b.developteam.site/api/v1`. Real-time captain GPS is stored in an in-memory `locationStore` (never written to DB); Socket.io rooms are `user:{id}`, `captain:{id}`, `trip:{id}`, `captains:available`. Trip lifecycle states: `searching → matched → on_way → in_progress → completed | cancelled`. Fare = `baseFare + distanceKm × FARE_PER_KM` (what passenger pays). Commission is deducted from fare via DB-driven `CommissionRule` records — NOT added on top. `driverEarnings = fare − commission`. Captain wallet is automatically settled on `endTrip`: cash trips deduct commission, card trips credit driverEarnings. Commission rules are managed at `/api/v1/admin/commissions`; activate endpoint atomically swaps the active rule per service. Fallback when no active rule: `COMMISSION_PCT` env var as percentage. Trips store `paymentType` (`cash`/`card`), `commission`, and `driverEarnings` as explicit columns. Wallets repository is at `src/modules/wallets/wallets.repository.js` — exports `adjustCaptainWallet(captainId, delta)`. Helmet is bypassed for `/api/docs` to allow Swagger UI cross-origin requests; all other routes use `crossOriginResourcePolicy: cross-origin`. Response utility is at `src/utils/response.js` and exports `success, created, error, notFound, paginate`. Middleware paths are always `../../middleware/` from inside a module. The `regionstRoutes` variable in `app.js` is a typo duplicate of `regionsRoutes` — both point to the same file and can be ignored. Settings module is fully implemented: `settings.routes.js` (single file for public + admin routes), `settings.controller.js`, `settings.service.js`, `settings.repository.js`. Public `GET /settings` returns a flat `{ key: value }` map; admin routes are protected by inline `authenticate + authorize('admin')` and mounted at `/api/v1/admin/settings`. The `SystemSetting` model uses a UUID `id` primary key with `key` as a unique field — value is always stored as a plain string (client parses type).
+Tovo is a Node.js/Express ride-hailing and package delivery backend. Stack: Express 4, Prisma ORM v5, MySQL, Socket.io, JWT auth, Firebase push notifications, Swagger/OpenAPI docs at `/api/docs`. The project is backend-only with no frontend. Architecture is strictly layered: **Controller → Service → Repository** — only repositories access Prisma. Auth middleware sets `req.actor = { id, role }` (not `req.user`). Three roles: `user` (riders), `captain` (drivers), `admin`. All modules live under `src/modules/<name>/` with four files each: routes, controller, service, repository. Swagger docs are loaded from YAML files in `swagger/<module>/paths.yaml` and merged in `swagger/swagger.config.js`. Swagger server URLs: local = `http://localhost:3000/api/v1`, production = `https://tovo-b.developteam.site/api/v1`. Real-time captain GPS is stored in an in-memory `locationStore` (never written to DB); Socket.io rooms are `user:{id}`, `captain:{id}`, `trip:{id}`, `captains:available`. Trip lifecycle states: `searching → matched → on_way → in_progress → completed | cancelled`. Fare = `driverEarnings + commission` (what passenger pays). `driverEarnings = distanceKm × FARE_PER_KM`. Commission is **added on top** of driverEarnings via DB-driven `CommissionRule` records — NOT deducted from fare. `Service.baseFare` exists on the model but is not used in the current calculation. Captain wallet is automatically settled on `endTrip`: cash trips deduct commission, card trips credit driverEarnings. Commission rules are managed at `/api/v1/admin/commissions`; activate endpoint atomically swaps the active rule per service. Fallback when no active rule: `COMMISSION_PCT` env var as percentage. Trips store `paymentType` (`cash`/`card`), `commission`, and `driverEarnings` as explicit columns. Wallets repository is at `src/modules/wallets/wallets.repository.js` — exports `adjustCaptainWallet(captainId, delta)`. Helmet is bypassed for `/api/docs` to allow Swagger UI cross-origin requests; all other routes use `crossOriginResourcePolicy: cross-origin`. Response utility is at `src/utils/response.js` and exports `success, created, error, notFound, paginate`. Middleware paths are always `../../middleware/` from inside a module. The `regionstRoutes` variable in `app.js` is a typo duplicate of `regionsRoutes` — both point to the same file and can be ignored. Settings module is fully implemented: `settings.routes.js` (single file for public + admin routes), `settings.controller.js`, `settings.service.js`, `settings.repository.js`. Public `GET /settings` returns a flat `{ key: value }` map; admin routes are protected by inline `authenticate + authorize('admin')` and mounted at `/api/v1/admin/settings`. The `SystemSetting` model uses a UUID `id` primary key with `key` as a unique field — value is always stored as a plain string (client parses type). Avatar uploads are handled by Multer (stored in `uploads/` at project root); the `uploads/` directory is served as static files via `app.use('/uploads', express.static('uploads'))`. Avatar URLs returned by `PATCH /captains/me/avatar` and `PATCH /users/me/avatar` are always full backend URLs built with `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}` — never relative paths. Always run `npx prisma generate` + `npx prisma migrate deploy` after any schema change on the server, or Prisma model accessors will be undefined at runtime.

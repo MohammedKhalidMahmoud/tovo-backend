@@ -1,10 +1,53 @@
 // ════════════════════════════════════════════════════════════════════════════════
-// Wallets - Admin Controller
-// Path: src/modules/admin/wallets/wallets.controller.js
+// Wallets - Controller
+// Path: src/modules/wallets/wallets.controller.js
 // ════════════════════════════════════════════════════════════════════════════════
 
 const service = require('./wallets.service');
 const { success, error } = require('../../utils/response');
+
+/**
+ * GET /api/v1/wallets/me
+ * Get the authenticated user's or captain's own wallet
+ */
+exports.getMyWallet = async (req, res, next) => {
+  try {
+    const wallet = await service.getMyWallet(req.actor.id, req.actor.role);
+    return success(res, wallet, 'Wallet retrieved successfully');
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * GET /api/v1/wallets/me/transactions
+ * Get the authenticated user's or captain's own wallet transaction history
+ */
+exports.getMyTransactions = async (req, res, next) => {
+  try {
+    const page  = parseInt(req.query.page)  || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const result = await service.listMyTransactions(req.actor.id, req.actor.role, { page, limit });
+    return success(res, result.data, 'Transactions retrieved successfully');
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * GET /api/v1/admin/wallets/:id/transactions
+ * Admin: get transaction history for any wallet by ID
+ */
+exports.getWalletTransactions = async (req, res, next) => {
+  try {
+    const page  = parseInt(req.query.page)  || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const result = await service.listWalletTransactions(req.params.id, { page, limit });
+    return success(res, result.data, 'Transactions retrieved successfully');
+  } catch (err) {
+    next(err);
+  }
+};
 
 /**
  * GET /api/v1/admin/wallets
