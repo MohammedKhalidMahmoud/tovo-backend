@@ -15,7 +15,7 @@ const storage = multer.diskStorage({
   },
 });
 const upload = multer({ storage });
-const userOnly  = [authenticate, authorize('user')];
+const userOnly  = [authenticate, authorize('customer')];
 const adminOnly = [authenticate, authorize('admin')];
 
 // ════════════════════════════════════════════════════════════════════════════

@@ -26,9 +26,7 @@ const markAllRead = async (req, res, next) => {
 const registerDeviceToken = async (req, res, next) => {
   try {
     const { token, platform } = req.body;
-    const userId = req.actor.role === 'user' ? req.actor.id : null;
-    const captainId = req.actor.role === 'captain' ? req.actor.id : null;
-    await service.registerDeviceToken(userId, captainId, token, platform);
+    await service.registerDeviceToken(req.actor.id, token, platform);
     return success(res, {}, 'Device token registered');
   } catch (err) { next(err); }
 };
@@ -43,12 +41,12 @@ const sendToUser = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-const sendToCaptain = async (req, res, next) => {
+const sendToDriver = async (req, res, next) => {
   try {
-    const { captain_id, title, body, data } = req.body;
-    const result = await service.sendToCaptain(captain_id, title, body, data);
+    const { driver_id, title, body, data } = req.body;
+    const result = await service.sendToDriver(driver_id, title, body, data);
     return success(res, result, 'Notification sent');
   } catch (err) { next(err); }
 };
 
-module.exports = { getNotifications, markRead, markAllRead, registerDeviceToken, sendToUser, sendToCaptain };
+module.exports = { getNotifications, markRead, markAllRead, registerDeviceToken, sendToUser, sendToDriver };

@@ -1,12 +1,11 @@
 const repository = require('./complaints.repository');
 
 exports.listComplaints = async (query) => {
-  const { page = 1, limit = 20, status, userId, captainId } = query;
+  const { page = 1, limit = 20, status, userId } = query;
   const filters = {};
 
   if (status) filters.status = status;
   if (userId) filters.userId = userId;
-  if (captainId) filters.captainId = captainId;
 
   return repository.findAll(filters, { page: parseInt(page), limit: parseInt(limit) });
 };

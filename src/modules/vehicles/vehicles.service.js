@@ -1,7 +1,7 @@
 const prisma = require('../../config/prisma');
 
 const vehicleInclude = {
-  captain:      { select: { id: true, name: true, email: true, phone: true } },
+  user:         { select: { id: true, name: true, email: true, phone: true } },
   vehicleModel: true,
 };
 
@@ -10,8 +10,8 @@ exports.listVehicles = async ({ page = 1, limit = 20, vehicleModelId, search } =
   if (vehicleModelId) where.vehicleModelId = vehicleModelId;
   if (search) {
     where.OR = [
-      { vin:     { contains: search, mode: 'insensitive' } },
-      { captain: { OR: [
+      { vin:  { contains: search, mode: 'insensitive' } },
+      { user: { OR: [
         { name:  { contains: search, mode: 'insensitive' } },
         { email: { contains: search, mode: 'insensitive' } },
       ] } },
@@ -32,16 +32,16 @@ exports.getVehicle = async (id) => {
   return vehicle;
 };
 
-exports.createVehicle = async ({ captainId, vehicleModelId, vin }) => {
-  const captainExists = await prisma.captain.findUnique({ where: { id: captainId } });
-  if (!captainExists) throw Object.assign(new Error('Captain not found'), { statusCode: 404 });
+exports.createVehicle = async ({ userId, vehicleModelId, vin }) => {
+  const driverExists = await prisma.user.findUnique({ where: { id: userId, role: 'driver' } });
+  if (!driverExists) throw Object.assign(new Error('Driver not found'), { statusCode: 404 });
 
   if (vehicleModelId) {
     const modelExists = await prisma.vehicleModel.findUnique({ where: { id: vehicleModelId } });
     if (!modelExists) throw Object.assign(new Error('Vehicle model not found'), { statusCode: 404 });
   }
 
-  return prisma.vehicle.create({ data: { captainId, vehicleModelId, vin }, include: vehicleInclude });
+  return prisma.vehicle.create({ data: { userId, vehicleModelId, vin }, include: vehicleInclude });
 };
 
 exports.updateVehicle = async (id, { vehicleModelId, vin }) => {

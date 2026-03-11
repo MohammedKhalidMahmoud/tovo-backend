@@ -7,13 +7,13 @@ const locationStore = require('./locationStore');
  *
  * Rooms:
  *   user:{userId}         — user's private room
- *   captain:{captainId}   — captain's private room
+ *   driver:{driverId}     — driver's private room
  *   trip:{tripId}         — shared room for both parties during a trip
- *   captains:available    — broadcast room for trip.taken notifications
+ *   captains:available    — broadcast room for trip.taken notifications (drivers only)
  *
  * Location tracking:
- *   Captain location is stored in the in-memory locationStore — zero DB writes.
- *   The store is queried synchronously when a trip is created to find nearby captains.
+ *   Driver location is stored in the in-memory locationStore — zero DB writes.
+ *   The store is queried synchronously when a trip is created to find nearby drivers.
  */
 
 const setupSocket = (io) => {
@@ -41,36 +41,36 @@ const setupSocket = (io) => {
     // Join private room
     socket.join(`${role}:${id}`);
 
-    // Captains join the available-captains broadcast room and load their serviceId
-    if (role === 'captain') {
+    // Drivers join the available-drivers broadcast room and load their serviceId
+    if (role === 'driver') {
       socket.join('captains:available');
 
       // One-time DB read per session — store serviceId on socket instance
       try {
         const prisma = require('../config/prisma');
-        const captainData = await prisma.captain.findUnique({ where: { id }, select: { serviceId: true } });
-        socket.captainServiceId = captainData?.serviceId ?? null;
+        const driverData = await prisma.user.findUnique({ where: { id }, select: { serviceId: true } });
+        socket.driverServiceId = driverData?.serviceId ?? null;
       } catch (e) {
-        logger.error('Failed to load captain serviceId on connect', e);
-        socket.captainServiceId = null;
+        logger.error('Failed to load driver serviceId on connect', e);
+        socket.driverServiceId = null;
       }
     }
 
     // ── CLIENT EVENTS ─────────────────────────────────────────────────────────
 
     /**
-     * Captain updates their GPS location.
+     * Driver updates their GPS location.
      * Payload: { latitude, longitude, heading?, tripId? }
      *
      * Stored in-memory only — no DB write.
-     * If the captain is in an active trip the position is forwarded to the
+     * If the driver is in an active trip the position is forwarded to the
      * trip room so the user sees live movement on their map.
      */
     socket.on('captain.location_update', ({ latitude, longitude, heading, tripId }) => {
-      if (role !== 'captain') return;
+      if (role !== 'driver') return;
 
-      logger.info(`Captain ${id} sent location: (${latitude}, ${longitude})`);
-      locationStore.set(id, { lat: latitude, lng: longitude, heading, serviceId: socket.captainServiceId });
+      logger.info(`Driver ${id} sent location: (${latitude}, ${longitude})`);
+      locationStore.set(id, { lat: latitude, lng: longitude, heading, serviceId: socket.driverServiceId });
 
       if (tripId) {
         // Guard: only forward if this socket is actually in the trip room.
@@ -83,7 +83,7 @@ const setupSocket = (io) => {
     });
 
     /**
-     * User (or captain on reconnect) joins a trip room to receive live updates.
+     * User (or driver on reconnect) joins a trip room to receive live updates.
      * Payload: { tripId }
      * On join we immediately push the captain's last known position from the
      * in-memory store so the map isn't blank while waiting for the next update.
@@ -97,19 +97,19 @@ const setupSocket = (io) => {
         const prisma = require('../config/prisma');
         const trip = await prisma.trip.findUnique({
           where: { id: tripId },
-          select: { captainId: true, status: true },
+          select: { driverId: true, status: true },
         });
         if (
-          trip?.captainId &&
+          trip?.driverId &&
           ['matched', 'on_way', 'in_progress'].includes(trip.status)
         ) {
-          const loc = locationStore.get(trip.captainId);
+          const loc = locationStore.get(trip.driverId);
           if (loc) {
             socket.emit('trip.captain_location', {
               latitude: loc.lat,
               longitude: loc.lng,
               heading: loc.heading,
-              captainId: trip.captainId,
+              captainId: trip.driverId,
             });
           }
         }
@@ -130,16 +130,16 @@ const setupSocket = (io) => {
     socket.on('disconnect', async () => {
       logger.info(`Socket disconnected: ${role}:${id} [${socket.id}]`);
 
-      if (role === 'captain') {
+      if (role === 'driver') {
         // Remove from in-memory store immediately
         locationStore.remove(id);
 
         // Mark offline in DB so REST-layer duty checks stay consistent
         try {
           const prisma = require('../config/prisma');
-          await prisma.captain.update({ where: { id }, data: { isOnline: false } });
+          await prisma.user.update({ where: { id }, data: { isOnline: false } });
         } catch (e) {
-          logger.error('Failed to set captain offline on disconnect', e);
+          logger.error('Failed to set driver offline on disconnect', e);
         }
       }
     });
@@ -152,17 +152,17 @@ const emitCaptainMatched = (io, userId, tripData) => {
   io.to(`user:${userId}`).emit('trip.captain_matched', tripData);
 };
 
-const emitTripStatusChanged = (io, tripId, userId, captainId, status, tripData) => {
+const emitTripStatusChanged = (io, tripId, userId, driverId, status, tripData) => {
   io.to(`trip:${tripId}`)
     .to(`user:${userId}`)
-    .to(`captain:${captainId}`)
+    .to(`driver:${driverId}`)
     .emit('trip.status_changed', { tripId, status, trip: tripData });
 };
 
-const emitTripCancelled = (io, tripId, userId, captainId, cancelledBy) => {
+const emitTripCancelled = (io, tripId, userId, driverId, cancelledBy) => {
   io.to(`trip:${tripId}`)
     .to(`user:${userId}`)
-    .to(`captain:${captainId}`)
+    .to(`driver:${driverId}`)
     .emit('trip.cancelled', { tripId, cancelledBy });
 };
 

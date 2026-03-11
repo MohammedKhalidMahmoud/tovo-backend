@@ -6,6 +6,7 @@ const regionsService = require('../regions/regions.service');
 const locationUtils = require('../../utils/location');
 const commissionService = require('../commissions/commissions.service');
 const walletsRepo = require('../wallets/wallets.repository');
+const notificationsService = require('../notifications/notifications.service');
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  HELPERS
@@ -27,29 +28,30 @@ const haversineKm = (lat1, lng1, lat2, lng2) => {
 // ─────────────────────────────────────────────────────────────────────────────
 const FARE_PER_KM = Number(process.env.FARE_PER_KM) || 5.0;
 
-const estimateFare = async ({ pickupLat, pickupLng, dropoffLat, dropoffLng, serviceId }) => {
+const estimateFare = async ({ pickupLat, pickupLng, dropoffLat, dropoffLng }) => {
   const distanceKm = haversineKm(pickupLat, pickupLng, dropoffLat, dropoffLng);
 
-  let serviceName = null;
-  if (serviceId) {
-    const svc = await serviceRepo.findById(serviceId);
-    if (!svc || !svc.isActive) throw Object.assign(new Error('Service not found or inactive'), { statusCode: 404 });
-    serviceName = svc.name;
-  }
+  const services = await serviceRepo.findAll();
+  const estimates = await Promise.all(
+    services.map(async (service) => {
+      const driverEarnings = +(distanceKm * FARE_PER_KM).toFixed(2);
+      const { commission } = await commissionService.calculateCommission(driverEarnings, service.id);
+      const fare = +(driverEarnings + commission).toFixed(2);
 
-  const driverEarnings = +(distanceKm * FARE_PER_KM).toFixed(2);
-  const { commission } = await commissionService.calculateCommission(driverEarnings, serviceId);
-  const fare = +(driverEarnings + commission).toFixed(2);
+      return {
+        serviceId:     service.id,
+        serviceName:   service.name,
+        distanceKm:    +distanceKm.toFixed(2),
+        farePerKm:     FARE_PER_KM,
+        fare,
+        commission,
+        driverEarnings,
+        currency:      'EGP',
+      };
+    })
+  );
 
-  return {
-    distanceKm:    +distanceKm.toFixed(2),
-    farePerKm:     FARE_PER_KM,
-    serviceName,
-    fare,
-    commission,
-    driverEarnings,
-    currency:      'EGP',
-  };
+  return estimates;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -72,7 +74,7 @@ const validatePickupInRegion = async (pickupLat, pickupLng) => {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  NEARBY CAPTAINS
+//  NEARBY DRIVERS
 // ─────────────────────────────────────────────────────────────────────────────
 const getNearbyCaptains = (pickupLat, pickupLng, radiusKm = 10, serviceId = null) =>
   locationStore.getNearby(pickupLat, pickupLng, radiusKm, serviceId);
@@ -86,9 +88,7 @@ const createTrip = async (userId, body) => {
   const svc = await serviceRepo.findById(service_id);
   if (!svc || !svc.isActive) throw Object.assign(new Error('Service not found or inactive'), { statusCode: 404 });
 
-  if (payment_type === 'card') {
-    if (!payment_method_id) throw Object.assign(new Error('payment_method_id is required when payment_type is card'), { statusCode: 400 });
-  }
+  // payment_method_id is optional; no validation required here
 
   await validatePickupInRegion(pickup_lat, pickup_lng);
 
@@ -97,10 +97,10 @@ const createTrip = async (userId, body) => {
   const { commission } = await commissionService.calculateCommission(driverEarnings, service_id);
   const fare           = +(driverEarnings + commission).toFixed(2);
 
-  return repo.createTrip({
-    user: { connect: { id: userId } },
-    service: { connect: { id: service_id } },
-    paymentMethod: payment_type === 'card' ? { connect: { id: payment_method_id } } : undefined,
+  const trip = await repo.createTrip({
+    user:          { connect: { id: userId } },
+    service:       { connect: { id: service_id } },
+    paymentMethod: payment_method_id ? { connect: { id: payment_method_id } } : undefined,
     pickupLat:      pickup_lat,
     pickupLng:      pickup_lng,
     pickupAddress:  pickup_address,
@@ -114,6 +114,16 @@ const createTrip = async (userId, body) => {
     paymentType:    payment_type,
     status:         'searching',
   });
+
+  const nearby = locationStore.getNearby(pickup_lat, pickup_lng, 10, service_id);
+  nearby.forEach((c) => {
+    notificationsService.sendToDriver(c.id, 'New Trip Request', 'A new ride is available near you', {
+      type: 'trip_request',
+      tripId: trip.id,
+    }).catch(() => {});
+  });
+
+  return trip;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -122,7 +132,7 @@ const createTrip = async (userId, body) => {
 const getTripById = async (id, actorId) => {
   const trip = await repo.findTripById(id);
   if (!trip) throw { status: 404, message: 'Trip not found' };
-  if (trip.userId !== actorId && trip.captainId !== actorId) throw { status: 403, message: 'Access denied' };
+  if (trip.userId !== actorId && trip.driverId !== actorId) throw { status: 403, message: 'Access denied' };
   return trip;
 };
 
@@ -133,7 +143,7 @@ const getUserTrips = async (userId, page = 1, perPage = 20) => {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  CANCEL TRIP (User)
+//  CANCEL TRIP (Customer)
 // ─────────────────────────────────────────────────────────────────────────────
 const cancelTrip = async (tripId, userId) => {
   const trip = await repo.findTripById(tripId);
@@ -141,71 +151,107 @@ const cancelTrip = async (tripId, userId) => {
   if (trip.userId !== userId) throw { status: 403, message: 'Access denied' };
   if (['completed', 'cancelled'].includes(trip.status)) throw { status: 422, message: 'Trip cannot be cancelled' };
 
-  return repo.updateTrip(tripId, { status: 'cancelled', cancelledAt: new Date(), cancelledBy: userId });
+  const updated = await repo.updateTrip(tripId, { status: 'cancelled', cancelledAt: new Date(), cancelledBy: userId });
+
+  if (trip.driverId) {
+    notificationsService.sendToDriver(trip.driverId, 'Trip Cancelled', 'The passenger cancelled the trip', {
+      type: 'trip_cancelled',
+      tripId,
+    }).catch(() => {});
+  }
+
+  return updated;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  CAPTAIN ACTIONS
+//  DRIVER ACTIONS
 // ─────────────────────────────────────────────────────────────────────────────
-const getCaptainTrips = async (captainId, page = 1, perPage = 20) => {
+const getCaptainTrips = async (driverId, page = 1, perPage = 20) => {
   const skip = (page - 1) * perPage;
-  const [trips, total] = await repo.findTripsByCaptain(captainId, skip, perPage);
+  const [trips, total] = await repo.findTripsByDriver(driverId, skip, perPage);
   return { trips, total, page, perPage };
 };
 
-const getNewRequests = (captainId) => repo.findNewRequests(captainId);
+const getNewRequests = (driverId) => repo.findNewRequests(driverId);
 
-const acceptTrip = async (tripId, captainId) => {
+const acceptTrip = async (tripId, driverId) => {
   const trip = await repo.findTripById(tripId);
   if (!trip) throw { status: 404, message: 'Trip not found' };
   if (trip.status !== 'searching') throw { status: 422, message: 'Trip is no longer available' };
 
-  return repo.updateTrip(tripId, { captainId, status: 'matched' });
+  const updated = await repo.updateTrip(tripId, { driverId, status: 'matched' });
+
+  const driverName = updated.driver?.name ?? 'Your driver';
+  notificationsService.createAndSend(
+    trip.userId,
+    'Driver On The Way',
+    `Your driver ${driverName} accepted your trip`,
+    { type: 'trip_accepted', tripId }
+  ).catch(() => {});
+
+  return updated;
 };
 
-const declineTrip = async (tripId, captainId) => {
+const declineTrip = async (tripId, driverId) => {
   const trip = await repo.findTripById(tripId);
   if (!trip) throw { status: 404, message: 'Trip not found' };
   if (trip.status !== 'searching') throw { status: 422, message: 'Trip is no longer available' };
 
-  await repo.recordDecline(tripId, captainId);
+  await repo.recordDecline(tripId, driverId);
 };
 
-const startTrip = async (tripId, captainId) => {
+const startTrip = async (tripId, driverId) => {
   const trip = await repo.findTripById(tripId);
   if (!trip) throw { status: 404, message: 'Trip not found' };
-  if (trip.captainId !== captainId) throw { status: 403, message: 'Access denied' };
+  if (trip.driverId !== driverId) throw { status: 403, message: 'Access denied' };
   if (trip.status !== 'matched' && trip.status !== 'on_way') throw { status: 422, message: 'Trip cannot be started' };
 
-  return repo.updateTrip(tripId, { status: 'in_progress', startedAt: new Date() });
+  const updated = await repo.updateTrip(tripId, { status: 'in_progress', startedAt: new Date() });
+
+  notificationsService.createAndSend(
+    trip.userId,
+    'Trip Started',
+    'Your trip has started. Enjoy the ride!',
+    { type: 'trip_started', tripId }
+  ).catch(() => {});
+
+  return updated;
 };
 
-const endTrip = async (tripId, captainId) => {
+const endTrip = async (tripId, driverId) => {
   const trip = await repo.findTripById(tripId);
   if (!trip) throw { status: 404, message: 'Trip not found' };
-  if (trip.captainId !== captainId) throw { status: 403, message: 'Access denied' };
+  if (trip.driverId !== driverId) throw { status: 403, message: 'Access denied' };
   if (trip.status !== 'in_progress') throw { status: 422, message: 'Trip is not in progress' };
 
-  await prisma.captain.update({ where: { id: captainId }, data: { totalTrips: { increment: 1 } } });
+  await prisma.user.update({ where: { id: driverId }, data: { totalTrips: { increment: 1 } } });
 
   const completed = await repo.updateTrip(tripId, { status: 'completed', endedAt: new Date() });
 
   // Wallet settlement based on payment type
   if (trip.commission !== null && trip.driverEarnings !== null) {
     if (trip.paymentType === 'cash') {
-      // Captain collected full cash fare — deduct commission from wallet
-      await walletsRepo.adjustCaptainWallet(captainId, -Number(trip.commission), {
+      // Driver collected full cash fare — deduct commission from wallet
+      await walletsRepo.adjustUserWallet(driverId, -Number(trip.commission), {
         reason: 'trip_commission_deduction',
         tripId,
       });
     } else {
-      // Platform collected payment — credit captain with driver earnings
-      await walletsRepo.adjustCaptainWallet(captainId, +Number(trip.driverEarnings), {
+      // Platform collected payment — credit driver with earnings
+      await walletsRepo.adjustUserWallet(driverId, +Number(trip.driverEarnings), {
         reason: 'trip_earnings_credit',
         tripId,
       });
     }
   }
+
+  const fareDisplay = Number(completed.fare).toFixed(2);
+  notificationsService.createAndSend(
+    completed.userId,
+    'Trip Completed',
+    `You've arrived! Total fare: ${fareDisplay} EGP`,
+    { type: 'trip_completed', tripId: completed.id, fare: fareDisplay }
+  ).catch(() => {});
 
   return completed;
 };
@@ -222,17 +268,24 @@ const rateTrip = async (tripId, userId, stars, comment) => {
   const existing = await repo.findRatingsByTrip(tripId);
   if (existing) throw { status: 409, message: 'Trip already rated' };
 
-  const rating = await repo.createRating({ tripId, userId, captainId: trip.captainId, stars, comment });
+  const rating = await repo.createRating({ tripId, userId, driverId: trip.driverId, stars, comment });
 
-  const allRatings = await prisma.rating.aggregate({ where: { captainId: trip.captainId }, _avg: { stars: true } });
-  await prisma.captain.update({ where: { id: trip.captainId }, data: { rating: allRatings._avg.stars || 0 } });
+  notificationsService.sendToDriver(
+    trip.driverId,
+    'New Rating',
+    `You received a ${stars}⭐ rating from a passenger`,
+    { type: 'trip_rated', tripId, stars: String(stars) }
+  ).catch(() => {});
+
+  const allRatings = await prisma.rating.aggregate({ where: { driverId: trip.driverId }, _avg: { stars: true } });
+  await prisma.user.update({ where: { id: trip.driverId }, data: { rating: allRatings._avg.stars || 0 } });
 
   return rating;
 };
 
-const getCaptainRatings = async (captainId, page = 1, perPage = 20) => {
+const getCaptainRatings = async (driverId, page = 1, perPage = 20) => {
   const skip = (page - 1) * perPage;
-  const [ratings, total] = await repo.findCaptainRatings(captainId, skip, perPage);
+  const [ratings, total] = await repo.findDriverRatings(driverId, skip, perPage);
   return { ratings, total, page, perPage };
 };
 

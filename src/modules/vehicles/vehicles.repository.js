@@ -1,7 +1,7 @@
 const prisma = require('../../config/prisma');
 
 const vehicleInclude = {
-  captain:      { select: { id: true, name: true, email: true, phone: true } },
+  user:         { select: { id: true, name: true, email: true, phone: true } },
   vehicleModel: true,
 };
 

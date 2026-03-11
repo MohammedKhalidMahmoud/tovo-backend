@@ -7,8 +7,6 @@ exports.findAll = async (filters = {}, pagination = {}) => {
   const where = {};
   if (filters.status) where.status = filters.status;
   if (filters.userId) where.userId = filters.userId;
-  if (filters.captainId) where.captainId = filters.captainId;
-
   const [complaints, total] = await Promise.all([
     prisma.supportTicket.findMany({
       where,
@@ -16,7 +14,6 @@ exports.findAll = async (filters = {}, pagination = {}) => {
       take: limit,
       include: {
         user: { select: { id: true, name: true, email: true } },
-        captain: { select: { id: true, name: true, email: true } },
         messages: { orderBy: { createdAt: 'asc' } },
       },
       orderBy: { createdAt: 'desc' },
@@ -32,10 +29,7 @@ exports.findById = async (id) => {
     where: { id },
     include: {
       user: { select: { id: true, name: true, email: true, phone: true } },
-      captain: { select: { id: true, name: true, email: true, phone: true } },
-      messages: {
-        orderBy: { createdAt: 'asc' },
-      },
+      messages: { orderBy: { createdAt: 'asc' } },
     },
   });
 };
@@ -59,7 +53,6 @@ exports.updateStatus = async (id, status) => {
     },
     include: {
       user: { select: { id: true, name: true, email: true } },
-      captain: { select: { id: true, name: true, email: true } },
       messages: true,
     },
   });

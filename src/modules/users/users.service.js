@@ -60,7 +60,7 @@ const setDefaultPayment = (id, userId) => repo.setDefaultPayment(id, userId);
 const listUsers = async (filters) => {
   const { page, limit, sortBy, sortOrder, search, status, dateFrom, dateTo } = filters;
 
-  const where = {};
+  const where = { role: 'customer' };
 
   if (status === 'active')      where.isActive   = true;
   else if (status === 'suspended')  where.isActive   = false;
@@ -103,10 +103,10 @@ const listUsers = async (filters) => {
     createdAt:            user.createdAt,
     updatedAt:            user.updatedAt,
     walletBalance:        user.wallet?.balance || 0,
-    totalTrips:           user.tripsAsUser.length,
+    totalTrips:           user.tripsAsCustomer.length,
     avgRating:
-      user.ratings.length > 0
-        ? (user.ratings.reduce((sum, r) => sum + r.stars, 0) / user.ratings.length).toFixed(1)
+      user.ratingsGiven.length > 0
+        ? (user.ratingsGiven.reduce((sum, r) => sum + r.stars, 0) / user.ratingsGiven.length).toFixed(1)
         : 0,
   }));
 
@@ -120,12 +120,12 @@ const getUserDetails = async (userId) => {
   const user = await repo.findUserWithDetails(userId);
   if (!user) return null;
 
-  const completedTrips = user.tripsAsUser.filter((t) => t.status === 'completed').length;
-  const cancelledTrips = user.tripsAsUser.filter((t) => t.status === 'cancelled').length;
-  const totalSpent     = user.tripsAsUser.reduce((sum, t) => sum + (t.fare ? parseFloat(t.fare) : 0), 0);
+  const completedTrips = user.tripsAsCustomer.filter((t) => t.status === 'completed').length;
+  const cancelledTrips = user.tripsAsCustomer.filter((t) => t.status === 'cancelled').length;
+  const totalSpent     = user.tripsAsCustomer.reduce((sum, t) => sum + (t.fare ? parseFloat(t.fare) : 0), 0);
 
   const ratingDistribution = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
-  user.ratings.forEach((r) => { ratingDistribution[r.stars]++; });
+  user.ratingsGiven.forEach((r) => { ratingDistribution[r.stars]++; });
 
   return {
     id:                   user.id,
@@ -144,17 +144,17 @@ const getUserDetails = async (userId) => {
       currency: user.wallet?.currency || 'EGP',
     },
     tripsStats: {
-      totalTrips: user.tripsAsUser.length,
+      totalTrips: user.tripsAsCustomer.length,
       completedTrips,
       cancelledTrips,
       totalSpent,
     },
     ratingsStats: {
       avgRating:
-        user.ratings.length > 0
-          ? (user.ratings.reduce((sum, r) => sum + r.stars, 0) / user.ratings.length).toFixed(1)
+        user.ratingsGiven.length > 0
+          ? (user.ratingsGiven.reduce((sum, r) => sum + r.stars, 0) / user.ratingsGiven.length).toFixed(1)
           : 0,
-      totalRatings:  user.ratings.length,
+      totalRatings:  user.ratingsGiven.length,
       distribution:  ratingDistribution,
     },
     savedAddresses: user.savedAddresses,
@@ -304,6 +304,7 @@ const adminCreateUser = async (data) => {
     passwordHash,
     language:    data.language || 'en',
     isVerified:  data.isVerified || false,
+    role:        'customer',
   });
 
   return getUserDetails(user.id);

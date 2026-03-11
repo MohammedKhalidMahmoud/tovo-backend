@@ -31,6 +31,17 @@ const login = async (req, res, next) => {
     const data = await authService.login(req.body);
     return success(res, data, 'Login successful');
   } catch (err) {
+    const statusCode = err.status === '401' ? 402 : err.status;
+    if (err.status) return error(res, err.message, statusCode);
+    next(err);
+  }
+};
+
+const adminLogin = async (req, res, next) => {
+  try {
+    const data = await authService.adminLogin(req.body);
+    return success(res, data, 'Login successful');
+  } catch (err) {
     if (err.status) return error(res, err.message, err.status);
     next(err);
   }
@@ -87,9 +98,11 @@ const forgotPassword = async (req, res, next) => {
 
 const resetPassword = async (req, res, next) => {
   try {
-    const data = await authService.resetPassword(req.body.token, req.body.password);
+    const { email, otp, new_password } = req.body;
+    const data = await authService.resetPassword(email, otp, new_password);
     return success(res, data, 'Password reset successful');
   } catch (err) {
+    if (err.status) return error(res, err.message, err.status);
     next(err);
   }
 };
@@ -105,7 +118,7 @@ const socialAuth = async (req, res, next) => {
 };
 
 module.exports = {
-  registerUser, registerCaptain, login, logout,
+  registerUser, registerCaptain, login, adminLogin, logout,
   refreshToken, sendOtp, verifyOtp,
   forgotPassword, resetPassword, socialAuth,
 };

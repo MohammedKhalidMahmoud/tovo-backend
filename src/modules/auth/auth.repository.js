@@ -1,6 +1,6 @@
 const prisma = require('../../config/prisma');
 
-// ── USER ─────────────────────────────────────────────────────────────────────
+// ── USER (customers + drivers) ────────────────────────────────────────────────
 
 const findUserByEmail = (email) =>
   prisma.user.findUnique({ where: { email } });
@@ -11,22 +11,14 @@ const findUserByPhone = (phone) =>
 const findUserById = (id) =>
   prisma.user.findUnique({ where: { id } });
 
+const findUserByGoogleId = (googleId) =>
+  prisma.user.findUnique({ where: { googleId } });
+
+const findUserByFacebookId = (facebookId) =>
+  prisma.user.findUnique({ where: { facebookId } });
+
 const createUser = (data) =>
   prisma.user.create({ data });
-
-// ── CAPTAIN ───────────────────────────────────────────────────────────────────
-
-const findCaptainByEmail = (email) =>
-  prisma.captain.findUnique({ where: { email } });
-
-const findCaptainByPhone = (phone) =>
-  prisma.captain.findUnique({ where: { phone } });
-
-const findCaptainById = (id) =>
-  prisma.captain.findUnique({ where: { id }, include: { vehicle: { include: { vehicleModel: true } } } });
-
-const createCaptain = (data) =>
-  prisma.captain.create({ data });
 
 // ── ADMIN ──────────────────────────────────────────────────────────────────────
 
@@ -47,10 +39,8 @@ const findRefreshToken = (token) =>
 const deleteRefreshToken = (token) =>
   prisma.refreshToken.delete({ where: { token } });
 
-const deleteAllRefreshTokens = (userId, captainId) => {
-  const where = userId ? { userId } : { captainId };
-  return prisma.refreshToken.deleteMany({ where });
-};
+const deleteAllRefreshTokens = (userId) =>
+  prisma.refreshToken.deleteMany({ where: { userId } });
 
 // ── OTP ───────────────────────────────────────────────────────────────────────
 
@@ -66,10 +56,25 @@ const findValidOtp = (phone, code) =>
 const markOtpUsed = (id) =>
   prisma.otp.update({ where: { id }, data: { isUsed: true } });
 
+// ── PASSWORD RESET TOKEN ───────────────────────────────────────────────────────
+
+const createPasswordResetToken = (data) =>
+  prisma.passwordResetToken.create({ data });
+
+const findValidPasswordResetToken = (email, code) =>
+  prisma.passwordResetToken.findFirst({
+    where: { email, code, isUsed: false, expiresAt: { gt: new Date() } },
+    orderBy: { createdAt: 'desc' },
+  });
+
+const markPasswordResetTokenUsed = (id) =>
+  prisma.passwordResetToken.update({ where: { id }, data: { isUsed: true } });
+
 module.exports = {
-  findUserByEmail, findUserByPhone, findUserById, createUser,
-  findCaptainByEmail, findCaptainByPhone, findCaptainById, createCaptain,
+  findUserByEmail, findUserByPhone, findUserById,
+  findUserByGoogleId, findUserByFacebookId, createUser,
   findAdminByEmail, findAdminById,
   createRefreshToken, findRefreshToken, deleteRefreshToken, deleteAllRefreshTokens,
   createOtp, findValidOtp, markOtpUsed,
+  createPasswordResetToken, findValidPasswordResetToken, markPasswordResetTokenUsed,
 };

@@ -4,7 +4,14 @@
       "Bash(node -e \":*)",
       "Bash(npx prisma migrate dev --name commission_rules_and_trip_fields)",
       "Bash(npx prisma migrate dev --name add_wallet_transactions)",
-      "Bash(npx prisma db seed)"
+      "Bash(npx prisma db seed)",
+      "Bash(npx prisma generate)",
+      "Bash(npx prisma migrate dev)",
+      "Bash(npx prisma migrate dev --create-only --name merge_captain_into_user)",
+      "Bash(npx prisma migrate deploy)",
+      "Bash(npx prisma migrate resolve --rolled-back 20260310000000_merge_captain_into_user)",
+      "Bash(npx prisma:*)",
+      "Bash(npm install:*)"
     ]
   }
 }

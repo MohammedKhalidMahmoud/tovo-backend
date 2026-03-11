@@ -8,8 +8,8 @@ const analyticsService = require('../analytics/analytics.service');
 const adminDashboard = async () => {
   // compute a variety of counters for the dashboard
   const [totalRiders, totalDrivers, totalFleets] = await Promise.all([
-    prisma.user.count(),
-    prisma.captain.count(),
+    prisma.user.count({ where: { role: 'customer' } }),
+    prisma.user.count({ where: { role: 'driver' } }),
     prisma.vehicle.count(),
   ]);
 
@@ -42,7 +42,7 @@ const adminDashboard = async () => {
   });
   const monthlyRevenue = parseFloat(monthAggr._sum.fare || 0);
 
-  const activeDrivers = await prisma.captain.count({ where: { isOnline: true } });
+  const activeDrivers = await prisma.user.count({ where: { role: 'driver', isOnline: true } });
   // active riders: users with at least one trip in last 24h
   const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const activeRiders = await prisma.trip.aggregate({
@@ -74,7 +74,7 @@ const rideRequestList = async ({ page = 1, limit = 20, status, userId, driverId,
   const where = {};
   if (status) where.status = status;
   if (userId) where.userId = userId;
-  if (driverId) where.captainId = driverId;
+  if (driverId) where.driverId = driverId;
   if (isSchedule) {
     // return trips that are not yet completed or cancelled;
     where.status = { in: ['searching', 'matched', 'on_way', 'in_progress'] };
@@ -82,14 +82,14 @@ const rideRequestList = async ({ page = 1, limit = 20, status, userId, driverId,
 
   const skip = (page - 1) * limit;
   const [rawItems, total] = await Promise.all([
-    prisma.trip.findMany({ where, skip, take: limit, orderBy: { createdAt: 'desc' }, include: { captain: true } }),
+    prisma.trip.findMany({ where, skip, take: limit, orderBy: { createdAt: 'desc' }, include: { driver: true } }),
     prisma.trip.count({ where }),
   ]);
 
   // map to shape expected by front-end
   const items = rawItems.map((t) => {
-    const driver = t.captain
-      ? { firstName: t.captain.name || '', lastName: '' }
+    const driver = t.driver
+      ? { firstName: t.driver.name || '', lastName: '' }
       : null;
 
     return {
@@ -123,14 +123,14 @@ const upcomingRides = async (limit = 10, includeAll = false) => {
     where,
     orderBy: { createdAt: 'desc' },
     take: limit,
-    include: { captain: true },
+    include: { driver: true },
   });
 
   return records.map((t) => ({
     ...t,
     totalAmount: t.fare ? parseFloat(t.fare) : 0,
     startAddress: t.pickupAddress,
-    driver: t.captain ? { firstName: t.captain.name || '', lastName: '' } : null,
+    driver: t.driver ? { firstName: t.driver.name || '', lastName: '' } : null,
     isSchedule: false,
     scheduleDatetime: null,
   }));

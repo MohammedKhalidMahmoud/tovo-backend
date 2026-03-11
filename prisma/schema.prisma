@@ -12,8 +12,8 @@ datasource db {
 // ─────────────────────────────────────────────
 
 enum Role {
-  user
-  captain
+  customer
+  driver
   admin
 }
 
@@ -52,76 +52,53 @@ enum SupportTicketStatus {
 }
 
 // ─────────────────────────────────────────────
-//  USER
+//  USER  (customers + drivers share this table)
 // ─────────────────────────────────────────────
 
 model User {
   id              String    @id @default(uuid())
   name            String
   email           String    @unique
-  phone           String    @unique
+  phone           String?   @unique
   passwordHash    String?
+  googleId        String?   @unique
+  facebookId      String?   @unique
   avatarUrl       String?
-  role            Role      @default(user)
+  role            Role      @default(customer)
   isVerified      Boolean   @default(false)
   language        String    @default("en")
   notificationsEnabled Boolean @default(true)
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
+  // ── Driver-only fields (null for customers) ───────────────────────────────
+  drivingLicense    String?
+  licenseExpiryDate DateTime?
+  isOnline          Boolean  @default(false)
+  rating            Float    @default(0)
+  totalTrips        Int      @default(0)
+  serviceId         String?
+
+  // ── Relations ─────────────────────────────────────────────────────────────
+  service         Service?        @relation(fields: [serviceId], references: [id])
+  vehicle         Vehicle?
   wallet          Wallet?
   savedAddresses  SavedAddress[]
   paymentMethods  PaymentMethod[]
-  tripsAsUser     Trip[]         @relation("UserTrips")
-  ratings         Rating[]       @relation("UserRatings")
-  wishlist        WishlistItem[]
+  tripsAsCustomer Trip[]          @relation("CustomerTrips")
+  tripsAsDriver   Trip[]          @relation("DriverTrips")
+  ratingsGiven    Rating[]        @relation("CustomerRatings")
+  ratingsReceived Rating[]        @relation("DriverRatings")
+  insuranceCards  InsuranceCard[]
   notifications   Notification[]
   supportTickets  SupportTicket[]
   deviceTokens    DeviceToken[]
   otps            Otp[]
   refreshTokens   RefreshToken[]
   sosAlerts       SosAlert[]
+  wishlist        WishlistItem[]
 
   @@map("users")
-}
-
-// ─────────────────────────────────────────────
-//  CAPTAIN
-// ─────────────────────────────────────────────
-
-model Captain {
-  id              String    @id @default(uuid())
-  name            String
-  email           String    @unique
-  phone           String    @unique
-  passwordHash    String?
-  avatarUrl       String?
-  
-  drivingLicense  String
-  licenseExpiryDate DateTime?
-  isVerified      Boolean   @default(false)
-  isOnline        Boolean   @default(false)
-  rating          Float     @default(0)
-  totalTrips      Int       @default(0)
-  language        String    @default("en")
-  notificationsEnabled Boolean @default(true)
-  serviceId       String
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-
-  service         Service?  @relation(fields: [serviceId], references: [id])
-  vehicle         Vehicle?
-  wallet          Wallet?
-  tripsAsCaptain  Trip[]    @relation("CaptainTrips")
-  ratingsReceived Rating[]  @relation("CaptainRatings")
-  insuranceCards  InsuranceCard[]
-  deviceTokens    DeviceToken[]
-  otps            Otp[]
-  refreshTokens   RefreshToken[]
-  supportTickets  SupportTicket[]
-  sosAlerts       SosAlert[]
-
-  @@map("captains")
 }
 
 // ─────────────────────────────────────────────
@@ -130,8 +107,8 @@ model Captain {
 
 model VehicleModel {
   id          String    @id @default(uuid())
-  name        String    @unique  // e.g. "Toyota Camry", "Honda Civic"
-  brand       String             // e.g. "Toyota", "Honda"
+  name        String    @unique
+  brand       String
   description String?
   imageUrl    String?
   serviceId   String
@@ -147,13 +124,13 @@ model VehicleModel {
 
 model Vehicle {
   id             String        @id @default(uuid())
-  captainId      String        @unique
+  userId         String        @unique
   vehicleModelId String?
   vin            String        @unique
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 
-  captain      Captain       @relation(fields: [captainId], references: [id])
+  user         User          @relation(fields: [userId], references: [id])
   vehicleModel VehicleModel? @relation(fields: [vehicleModelId], references: [id])
 
   @@map("vehicles")
@@ -165,15 +142,13 @@ model Vehicle {
 
 model Wallet {
   id          String    @id @default(uuid())
-  userId      String?   @unique
-  captainId   String?   @unique
+  userId      String    @unique
   balance     Decimal   @default(0) @db.Decimal(10, 2)
   currency    String    @default("EGP")
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  user         User?               @relation(fields: [userId], references: [id])
-  captain      Captain?            @relation(fields: [captainId], references: [id])
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   transactions WalletTransaction[]
 
   @@map("wallets")
@@ -201,7 +176,7 @@ model WalletTransaction {
 model Trip {
   id              String      @id @default(uuid())
   userId          String
-  captainId       String?
+  driverId        String?
   serviceId       String?
   paymentMethodId String?
   status          TripStatus  @default(searching)
@@ -225,9 +200,9 @@ model Trip {
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
 
-  user            User        @relation("UserTrips", fields: [userId], references: [id])
-  captain         Captain?    @relation("CaptainTrips", fields: [captainId], references: [id])
-  service         Service?    @relation(fields: [serviceId], references: [id])
+  user            User           @relation("CustomerTrips", fields: [userId], references: [id])
+  driver          User?          @relation("DriverTrips", fields: [driverId], references: [id])
+  service         Service?       @relation(fields: [serviceId], references: [id])
   paymentMethod   PaymentMethod? @relation(fields: [paymentMethodId], references: [id])
   rating              Rating?
   declines            TripDecline[]
@@ -238,12 +213,12 @@ model Trip {
 
 model TripDecline {
   tripId    String
-  captainId String
+  driverId  String
   createdAt DateTime @default(now())
 
   trip      Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
 
-  @@id([tripId, captainId])
+  @@id([tripId, driverId])
   @@map("trip_declines")
 }
 
@@ -252,17 +227,17 @@ model TripDecline {
 // ─────────────────────────────────────────────
 
 model Rating {
-  id          String    @id @default(uuid())
-  tripId      String    @unique
-  userId      String
-  captainId   String
-  stars       Int
-  comment     String?
-  createdAt   DateTime  @default(now())
+  id        String    @id @default(uuid())
+  tripId    String    @unique
+  userId    String
+  driverId  String
+  stars     Int
+  comment   String?
+  createdAt DateTime  @default(now())
 
-  trip        Trip      @relation(fields: [tripId], references: [id])
-  user        User      @relation("UserRatings", fields: [userId], references: [id])
-  captain     Captain   @relation("CaptainRatings", fields: [captainId], references: [id])
+  trip      Trip      @relation(fields: [tripId], references: [id])
+  user      User      @relation("CustomerRatings", fields: [userId], references: [id])
+  driver    User      @relation("DriverRatings", fields: [driverId], references: [id])
 
   @@map("ratings")
 }
@@ -402,15 +377,13 @@ model AdminUser {
 }
 
 model DeviceToken {
-  id          String    @id @default(uuid())
-  userId      String?
-  captainId   String?
-  token       String    @unique
-  platform    String
-  createdAt   DateTime  @default(now())
+  id        String    @id @default(uuid())
+  userId    String
+  token     String    @unique
+  platform  String
+  createdAt DateTime  @default(now())
 
-  user        User?     @relation(fields: [userId], references: [id])
-  captain     Captain?  @relation(fields: [captainId], references: [id])
+  user      User      @relation(fields: [userId], references: [id])
 
   @@map("device_tokens")
 }
@@ -420,17 +393,15 @@ model DeviceToken {
 // ─────────────────────────────────────────────
 
 model SupportTicket {
-  id          String              @id @default(uuid())
-  userId      String?
-  captainId   String?
-  subject     String
-  status      SupportTicketStatus @default(open)
-  createdAt   DateTime            @default(now())
-  updatedAt   DateTime            @updatedAt
+  id        String              @id @default(uuid())
+  userId    String
+  subject   String
+  status    SupportTicketStatus @default(open)
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
 
-  user        User?               @relation(fields: [userId], references: [id])
-  captain     Captain?            @relation(fields: [captainId], references: [id])
-  messages    TicketMessage[]
+  user      User                @relation(fields: [userId], references: [id])
+  messages  TicketMessage[]
 
   @@map("support_tickets")
 }
@@ -452,48 +423,55 @@ model TicketMessage {
 // ─────────────────────────────────────────────
 
 model Otp {
-  id          String    @id @default(uuid())
-  userId      String?
-  captainId   String?
-  phone       String
-  code        String
-  expiresAt   DateTime
-  isUsed      Boolean   @default(false)
-  createdAt   DateTime  @default(now())
+  id        String    @id @default(uuid())
+  userId    String?
+  phone     String
+  code      String
+  expiresAt DateTime
+  isUsed    Boolean   @default(false)
+  createdAt DateTime  @default(now())
 
-  user        User?     @relation(fields: [userId], references: [id])
-  captain     Captain?  @relation(fields: [captainId], references: [id])
+  user      User?     @relation(fields: [userId], references: [id])
 
   @@map("otps")
 }
 
 model RefreshToken {
-  id          String    @id @default(uuid())
-  userId      String?
-  captainId   String?
-  token       String    @db.Text
-  expiresAt   DateTime
-  createdAt   DateTime  @default(now())
+  id        String    @id @default(uuid())
+  userId    String?
+  token     String    @db.Text
+  expiresAt DateTime
+  createdAt DateTime  @default(now())
 
-  user        User?     @relation(fields: [userId], references: [id])
-  captain     Captain?  @relation(fields: [captainId], references: [id])
+  user      User?     @relation(fields: [userId], references: [id])
 
   @@map("refresh_tokens")
 }
 
+model PasswordResetToken {
+  id        String   @id @default(uuid())
+  email     String
+  code      String
+  expiresAt DateTime
+  isUsed    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@map("password_reset_tokens")
+}
+
 // ─────────────────────────────────────────────
-//  INSURANCE (Captain)
+//  INSURANCE (Driver)
 // ─────────────────────────────────────────────
 
 model InsuranceCard {
-  id          String    @id @default(uuid())
-  captainId   String
-  provider    String
+  id           String    @id @default(uuid())
+  userId       String
+  provider     String
   policyNumber String
-  expiresAt   DateTime
-  createdAt   DateTime  @default(now())
+  expiresAt    DateTime
+  createdAt    DateTime  @default(now())
 
-  captain     Captain   @relation(fields: [captainId], references: [id])
+  user         User      @relation(fields: [userId], references: [id])
 
   @@map("insurance_cards")
 }
@@ -519,18 +497,16 @@ model Faq {
 // ─────────────────────────────────────────────
 
 model SosAlert {
-  id          String    @id @default(uuid())
-  userId      String?
-  captainId   String?
-  lat         Float?
-  lng         Float?
-  message     String?
-  status      String    @default("pending")   // pending | handled
-  resolvedAt  DateTime?
-  createdAt   DateTime  @default(now())
+  id         String    @id @default(uuid())
+  userId     String?
+  lat        Float?
+  lng        Float?
+  message    String?
+  status     String    @default("pending")
+  resolvedAt DateTime?
+  createdAt  DateTime  @default(now())
 
-  user        User?     @relation(fields: [userId],    references: [id])
-  captain     Captain?  @relation(fields: [captainId], references: [id])
+  user       User?     @relation(fields: [userId], references: [id])
 
   @@map("sos_alerts")
 }
@@ -542,12 +518,11 @@ model SosAlert {
 model Region {
   id        String   @id @default(uuid())
   name      String
-  // country   String
   city      String?
   lat       Float?
   lng       Float?
-  radius    Float?   // Radius in kilometers for circular service area
-  status  Boolean  @default(true)
+  radius    Float?
+  status    Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -569,7 +544,7 @@ model Service {
 
   trips           Trip[]
   vehicleModels   VehicleModel[]
-  captains        Captain[]
+  drivers         User[]
   commissionRules CommissionRule[]
 
   @@map("services")

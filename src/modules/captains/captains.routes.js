@@ -5,6 +5,7 @@ const path   = require('path');
 const captainController      = require('./captains.controller');
 // const captainController = require('./captains.admin.captainController');
 const tripsController = require('../trips/trips.controller');
+const walletsController = require('../wallets/wallets.controller');
 const validate = require('../../middleware/validate.middleware');
 const { authenticate, authorize } = require('../../middleware/auth.middleware');
 
@@ -16,7 +17,7 @@ const storage = multer.diskStorage({
   },
 });
 const upload = multer({ storage });
-const captainOnly = [authenticate, authorize('captain')];
+const captainOnly = [authenticate, authorize('driver')];
 
 // ── Profile ───────────────────────────────────────────────────────────────────
 router.get('/me',                          ...captainOnly, captainController.getProfile);
@@ -40,6 +41,10 @@ router.patch('/me/trips/:id/accept',       ...captainOnly, [param('id').isUUID()
 router.patch('/me/trips/:id/decline',      ...captainOnly, [param('id').isUUID()], validate, tripsController.declineTrip);
 router.patch('/me/trips/:id/start',        ...captainOnly, [param('id').isUUID()], validate, tripsController.startTrip);
 router.patch('/me/trips/:id/end',          ...captainOnly, [param('id').isUUID()], validate, tripsController.endTrip);
+router.post('/me/trips/:tripId/credit-customer', ...captainOnly, [
+  param('tripId').isUUID().withMessage('tripId must be a valid UUID'),
+  body('amount').isFloat({ gt: 0 }).withMessage('amount must be a positive number'),
+], validate, walletsController.driverCreditCustomer);
 
 router.get(
   '/',

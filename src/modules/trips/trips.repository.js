@@ -1,11 +1,11 @@
 const prisma = require('../../config/prisma');
 
 const TRIP_INCLUDE = {
-  captain: { select: { id: true, name: true, avatarUrl: true, rating: true, totalTrips: true } },
-  user: { select: { id: true, name: true, avatarUrl: true } },
+  driver:  { select: { id: true, name: true, avatarUrl: true, rating: true, totalTrips: true } },
+  user:    { select: { id: true, name: true, avatarUrl: true } },
   paymentMethod: { select: { id: true, brand: true, maskedNumber: true } },
   service: { select: { id: true, name: true, baseFare: true } },
-  rating: true,
+  rating:  true,
 };
 
 const createTrip = (data) =>
@@ -20,31 +20,31 @@ const findTripsByUser = (userId, skip, take) =>
     prisma.trip.count({ where: { userId } }),
   ]);
 
-const findTripsByCaptain = (captainId, skip, take) =>
+const findTripsByDriver = (driverId, skip, take) =>
   Promise.all([
-    prisma.trip.findMany({ where: { captainId }, include: TRIP_INCLUDE, orderBy: { createdAt: 'desc' }, skip, take }),
-    prisma.trip.count({ where: { captainId } }),
+    prisma.trip.findMany({ where: { driverId }, include: TRIP_INCLUDE, orderBy: { createdAt: 'desc' }, skip, take }),
+    prisma.trip.count({ where: { driverId } }),
   ]);
 
-// Returns only trips this captain hasn't declined yet
-const findNewRequests = (captainId) =>
+// Returns only trips this driver hasn't declined yet
+const findNewRequests = (driverId) =>
   prisma.trip.findMany({
     where: {
-      status: 'searching',
-      declines: { none: { captainId } },
+      status:   'searching',
+      declines: { none: { driverId } },
     },
-    include: TRIP_INCLUDE,
-    orderBy: { createdAt: 'asc' },
+    include:  TRIP_INCLUDE,
+    orderBy:  { createdAt: 'asc' },
   });
 
 const updateTrip = (id, data) =>
   prisma.trip.update({ where: { id }, data, include: TRIP_INCLUDE });
 
 // Upsert so double-declining is harmless
-const recordDecline = (tripId, captainId) =>
+const recordDecline = (tripId, driverId) =>
   prisma.tripDecline.upsert({
-    where: { tripId_captainId: { tripId, captainId } },
-    create: { tripId, captainId },
+    where:  { tripId_driverId: { tripId, driverId } },
+    create: { tripId, driverId },
     update: {},
   });
 
@@ -54,14 +54,14 @@ const createRating = (data) =>
 const findRatingsByTrip = (tripId) =>
   prisma.rating.findUnique({ where: { tripId } });
 
-const findCaptainRatings = (captainId, skip, take) =>
+const findDriverRatings = (driverId, skip, take) =>
   Promise.all([
-    prisma.rating.findMany({ where: { captainId }, orderBy: { createdAt: 'desc' }, skip, take }),
-    prisma.rating.count({ where: { captainId } }),
+    prisma.rating.findMany({ where: { driverId }, orderBy: { createdAt: 'desc' }, skip, take }),
+    prisma.rating.count({ where: { driverId } }),
   ]);
 
 module.exports = {
   createTrip, findTripById, findTripsByUser,
-  findTripsByCaptain, findNewRequests, updateTrip, recordDecline,
-  createRating, findRatingsByTrip, findCaptainRatings,
+  findTripsByDriver, findNewRequests, updateTrip, recordDecline,
+  createRating, findRatingsByTrip, findDriverRatings,
 };

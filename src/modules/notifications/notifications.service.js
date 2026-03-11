@@ -10,8 +10,8 @@ const getNotifications = async (userId, page = 1, perPage = 20) => {
 
 const markRead = (id, userId) => repo.markRead(id, userId);
 const markAllRead = (userId) => repo.markAllRead(userId);
-const registerDeviceToken = (userId, captainId, token, platform) =>
-  repo.upsertDeviceToken({ ...(userId ? { userId } : { captainId }), token, platform });
+const registerDeviceToken = (userId, token, platform) =>
+  repo.upsertDeviceToken({ userId, token, platform });
 
 const _sendAndClean = async (tokens, title, body, data) => {
   const result = await fcm.sendMulticast(tokens, { title, body, data });
@@ -26,8 +26,8 @@ const sendToUser = async (userId, title, body, data = {}) => {
   return _sendAndClean(tokens, title, body, data);
 };
 
-const sendToCaptain = async (captainId, title, body, data = {}) => {
-  const records = await repo.getTokensByCaptainId(captainId);
+const sendToDriver = async (driverId, title, body, data = {}) => {
+  const records = await repo.getTokensByUserId(driverId);
   const tokens = records.map(r => r.token);
   if (!tokens.length) return { sent: 0, failed: 0 };
   return _sendAndClean(tokens, title, body, data);
@@ -45,5 +45,5 @@ const createAndSend = async (userId, title, body, data = {}) => {
 
 module.exports = {
   getNotifications, markRead, markAllRead, registerDeviceToken,
-  sendToUser, sendToCaptain, sendBulk, createAndSend,
+  sendToUser, sendToDriver, sendBulk, createAndSend,
 };

@@ -30,9 +30,9 @@ const findManyUsers = ({ where, orderBy, skip, take }) =>
   prisma.user.findMany({
     where,
     include: {
-      wallet: true,
-      tripsAsUser: { select: { id: true } },
-      ratings:     { select: { stars: true } },
+      wallet:           true,
+      tripsAsCustomer:  { select: { id: true } },
+      ratingsGiven:     { select: { stars: true } },
     },
     orderBy,
     skip,
@@ -47,8 +47,8 @@ const findUserWithDetails = (id) =>
       savedAddresses: true,
       paymentMethods: true,
       deviceTokens:   true,
-      tripsAsUser:    { select: { id: true, status: true, fare: true, createdAt: true } },
-      ratings:        true,
+      tripsAsCustomer: { select: { id: true, status: true, fare: true, createdAt: true } },
+      ratingsGiven:    true,
       supportTickets: { select: { id: true, status: true } },
     },
   });

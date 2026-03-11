@@ -8,8 +8,8 @@ const walletsController = require('./wallets.controller');
 const { authenticate, authorize } = require('../../middleware/auth.middleware');
 
 // ── User / Captain routes ─────────────────────────────────────────────────────
-router.get('/me',              authenticate, authorize('user', 'captain'), walletsController.getMyWallet);
-router.get('/me/transactions', authenticate, authorize('user', 'captain'), walletsController.getMyTransactions);
+router.get('/me',              authenticate, authorize('customer', 'driver'), walletsController.getMyWallet);
+router.get('/me/transactions', authenticate, authorize('customer', 'driver'), walletsController.getMyTransactions);
 
 // ── Admin routes ──────────────────────────────────────────────────────────────
 router.get('/',                    authenticate, authorize('admin'), walletsController.listWallets);

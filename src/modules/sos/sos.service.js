@@ -1,14 +1,13 @@
 const prisma = require('../../config/prisma');
 
 const ownerInclude = {
-  user:    { select: { name: true, email: true, phone: true } },
-  captain: { select: { name: true, email: true, phone: true } },
+  user: { select: { id: true, name: true, email: true, phone: true, role: true } },
 };
 
-// ── Public: user/captain trigger ─────────────────────────────────────────────
-exports.triggerSos = async ({ userId, captainId, lat, lng, message }) => {
+// ── Public: user/driver trigger ───────────────────────────────────────────────
+exports.triggerSos = async ({ userId, lat, lng, message }) => {
   return prisma.sosAlert.create({
-    data: { userId: userId || null, captainId: captainId || null, lat, lng, message },
+    data: { userId, lat, lng, message },
   });
 };
 

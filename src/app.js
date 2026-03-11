@@ -143,10 +143,10 @@ const PORT = process.env.PORT;
 const prisma = require('./config/prisma');
 
 // Clear stale isOnline flags from a previous crash or restart.
-// Captains who are truly active will reconnect their socket and call /duty/start again.
-prisma.captain.updateMany({ where: { isOnline: true }, data: { isOnline: false } })
-  .then(({ count }) => { if (count > 0) logger.info(`Reset ${count} stale online captain(s) to offline`); })
-  .catch((e) => logger.error('Failed to reset captain online flags on startup', e));
+// Drivers who are truly active will reconnect their socket and call /duty/start again.
+prisma.user.updateMany({ where: { role: 'driver', isOnline: true }, data: { isOnline: false } })
+  .then(({ count }) => { if (count > 0) logger.info(`Reset ${count} stale online driver(s) to offline`); })
+  .catch((e) => logger.error('Failed to reset driver online flags on startup', e));
 
 server.listen(PORT, () => {
   logger.info(`🚀 Tovo API running on http://localhost:${PORT}`);

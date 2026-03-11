@@ -1,19 +1,19 @@
 const prisma = require('../../config/prisma');
 
 const findById = (id) =>
-  prisma.captain.findUnique({
-    where: { id },
+  prisma.user.findUnique({
+    where: { id, role: 'driver' },
     include: { vehicle: { include: { vehicleModel: true } }, wallet: true },
   });
 
 const updateCaptain = (id, data) =>
-  prisma.captain.update({ where: { id }, data });
+  prisma.user.update({ where: { id }, data });
 
-const getWallet = (captainId) =>
-  prisma.wallet.findUnique({ where: { captainId } });
+const getWallet = (userId) =>
+  prisma.wallet.findUnique({ where: { userId } });
 
-const getInsuranceCards = (captainId) =>
-  prisma.insuranceCard.findMany({ where: { captainId } });
+const getInsuranceCards = (userId) =>
+  prisma.insuranceCard.findMany({ where: { userId } });
 
 module.exports = {
   findById, updateCaptain, getWallet,

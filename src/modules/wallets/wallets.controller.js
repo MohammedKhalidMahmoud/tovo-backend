@@ -12,7 +12,7 @@ const { success, error } = require('../../utils/response');
  */
 exports.getMyWallet = async (req, res, next) => {
   try {
-    const wallet = await service.getMyWallet(req.actor.id, req.actor.role);
+    const wallet = await service.getMyWallet(req.actor.id);
     return success(res, wallet, 'Wallet retrieved successfully');
   } catch (err) {
     next(err);
@@ -27,7 +27,7 @@ exports.getMyTransactions = async (req, res, next) => {
   try {
     const page  = parseInt(req.query.page)  || 1;
     const limit = parseInt(req.query.limit) || 20;
-    const result = await service.listMyTransactions(req.actor.id, req.actor.role, { page, limit });
+    const result = await service.listMyTransactions(req.actor.id, { page, limit });
     return success(res, result.data, 'Transactions retrieved successfully');
   } catch (err) {
     next(err);
@@ -58,7 +58,7 @@ exports.listWallets = async (req, res, next) => {
     const filters = {
       page:      parseInt(req.query.page)  || 1,
       limit:     parseInt(req.query.limit) || 20,
-      ownerType: req.query.ownerType || 'all',   // 'user' | 'captain' | 'all'
+      ownerType: req.query.ownerType || 'all',   // 'customer' | 'driver' | 'all'
       search:    req.query.search,
     };
 
@@ -100,6 +100,22 @@ exports.adjustWallet = async (req, res, next) => {
       reason,
     });
     return success(res, wallet, `Wallet ${type}ed successfully`);
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * POST /api/v1/captains/me/trips/:tripId/credit-customer
+ * Driver credits a customer's wallet from a completed trip
+ * Body: { amount: number }
+ */
+exports.driverCreditCustomer = async (req, res, next) => {
+  try {
+    const { tripId } = req.params;
+    const { amount } = req.body;
+    const wallet = await service.creditCustomerWalletFromTrip(req.actor.id, tripId, amount);
+    return success(res, wallet, 'Customer wallet credited successfully');
   } catch (err) {
     next(err);
   }

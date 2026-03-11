@@ -14,7 +14,7 @@ const { authenticate, authorize } = require('../../middleware/auth.middleware');
 // GET /payments/me — own payment history
 router.get(
   '/me',
-  authenticate, authorize('user'),
+  authenticate, authorize('customer'),
   [
     query('page').optional().isInt({ min: 1 }),
     query('limit').optional().isInt({ min: 1, max: 100 }),
@@ -28,7 +28,7 @@ router.get(
 // GET /payments/:id — single payment detail
 router.get(
   '/:id',
-  authenticate, authorize('user', 'admin'),
+  authenticate, authorize('customer', 'admin'),
   [ param('id').isUUID() ],
   validate,
   controller.getPayment

@@ -13,7 +13,7 @@ exports.listPayments = async (filters) => {
   const where = { status: 'completed' };               // payments = completed trips only
   if (status)      where.status      = status;
   if (userId)      where.userId      = userId;
-  if (driverId)    where.captainId   = driverId;
+  if (driverId)    where.driverId    = driverId;
   if (paymentType) where.paymentType = paymentType;
   if (dateFrom || dateTo) {
     where.createdAt = {};
@@ -48,7 +48,7 @@ exports.getPayment = async (id, actor) => {
   if (!trip) throw Object.assign(new Error('Payment not found'), { statusCode: 404 });
 
   // users can only see their own payments
-  if (actor.role === 'user' && trip.userId !== actor.id)
+  if (actor.role === 'customer' && trip.userId !== actor.id)
     throw Object.assign(new Error('Access denied'), { statusCode: 403 });
 
   return trip;

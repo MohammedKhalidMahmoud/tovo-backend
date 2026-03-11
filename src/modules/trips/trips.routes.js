@@ -4,16 +4,19 @@ const controller = require('./trips.controller');
 const validate = require('../../middleware/validate.middleware');
 const { authenticate, authorize } = require('../../middleware/auth.middleware');
 
-const userOnly    = [authenticate, authorize('user')];
-const captainOnly = [authenticate, authorize('captain')];
-const bothRoles   = [authenticate, authorize('user', 'captain')];
+const userOnly    = [authenticate, authorize('customer')];
+const captainOnly = [authenticate, authorize('driver')];
+const bothRoles   = [authenticate, authorize('customer', 'driver')];
 
 // ── Public ────────────────────────────────────────────────────────────────────
 router.get('/regions/active', controller.getActiveRegions);
 
 // ── Fare Estimate ─────────────────────────────────────────────────────────────
-router.get('/estimate', ...bothRoles, [
-  query('trip_id').isUUID().withMessage('trip_id must be a valid UUID'),
+router.get('/estimate', [
+  query('lat_pick').isFloat().withMessage('lat_pick must be a valid float'),
+  query('lng_pick').isFloat().withMessage('lng_pick must be a valid float'),
+  query('lat_drop').isFloat().withMessage('lat_drop must be a valid float'),
+  query('lng_drop').isFloat().withMessage('lng_drop must be a valid float'),
 ], validate, controller.estimateFare);
 
 // ── User: Create & List Trips ─────────────────────────────────────────────────
@@ -25,10 +28,7 @@ router.post('/', ...userOnly, [
   body('dropoff_lng').isFloat(),
   body('dropoff_address').notEmpty(),
   body('service_id').notEmpty().isUUID().withMessage('service_id is required and must be a valid UUID'),
-  body('payment_type').isIn(['cash', 'card']).withMessage('payment_type must be cash or card'),
-  body('payment_method_id')
-    .if(body('payment_type').equals('card'))
-    .notEmpty().isUUID().withMessage('payment_method_id is required when payment_type is card'),
+  body('payment_type').isIn(['cash', 'instapay']).withMessage('payment_type must be cash or instapay'),
 ], validate, controller.createTrip);
 
 router.get('/', ...userOnly, controller.getUserTrips);
@@ -58,11 +58,5 @@ router.post('/:id/rating', ...userOnly, [
   param('id').isUUID(),
   body('rating').isInt({ min: 1, max: 5 }),
 ], validate, controller.rateTrip);
-
-// ── Captain: Trip Lifecycle ───────────────────────────────────────────────────
-router.patch('/:id/accept',  ...captainOnly, [param('id').isUUID()], validate, controller.acceptTrip);
-router.patch('/:id/decline', ...captainOnly, [param('id').isUUID()], validate, controller.declineTrip);
-router.patch('/:id/start',   ...captainOnly, [param('id').isUUID()], validate, controller.startTrip);
-router.patch('/:id/end',     ...captainOnly, [param('id').isUUID()], validate, controller.endTrip);
 
 module.exports = router;

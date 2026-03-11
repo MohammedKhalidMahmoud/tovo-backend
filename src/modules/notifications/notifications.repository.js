@@ -24,9 +24,6 @@ const createNotification = (data) =>
 const getTokensByUserId = (userId) =>
   prisma.deviceToken.findMany({ where: { userId }, select: { token: true } });
 
-const getTokensByCaptainId = (captainId) =>
-  prisma.deviceToken.findMany({ where: { captainId }, select: { token: true } });
-
 /** Remove invalid/expired tokens returned by FCM as failures */
 const deleteTokensByList = (tokens) =>
   prisma.deviceToken.deleteMany({ where: { token: { in: tokens } } });
@@ -38,5 +35,5 @@ const deleteToken = (token) =>
 module.exports = {
   findByUser, markRead, markAllRead, upsertDeviceToken,
   createNotification,
-  getTokensByUserId, getTokensByCaptainId, deleteTokensByList, deleteToken,
+  getTokensByUserId, deleteTokensByList, deleteToken,
 };

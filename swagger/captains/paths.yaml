@@ -465,6 +465,67 @@
           application/json:
             schema: { $ref: '#/components/schemas/ErrorResponse' }
 
+/captains/me/trips/{tripId}/credit-customer:
+  post:
+    tags: [Captains]
+    summary: Credit customer wallet from trip
+    description: Driver credits a customer's wallet after completing a trip. Trip must be completed and belong to the authenticated driver. Creates a wallet transaction with reason `driver_credit`.
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: tripId
+        in: path
+        required: true
+        description: UUID of the completed trip
+        schema: { type: string, format: uuid, example: 'b2c3d4e5-f6a7-8901-bcde-f12345678901' }
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [amount]
+            properties:
+              amount:
+                type: number
+                example: 50.00
+                description: Positive amount to credit to customer wallet
+    responses:
+      '200':
+        description: Customer wallet credited successfully
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/SuccessResponse'
+                - type: object
+                  properties:
+                    data: { $ref: '#/components/schemas/Wallet' }
+      '400':
+        description: Validation error (invalid tripId format or amount must be positive)
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ErrorResponse' }
+      '401':
+        description: Unauthorized
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ErrorResponse' }
+      '403':
+        description: Forbidden — trip does not belong to this driver
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ErrorResponse' }
+      '404':
+        description: Trip not found
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ErrorResponse' }
+      '422':
+        description: Trip must be completed to credit customer wallet
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ErrorResponse' }
+
 # ════════════════════════════════════════════════════════════════════════════
 # ADMIN ROUTES  —  prefix: /api/v1/admin/drivers
 # ════════════════════════════════════════════════════════════════════════════

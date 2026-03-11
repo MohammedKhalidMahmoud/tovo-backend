@@ -9,13 +9,12 @@ const {
 
 const estimateFare = async (req, res, next) => {
   try {
-    const trip = await service.getTripById(req.query.trip_id, req.actor.id);
+    const { lat_pick, lng_pick, lat_drop, lng_drop } = req.query;
     const data = await service.estimateFare({
-      pickupLat:  trip.pickupLat,
-      pickupLng:  trip.pickupLng,
-      dropoffLat: trip.dropoffLat,
-      dropoffLng: trip.dropoffLng,
-      serviceId:  trip.serviceId,
+      pickupLat:  parseFloat(lat_pick),
+      pickupLng:  parseFloat(lng_pick),
+      dropoffLat: parseFloat(lat_drop),
+      dropoffLng: parseFloat(lng_drop),
     });
     return success(res, data);
   } catch (err) {
@@ -40,7 +39,7 @@ const createTrip = async (req, res, next) => {
     const io = req.app.get('io');
 
     const nearbyCaptains = await service.getNearbyCaptains(trip.pickupLat, trip.pickupLng, 10, trip.serviceId);
-    nearbyCaptains.forEach((c) => io.to(`captain:${c.id}`).emit('trip.new_request', trip));
+    nearbyCaptains.forEach((c) => io.to(`driver:${c.id}`).emit('trip.new_request', trip));
 
     return created(res, trip, 'Trip created and searching for captains');
   } catch (err) {
@@ -74,7 +73,7 @@ const cancelTrip = async (req, res, next) => {
   try {
     const trip = await service.cancelTrip(req.params.id, req.actor.id);
     const io = req.app.get('io');
-    emitTripCancelled(io, trip.id, trip.userId, trip.captainId, req.actor.id);
+    emitTripCancelled(io, trip.id, trip.userId, trip.driverId, req.actor.id);
     io.in(`trip:${trip.id}`).socketsLeave(`trip:${trip.id}`);
     return success(res, trip, 'Trip cancelled');
   } catch (err) {
@@ -111,7 +110,7 @@ const acceptTrip = async (req, res, next) => {
     // starts immediately without waiting for the client to emit trip.join.
     // This also acts as the authorization gate for captain.location_update
     // tripId validation (socket.rooms.has check in socket.js).
-    io.in(`captain:${trip.captainId}`).socketsJoin(`trip:${trip.id}`);
+    io.in(`driver:${trip.driverId}`).socketsJoin(`trip:${trip.id}`);
     io.in(`user:${trip.userId}`).socketsJoin(`trip:${trip.id}`);
 
     emitCaptainMatched(io, trip.userId, trip);
@@ -127,7 +126,7 @@ const declineTrip = async (req, res, next) => {
   try {
     await service.declineTrip(req.params.id, req.actor.id);
     const io = req.app.get('io');
-    io.to(`captain:${req.actor.id}`).emit('trip.removed', { tripId: req.params.id });
+    io.to(`driver:${req.actor.id}`).emit('trip.removed', { tripId: req.params.id });
     return success(res, null, 'Trip declined');
   } catch (err) {
     if (err.status) return error(res, err.message, err.status);
@@ -139,7 +138,7 @@ const startTrip = async (req, res, next) => {
   try {
     const trip = await service.startTrip(req.params.id, req.actor.id);
     const io = req.app.get('io');
-    emitTripStatusChanged(io, trip.id, trip.userId, trip.captainId, trip.status, trip);
+    emitTripStatusChanged(io, trip.id, trip.userId, trip.driverId, trip.status, trip);
     return success(res, trip, 'Trip started');
   } catch (err) {
     if (err.status) return error(res, err.message, err.status);
@@ -151,7 +150,7 @@ const endTrip = async (req, res, next) => {
   try {
     const trip = await service.endTrip(req.params.id, req.actor.id);
     const io = req.app.get('io');
-    emitTripStatusChanged(io, trip.id, trip.userId, trip.captainId, trip.status, trip);
+    emitTripStatusChanged(io, trip.id, trip.userId, trip.driverId, trip.status, trip);
     io.in(`trip:${trip.id}`).socketsLeave(`trip:${trip.id}`);
     return success(res, trip, 'Trip completed');
   } catch (err) {

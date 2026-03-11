@@ -1,0 +1,3 @@
+-- This migration was superseded by 20260310000000_merge_captain_into_user.
+-- All changes have been consolidated into that migration.
+-- This file is intentionally left empty.

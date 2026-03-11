@@ -25,7 +25,7 @@ const authenticate = async (req, res, next) => {
 
 /**
  * Role-based access guard — pass allowed roles as arguments
- * Usage: authorize('user') | authorize('captain') | authorize('user', 'captain')
+ * Usage: authorize('customer') | authorize('driver') | authorize('customer', 'driver') | authorize('admin')
  */
 const authorize = (...roles) => {
   return (req, res, next) => {

@@ -34,10 +34,16 @@ router.post('/register/captain', [
 
 // ── POST /auth/login ──────────────────────────────────────────────────────────
 router.post('/login', [
+  body('identifier').notEmpty().trim().withMessage('identifier (email or phone) is required'),
+  body('password').notEmpty(),
+  body('role').isIn(['customer', 'driver']),
+], validate, controller.login);
+
+// ── POST /auth/admin/login ────────────────────────────────────────────────────
+router.post('/admin/login', [
   body('email').isEmail().normalizeEmail(),
   body('password').notEmpty(),
-  body('role').isIn(['user', 'captain', 'admin']),
-], validate, controller.login);
+], validate, controller.adminLogin);
 
 // ── POST /auth/logout ─────────────────────────────────────────────────────────
 router.post('/logout', authenticate, [
@@ -67,15 +73,16 @@ router.post('/forgot-password', [
 
 // ── POST /auth/reset-password ─────────────────────────────────────────────────
 router.post('/reset-password', [
-  body('token').notEmpty(),
-  body('password').isLength({ min: 8 }),
+  body('email').isEmail().normalizeEmail(),
+  body('otp').isLength({ min: 6, max: 6 }).isNumeric(),
+  body('new_password').isLength({ min: 8 }),
 ], validate, controller.resetPassword);
 
 // ── POST /auth/social ─────────────────────────────────────────────────────────
 router.post('/social', [
   body('provider').isIn(['facebook', 'apple', 'google']),
   body('access_token').notEmpty(),
-  body('role').isIn(['user', 'captain']),
+  body('role').isIn(['customer', 'driver']),
 ], validate, controller.socialAuth);
 
 module.exports = router;

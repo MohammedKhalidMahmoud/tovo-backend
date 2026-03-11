@@ -4,16 +4,15 @@
 // ════════════════════════════════════════════════════════════════════════════════
 
 const prisma = require('../../config/prisma');
-const { findWalletByOwner, listTransactions, countTransactions, createTransaction } = require('./wallets.repository');
+const { findWalletByOwner, listTransactions, countTransactions, createTransaction, adjustUserWallet } = require('./wallets.repository');
+const tripsRepository = require('../trips/trips.repository');
 
 const ownerInclude = {
-  user:    { select: { name: true, email: true, phone: true } },
-  captain: { select: { name: true, email: true, phone: true } },
+  user: { select: { id: true, name: true, email: true, phone: true, role: true } },
 };
 
-exports.getMyWallet = async (actorId, role) => {
-  const query = role === 'captain' ? { captainId: actorId } : { userId: actorId };
-  const wallet = await findWalletByOwner(query);
+exports.getMyWallet = async (actorId) => {
+  const wallet = await findWalletByOwner({ userId: actorId });
   if (!wallet) throw Object.assign(new Error('Wallet not found'), { statusCode: 404 });
   return wallet;
 };
@@ -23,14 +22,11 @@ exports.listWallets = async (filters) => {
 
   const where = {};
 
-  if (ownerType === 'user')    where.userId    = { not: null };
-  if (ownerType === 'captain') where.captainId = { not: null };
+  if (ownerType === 'customer') where.user = { role: 'customer' };
+  if (ownerType === 'driver')   where.user = { role: 'driver' };
 
   if (search) {
-    where.OR = [
-      { user:    { OR: [{ name: { contains: search, mode: 'insensitive' } }, { email: { contains: search, mode: 'insensitive' } }] } },
-      { captain: { OR: [{ name: { contains: search, mode: 'insensitive' } }, { email: { contains: search, mode: 'insensitive' } }] } },
-    ];
+    where.user = { ...where.user, OR: [{ name: { contains: search, mode: 'insensitive' } }, { email: { contains: search, mode: 'insensitive' } }] };
   }
 
   const [total, data] = await Promise.all([
@@ -83,9 +79,8 @@ exports.adjustWallet = async (id, { type, amount, reason }) => {
   return updated;
 };
 
-exports.listMyTransactions = async (actorId, role, { page = 1, limit = 20 } = {}) => {
-  const query = role === 'captain' ? { captainId: actorId } : { userId: actorId };
-  const wallet = await findWalletByOwner(query);
+exports.listMyTransactions = async (actorId, { page = 1, limit = 20 } = {}) => {
+  const wallet = await findWalletByOwner({ userId: actorId });
   if (!wallet) throw Object.assign(new Error('Wallet not found'), { statusCode: 404 });
 
   const [total, data] = await Promise.all([
@@ -106,4 +101,34 @@ exports.listWalletTransactions = async (walletId, { page = 1, limit = 20 } = {})
   ]);
 
   return { data, total, pages: Math.ceil(total / limit) };
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  DRIVER CREDIT CUSTOMER WALLET FROM TRIP
+// ─────────────────────────────────────────────────────────────────────────────
+exports.creditCustomerWalletFromTrip = async (driverId, tripId, amount) => {
+  // Validate amount
+  amount = parseFloat(amount);
+  if (!amount || amount <= 0)
+    throw Object.assign(new Error('amount must be a positive number'), { statusCode: 400 });
+
+  // Lookup trip
+  const trip = await tripsRepository.findTripById(tripId);
+  if (!trip) throw Object.assign(new Error('Trip not found'), { statusCode: 404 });
+
+  // Verify trip is completed
+  if (trip.status !== 'completed')
+    throw Object.assign(new Error('Trip must be completed to credit customer wallet'), { statusCode: 422 });
+
+  // Verify driver owns the trip
+  if (trip.driverId !== driverId)
+    throw Object.assign(new Error('Access denied — trip does not belong to this driver'), { statusCode: 403 });
+
+  // Credit customer wallet atomically
+  const [updated] = await adjustUserWallet(trip.userId, +amount, {
+    reason: 'driver_credit',
+    tripId,
+  });
+
+  return updated;
 };

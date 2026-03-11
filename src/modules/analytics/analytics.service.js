@@ -7,7 +7,7 @@ exports.rideStats = async (filters) => {
     if (filters.dateFrom) where.createdAt.gte = new Date(filters.dateFrom);
     if (filters.dateTo) where.createdAt.lte = new Date(filters.dateTo);
   }
-  if (filters.driverId) where.captainId = filters.driverId;
+  if (filters.driverId) where.driverId = filters.driverId;
   if (filters.userId) where.userId = filters.userId;
 
   const total = await prisma.trip.count({ where });
@@ -36,13 +36,12 @@ exports.driverPerformance = async (filters) => {
     if (filters.dateTo) where.createdAt.lte = new Date(filters.dateTo);
   }
 
-  // simple grouping by captain
-  const trips = await prisma.trip.findMany({ where, include: { captain: true } });
+  // simple grouping by driver
+  const trips = await prisma.trip.findMany({ where, include: { driver: true } });
   const map = {};
   trips.forEach((t) => {
-    // ignore trips with no assigned driver (captainId null)
-    if (!t.captainId) return;
-    const id = t.captainId;
+    if (!t.driverId) return;
+    const id = t.driverId;
     if (!map[id]) map[id] = { driverId: id, ridesCompleted: 0, totalEarnings: 0, ratings: [] };
     if (t.status === 'completed') {
       map[id].ridesCompleted++;

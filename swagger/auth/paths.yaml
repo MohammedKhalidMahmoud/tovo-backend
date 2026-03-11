@@ -58,18 +58,24 @@
 /auth/login:
   post:
     tags: [Auth]
-    summary: Login for users and captains
+    summary: Login for customers and captains
+    description: >
+      Accepts `identifier` as either an email address (contains `@`) or a phone number.
+      Use `role` to specify which account type to authenticate.
     requestBody:
       required: true
       content:
         application/json:
           schema:
             type: object
-            required: [email, password, role]
+            required: [identifier, password, role]
             properties:
-              email: { type: string, format: email }
+              identifier:
+                type: string
+                description: Email address or phone number
+                example: '+201012345678'
               password: { type: string }
-              role: { type: string, enum: [user, captain] }
+              role: { type: string, enum: [customer, driver] }
     responses:
       '200':
         description: Login successful
@@ -79,11 +85,48 @@
               properties:
                 data:
                   properties:
-                    access_token: { type: string }
-                    refresh_token: { type: string }
-                    role: { type: string }
+                    accessToken: { type: string }
+                    refreshToken: { type: string }
+                    role: { type: string, enum: [customer, driver] }
                     user: { $ref: '../users/schemas.yaml#/User' }
       '401': { description: Invalid credentials }
+      '400': { description: Invalid role }
+
+/auth/admin/login:
+  post:
+    tags: [Auth]
+    summary: Admin login
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [email, password]
+            properties:
+              email: { type: string, format: email }
+              password: { type: string }
+    responses:
+      '200':
+        description: Login successful
+        content:
+          application/json:
+            schema:
+              properties:
+                data:
+                  properties:
+                    accessToken: { type: string }
+                    refreshToken: { type: string }
+                    role: { type: string, example: admin }
+                    user:
+                      type: object
+                      properties:
+                        id: { type: string, format: uuid }
+                        email: { type: string, format: email }
+                        role: { type: string, example: admin }
+                        isActive: { type: boolean }
+      '401': { description: Invalid credentials }
+      '403': { description: Admin account is deactivated }
 
 /auth/logout:
   post:
@@ -174,32 +217,74 @@
 /auth/reset-password:
   post:
     tags: [Auth]
-    summary: Reset password with token
+    summary: Reset password using email OTP
+    description: Verify the 6-digit OTP sent to the user's email and set a new password.
     requestBody:
       required: true
       content:
         application/json:
           schema:
-            required: [token, password]
+            required: [email, otp, new_password]
             properties:
-              token: { type: string }
-              password: { type: string, minLength: 8 }
+              email: { type: string, format: email }
+              otp: { type: string, minLength: 6, maxLength: 6, example: '847291' }
+              new_password: { type: string, minLength: 8 }
     responses:
-      '200': { description: Password reset }
+      '200': { description: Password updated successfully }
+      '400': { description: Invalid or expired OTP }
 
 /auth/social:
   post:
     tags: [Auth]
-    summary: OAuth social login
+    summary: Social login (Google / Facebook)
+    description: |
+      Authenticate using a social provider token. Finds or creates a Tovo account.
+
+      **Google:** send the `id_token` returned by Google Sign-In SDK as `access_token`.
+
+      **Facebook:** send the `access_token` returned by Facebook Login SDK as `access_token`.
+
+      **Find-or-create logic:**
+      1. Lookup by social ID (`googleId` / `facebookId`) — returning user, issues tokens immediately.
+      2. Lookup by email — links the social ID to the existing account, then issues tokens.
+      3. If not found — creates a new account (`isVerified: true`, wallet auto-created, phone optional).
+
+      A `409` is returned if the matched email/social ID belongs to a different `role`.
     requestBody:
       required: true
       content:
         application/json:
           schema:
+            type: object
             required: [provider, access_token, role]
             properties:
-              provider: { type: string, enum: [facebook, apple, google] }
-              access_token: { type: string }
-              role: { type: string, enum: [user, captain] }
+              provider:
+                type: string
+                enum: [google, facebook]
+                example: google
+              access_token:
+                type: string
+                description: >
+                  Google: the `id_token` from Google Sign-In.
+                  Facebook: the `access_token` from Facebook Login.
+              role:
+                type: string
+                enum: [customer, driver]
+                example: customer
     responses:
-      '200': { description: Social login successful }
+      '200':
+        description: Social login successful — returns the same token shape as regular login
+        content:
+          application/json:
+            schema:
+              properties:
+                data:
+                  properties:
+                    accessToken: { type: string }
+                    refreshToken: { type: string }
+                    role: { type: string, enum: [customer, driver] }
+                    user: { $ref: '../users/schemas.yaml#/User' }
+      '400': { description: Missing or invalid fields }
+      '401': { description: Invalid or expired social token }
+      '409': { description: Email/social ID already registered under a different role }
+      '502': { description: Could not reach Facebook API }

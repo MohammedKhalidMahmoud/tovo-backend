@@ -1,21 +1,20 @@
 const repo   = require('./support.repository');
 const prisma = require('../../config/prisma');
 
-// ── Public: user/captain interactions ────────────────────────────────────────
-const createTicket = (actorId, role, subject) => {
-  const data = role === 'user' ? { userId: actorId, subject } : { captainId: actorId, subject };
-  return repo.createTicket(data);
+// ── Public: user/driver interactions ─────────────────────────────────────────
+const createTicket = (actorId, subject) => {
+  return repo.createTicket({ userId: actorId, subject });
 };
 
-const getTickets = async (actorId, role, page = 1, perPage = 20) => {
-  const where = role === 'user' ? { userId: actorId } : { captainId: actorId };
+const getTickets = async (actorId, page = 1, perPage = 20) => {
+  const where = { userId: actorId };
   const skip = (page - 1) * perPage;
   const [tickets, total] = await repo.findTickets(where, skip, perPage);
   return { tickets, total, page, perPage };
 };
 
-const getTicketById = async (id, actorId, role) => {
-  const where = role === 'user' ? { userId: actorId } : { captainId: actorId };
+const getTicketById = async (id, actorId) => {
+  const where = { userId: actorId };
   const ticket = await repo.findTicketById(id, where);
   if (!ticket) throw { status: 404, message: 'Ticket not found' };
   return ticket;

@@ -1,5 +1,5 @@
 // ════════════════════════════════════════════════════════════════════════════════
-// SOS - User/Captain Controller
+// SOS - User/Driver Controller
 // Path: src/modules/sos/sos.controller.js
 // ════════════════════════════════════════════════════════════════════════════════
 
@@ -8,16 +8,12 @@ const { success } = require('../../utils/response');
 
 /**
  * POST /api/v1/sos
- * Authenticated user or captain triggers an SOS alert.
+ * Authenticated user or driver triggers an SOS alert.
  */
 exports.triggerSos = async (req, res, next) => {
   try {
     const { lat, lng, message } = req.body;
-
-    const userId    = req.user?.role === 'user'    ? req.user.id : null;
-    const captainId = req.user?.role === 'captain' ? req.user.id : null;
-
-    const alert = await service.triggerSos({ userId, captainId, lat, lng, message });
+    const alert = await service.triggerSos({ userId: req.actor.id, lat, lng, message });
     return success(res, alert, 'SOS alert sent successfully', 201);
   } catch (err) { next(err); }
 };

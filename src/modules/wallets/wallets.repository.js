@@ -2,15 +2,15 @@ const prisma = require('../../config/prisma');
 
 // delta > 0 → credit, delta < 0 → debit
 // reason and tripId are recorded in the transaction log
-const adjustCaptainWallet = async (captainId, delta, { reason, tripId } = {}) => {
+const adjustUserWallet = async (userId, delta, { reason, tripId } = {}) => {
   const type = delta > 0 ? 'credit' : 'debit';
   const absAmount = Math.abs(delta);
 
-  const wallet = await prisma.wallet.findUnique({ where: { captainId } });
+  const wallet = await prisma.wallet.findUnique({ where: { userId } });
 
   return prisma.$transaction([
     prisma.wallet.update({
-      where: { captainId },
+      where: { userId },
       data: {
         balance: delta > 0
           ? { increment: absAmount }
@@ -29,10 +29,8 @@ const adjustCaptainWallet = async (captainId, delta, { reason, tripId } = {}) =>
   ]);
 };
 
-const findWalletByOwner = ({ userId, captainId }) =>
-  prisma.wallet.findFirst({
-    where: userId ? { userId } : { captainId },
-  });
+const findWalletByOwner = ({ userId }) =>
+  prisma.wallet.findUnique({ where: { userId } });
 
 const listTransactions = (walletId, { page = 1, limit = 20 } = {}) =>
   prisma.walletTransaction.findMany({
@@ -49,7 +47,7 @@ const createTransaction = (data) =>
   prisma.walletTransaction.create({ data });
 
 module.exports = {
-  adjustCaptainWallet,
+  adjustUserWallet,
   findWalletByOwner,
   listTransactions,
   countTransactions,
