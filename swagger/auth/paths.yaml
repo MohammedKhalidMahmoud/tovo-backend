@@ -236,7 +236,7 @@
 /auth/social:
   post:
     tags: [Auth]
-    summary: Social login (Google / Facebook)
+    summary: Social login (Google / Facebook / Apple)
     description: |
       Authenticate using a social provider token. Finds or creates a Tovo account.
 
@@ -244,8 +244,11 @@
 
       **Facebook:** send the `access_token` returned by Facebook Login SDK as `access_token`.
 
+      **Apple:** send the `identityToken` (JWT) returned by Apple Sign-In SDK as `access_token`.
+      Note: Apple only provides `email` on the first sign-in. Subsequent sign-ins include only the user ID.
+
       **Find-or-create logic:**
-      1. Lookup by social ID (`googleId` / `facebookId`) — returning user, issues tokens immediately.
+      1. Lookup by social ID (`googleId` / `facebookId` / `appleId`) — returning user, issues tokens immediately.
       2. Lookup by email — links the social ID to the existing account, then issues tokens.
       3. If not found — creates a new account (`isVerified: true`, wallet auto-created, phone optional).
 
@@ -260,13 +263,14 @@
             properties:
               provider:
                 type: string
-                enum: [google, facebook]
+                enum: [google, facebook, apple]
                 example: google
               access_token:
                 type: string
                 description: >
                   Google: the `id_token` from Google Sign-In.
                   Facebook: the `access_token` from Facebook Login.
+                  Apple: the `identityToken` (JWT) from Apple Sign-In.
               role:
                 type: string
                 enum: [customer, driver]

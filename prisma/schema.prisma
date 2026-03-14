@@ -63,6 +63,7 @@ model User {
   passwordHash    String?
   googleId        String?   @unique
   facebookId      String?   @unique
+  appleId         String?   @unique
   avatarUrl       String?
   role            Role      @default(customer)
   isVerified      Boolean   @default(false)

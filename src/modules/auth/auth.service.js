@@ -5,6 +5,7 @@ const { generateAccessToken, generateRefreshToken, verifyRefreshToken } = requir
 const prisma = require('../../config/prisma');
 const mailer = require('../../config/mailer');
 const googleConfig = require('../../config/google');
+const appleConfig  = require('../../config/apple');
 
 const SALT_ROUNDS = 12;
 const OTP_EXPIRY_MINUTES = 5;
@@ -247,6 +248,14 @@ const verifyGoogleToken = async (idToken) => {
   return { googleId: payload.sub, email: payload.email, name: payload.name };
 };
 
+/** Verify an Apple identity_token (JWT) and return { appleId, email, name } */
+const verifyAppleToken = async (idToken) => {
+  const payload = await appleConfig.verifyIdToken(idToken);
+  if (!payload || !payload.sub) throw { status: 401, message: 'Invalid Apple token' };
+  // Apple only provides email + name on the first sign-in; subsequent logins omit them
+  return { appleId: payload.sub, email: payload.email ?? null, name: null };
+};
+
 /** Verify a Facebook access_token via Graph API and return { facebookId, email, name } */
 const verifyFacebookToken = (accessToken) =>
   new Promise((resolve, reject) => {
@@ -277,10 +286,16 @@ const issueSocialTokens = async (user) => {
   return { accessToken, refreshToken, user: safeUser, role: user.role };
 };
 
+const SOCIAL_FINDERS = {
+  googleId:   (id) => repo.findUserByGoogleId(id),
+  facebookId: (id) => repo.findUserByFacebookId(id),
+  appleId:    (id) => repo.findUserByAppleId(id),
+};
+
 /** Find-or-create a user from verified social profile data */
 const findOrCreateSocialUser = async ({ idField, idValue, email, name, role }) => {
   // 1. Look up by social ID
-  let user = await repo[idField === 'googleId' ? 'findUserByGoogleId' : 'findUserByFacebookId'](idValue);
+  let user = await SOCIAL_FINDERS[idField](idValue);
 
   if (user) {
     if (user.role !== role) throw { status: 409, message: 'An account with this social identity exists under a different role' };
@@ -322,6 +337,10 @@ const socialAuth = async ({ provider, access_token, role }) => {
     profile = await verifyFacebookToken(access_token);
     profile.idField = 'facebookId';
     profile.idValue = profile.facebookId;
+  } else if (provider === 'apple') {
+    profile = await verifyAppleToken(access_token);
+    profile.idField = 'appleId';
+    profile.idValue = profile.appleId;
   } else {
     throw { status: 400, message: `Provider '${provider}' is not supported` };
   }

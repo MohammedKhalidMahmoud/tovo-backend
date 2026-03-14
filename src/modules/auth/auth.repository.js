@@ -17,6 +17,9 @@ const findUserByGoogleId = (googleId) =>
 const findUserByFacebookId = (facebookId) =>
   prisma.user.findUnique({ where: { facebookId } });
 
+const findUserByAppleId = (appleId) =>
+  prisma.user.findUnique({ where: { appleId } });
+
 const createUser = (data) =>
   prisma.user.create({ data });
 
@@ -72,7 +75,7 @@ const markPasswordResetTokenUsed = (id) =>
 
 module.exports = {
   findUserByEmail, findUserByPhone, findUserById,
-  findUserByGoogleId, findUserByFacebookId, createUser,
+  findUserByGoogleId, findUserByFacebookId, findUserByAppleId, createUser,
   findAdminByEmail, findAdminById,
   createRefreshToken, findRefreshToken, deleteRefreshToken, deleteAllRefreshTokens,
   createOtp, findValidOtp, markOtpUsed,
