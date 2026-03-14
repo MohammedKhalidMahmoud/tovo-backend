@@ -11,6 +11,13 @@ export function configureSwagger(app) {
   // Load base info
   const info = YAML.load(path.resolve(__dirname, "./swagger.info.yaml"));
 
+  // Put the correct server first based on environment so Swagger UI defaults to it
+  const isProd = process.env.NODE_ENV === "production";
+  if (isProd && info.servers?.length > 1) {
+    // Move production server (index 1) to the front
+    info.servers = [info.servers[1], info.servers[0]];
+  }
+
   // ===== LOAD SCHEMAS =====
   const authSchemas = YAML.load(path.resolve(__dirname, "./auth/schemas.yaml"));
   const usersSchemas = YAML.load(path.resolve(__dirname, "./users/schemas.yaml"));
