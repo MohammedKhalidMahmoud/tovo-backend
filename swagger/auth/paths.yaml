@@ -22,10 +22,10 @@
           application/json:
             schema:
               allOf:
-                - $ref: '../common/schemas.yaml#/SuccessResponse'
+                - $ref: '#/components/schemas/SuccessResponse'
                 - properties:
                     data:
-                      $ref: '../users/schemas.yaml#/User'
+                      $ref: '#/components/schemas/User'
       '409': { description: Email or phone already exists }
 
 /auth/register/captain:
@@ -88,7 +88,7 @@
                     accessToken: { type: string }
                     refreshToken: { type: string }
                     role: { type: string, enum: [customer, driver] }
-                    user: { $ref: '../users/schemas.yaml#/User' }
+                    user: { $ref: '#/components/schemas/User' }
       '401': { description: Invalid credentials }
       '400': { description: Invalid role }
 
@@ -283,7 +283,7 @@
                     accessToken: { type: string }
                     refreshToken: { type: string }
                     role: { type: string, enum: [customer, driver] }
-                    user: { $ref: '../users/schemas.yaml#/User' }
+                    user: { $ref: '#/components/schemas/User' }
       '400': { description: Missing or invalid fields }
       '401': { description: Invalid or expired social token }
       '409': { description: Email/social ID already registered under a different role }

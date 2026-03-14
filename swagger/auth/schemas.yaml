@@ -1,3 +1,15 @@
 # Auth module does not define its own domain schemas.
 # It references User from ../users/schemas.yaml and Captain from ../captains/schemas.yaml.
 # Token response shapes are defined inline within paths.yaml.
+
+SuccessResponse:
+  type: object
+  properties:
+    success:
+      type: boolean
+      example: true
+    message:
+      type: string
+      example: Success
+    data:
+      type: object
