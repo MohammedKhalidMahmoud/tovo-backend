@@ -208,6 +208,9 @@ model Trip {
   declines            TripDecline[]
   walletTransactions  WalletTransaction[]
 
+  @@index([userId])
+  @@index([driverId])
+  @@index([status])
   @@map("trips")
 }
 
@@ -239,6 +242,7 @@ model Rating {
   user      User      @relation("CustomerRatings", fields: [userId], references: [id])
   driver    User      @relation("DriverRatings", fields: [driverId], references: [id])
 
+  @@index([driverId])
   @@map("ratings")
 }
 
@@ -350,6 +354,7 @@ model Notification {
 
   user      User      @relation(fields: [userId], references: [id])
 
+  @@index([userId])
   @@map("notifications")
 }
 
@@ -385,6 +390,7 @@ model DeviceToken {
 
   user      User      @relation(fields: [userId], references: [id])
 
+  @@index([userId])
   @@map("device_tokens")
 }
 

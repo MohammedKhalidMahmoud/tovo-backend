@@ -35,10 +35,9 @@ const getActiveRegions = async (req, res, next) => {
 
 const createTrip = async (req, res, next) => {
   try {
-    const trip = await service.createTrip(req.actor.id, req.body);
+    const { trip, nearbyCaptains } = await service.createTrip(req.actor.id, req.body);
     const io = req.app.get('io');
 
-    const nearbyCaptains = await service.getNearbyCaptains(trip.pickupLat, trip.pickupLng, 10, trip.serviceId);
     nearbyCaptains.forEach((c) => io.to(`driver:${c.id}`).emit('trip.new_request', trip));
 
     return created(res, trip, 'Trip created and searching for captains');

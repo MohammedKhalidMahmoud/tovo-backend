@@ -20,9 +20,6 @@ const set = (captainId, { lat, lng, heading = null, serviceId = null }) => {
     serviceId: serviceId ?? existing?.serviceId ?? null,
     ts: Date.now(),
   });
-  
-  
-  console.log(store);
 };
 
 const remove = (captainId) => {

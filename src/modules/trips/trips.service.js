@@ -123,7 +123,7 @@ const createTrip = async (userId, body) => {
     }).catch(() => {});
   });
 
-  return trip;
+  return { trip, nearbyCaptains: nearby };
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
