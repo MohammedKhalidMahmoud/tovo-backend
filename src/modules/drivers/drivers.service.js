@@ -1,4 +1,4 @@
-const repo          = require('./captains.repository');
+const repo          = require('./drivers.repository');
 const prisma        = require('../../config/prisma');
 const bcrypt        = require('bcryptjs');
 const locationStore = require('../../realtime/locationStore');

@@ -7,6 +7,34 @@ const withDefaultImage = (svc, req) => ({
   imageUrl: svc.imageUrl ?? `${req.protocol}://${req.get('host')}/uploads/service-default.png`,
 });
 
+exports.listActiveServices = async (req, res, next) => {
+  try {
+    const services = await service.listActiveServices();
+    return success(res, services.map(s => withDefaultImage(s, req)), 'Services retrieved successfully');
+  } catch (err) { next(err); }
+};
+
+exports.getActiveService = async (req, res, next) => {
+  try {
+    const svc = await service.getService(req.params.id);
+    if (!svc.isActive) return error(res, 'Service not found', 404);
+    return success(res, withDefaultImage(svc, req), 'Service retrieved successfully');
+  } catch (err) {
+    if (err.statusCode) return error(res, err.message, err.statusCode);
+    next(err);
+  }
+};
+
+exports.deleteService = async (req, res, next) => {
+  try {
+    await service.deleteService(req.params.id);
+    return success(res, null, 'Service deleted successfully');
+  } catch (err) {
+    if (err.statusCode) return error(res, err.message, err.statusCode);
+    next(err);
+  }
+};
+
 exports.listServices = async (req, res, next) => {
   try {
     const services = await service.listServices();

@@ -1,11 +1,93 @@
 # Tovo Backend — Project Documentation
 
-> Last updated: 2026-03-14 (2)
+> Last updated: 2026-03-17
 > Purpose: Persistent technical reference for developers and AI assistants continuing development across sessions.
 
 ---
 
 ## Changelog
+
+### 2026-03-17 — Regions & Vehicle Models Public/Admin Split + File Renames
+
+#### Regions module — public/admin route split
+- **Previously:** Single `regions.routes.js` (no auth on any route) mounted at both `/api/v1/regions` and `/api/v1/admin/regions`. No public-facing active-only endpoint existed.
+- **Now:**
+  - **`regions.public.routes.js`** (new) — mounted at `/api/v1/regions`. `GET /` (active only) and `GET /:id` (active only, 404 if inactive). No auth.
+  - **`regions.admin.routes.js`** (renamed from `regions.routes.js`) — mounted at `/api/v1/admin/regions`. All 5 routes (`GET /`, `POST /`, `GET /:id`, `PUT /:id`, `DELETE /:id`) protected with `adminOnly`.
+  - **`regions.repository.js`** (new) — `findAllActive()` and `findActiveById(id)` (filters by `status: true`).
+  - New service method: `getActiveRegion(id)` — calls `repo.findActiveById(id)`, throws 404 if null.
+  - New controller handlers: `listActiveRegions`, `getActiveRegion`.
+- **Files created:** `regions.repository.js`, `regions.public.routes.js`
+- **Files renamed:** `regions.routes.js` → `regions.admin.routes.js`
+- **Files changed:** `regions.service.js`, `regions.controller.js`, `app.js`
+
+#### Vehicle models module — completed public/admin split
+- **Previously:** Public routes file only had `GET /` (active list). Admin routes file had a stray `GET /active` with no auth, and `DELETE /:id` was missing `adminOnly`. No public `GET /:id` existed.
+- **Now:**
+  - **`vehicleModels.public.routes.js`** — added `GET /:id` with UUID validation → `getActiveModel` (returns 404 if inactive).
+  - **`vehicleModels.admin.routes.js`** (renamed from `vehicleModels.routes.js`) — removed stray `GET /active`; added `...adminOnly` to `DELETE /:id`.
+  - **`vehicleModels.repository.js`** — added `findActiveById(id)` (`findUnique` filtered by `isActive: true`).
+  - New service method: `getActiveModel(id)` — calls `repo.findActiveById(id)`, throws 404 if null.
+  - New controller handler: `getActiveModel`.
+- **Files renamed:** `vehicleModels.routes.js` → `vehicleModels.admin.routes.js`
+- **Files changed:** `vehicleModels.repository.js`, `vehicleModels.service.js`, `vehicleModels.controller.js`, `vehicleModels.public.routes.js`, `app.js`
+
+---
+
+### 2026-03-16 (2) — Services Module Refactor + app.js Routing Cleanup
+
+#### Services module split into public and admin route files
+- **Previously:** Single `services.routes.js` mixed public and admin routes; mounted at both `/api/v1/services` and `/api/v1/admin/services`; public `GET /` incorrectly returned ALL services including inactive; `GET /:id` returned inactive services; `DELETE /:id` was missing; `PATCH /{id}/image` was missing from Swagger
+- **Now:**
+  - **`services.public.routes.js`** (new) — mounted at `/api/v1/services`. Two routes: `GET /` (active only) and `GET /:id` (active only, 404 if inactive). No auth.
+  - **`services.routes.js`** (admin only) — mounted at `/api/v1/admin/services`. All routes require admin JWT. `GET /` returns all services including inactive. `GET /:id` returns any service. `POST /`, `PATCH /:id`, `PATCH /:id/image` unchanged. `DELETE /:id` added.
+  - New controller handlers: `listActiveServices`, `getActiveService`, `deleteService`
+  - New service method: `deleteService(id)` — finds, deletes, invalidates cache
+  - New repository method: `remove(id)`
+- **Files changed:** `services.repository.js`, `services.service.js`, `services.controller.js`, `services.routes.js`, `app.js`
+- **Files created:** `services.public.routes.js`
+
+#### app.js routing fixes
+- **Duplicate `services` mount removed** — `/api/v1/services` was mounted twice (lines 102 and 113 in the original). Duplicate removed.
+- **Dashboard root mount removed** — `app.use('/api/v1', dashboardRoutes)` was exposing all dashboard routes at the API root without prefix. Removed; only `app.use('/api/v1/dashboard', dashboardRoutes)` remains.
+- **Duplicate regions import with typo removed** — `regionstRoutes` (typo) imported the same file as `regionsRoutes` and was never used. Removed.
+- **`PORT` fallback added** — `process.env.PORT || 3000`
+- **Dead Swagger commented-out code removed** — lines 81–85 (old YAML file-based setup)
+
+---
+
+### 2026-03-16 — Trip Dispatch Refactor + Public Vehicle Models + Apple Sign-In
+
+#### 1. Trip request dispatch moved to `emitTripRequest` in `socket.js`
+- **Previously:** `trips.controller.js` `createTrip` contained an inline `nearbyCaptains.forEach(...)` loop that emitted `trip.new_request` directly. `trips.service.js` `createTrip` returned `{ trip, nearbyCaptains }` so the controller could reuse the already-computed nearby list.
+- **Now:**
+  - New exported function `emitTripRequest(io, trip, radiusKm = 10)` added to `src/realtime/socket.js`. It calls `locationStore.getNearby(trip.pickupLat, trip.pickupLng, radiusKm, trip.serviceId ?? null)`, logs if no drivers found, and emits `trip.new_request` to each `driver:{driverId}` room.
+  - `trips.service.js` `createTrip` now returns just `trip` (the `nearbyCaptains` return value was removed). The `locationStore.getNearby()` call inside the service is kept for FCM push notifications (fire-and-forget).
+  - `trips.controller.js` `createTrip` now calls `emitTripRequest(io, trip, 10)` instead of the inline forEach.
+- **Files changed:** `src/realtime/socket.js`, `src/modules/trips/trips.service.js`, `src/modules/trips/trips.controller.js`
+
+#### 2. Public `GET /vehicle-models` endpoint added
+- **Previously:** `app.js` mounted `vehicleModels.routes.js` (the admin routes file) at both `/api/v1/vehicle-models` and `/api/v1/admin/vehicle-models`, so the public path incorrectly required admin auth.
+- **Now:**
+  - New file `src/modules/vehicle-models/vehicleModels.public.routes.js` — `GET /` calls `ctrl.listActiveModels` (no auth).
+  - `listActiveModels` handler added to `vehicleModels.controller.js` — calls `service.listActiveModels()`.
+  - `vehicleModels.service.js` already had `listActiveModels()` using `repo.findActive()`.
+  - Bug fixed in `vehicleModels.repository.js`: `findAll` was calling non-existent `prisma.vehicleModel.findAll()` — corrected to `prisma.vehicleModel.findMany(...)`.
+  - `app.js` now mounts public routes at `/api/v1/vehicle-models` and keeps admin routes at `/api/v1/admin/vehicle-models`.
+- **Files changed:** `src/modules/vehicle-models/vehicleModels.controller.js`, `src/modules/vehicle-models/vehicleModels.repository.js`, `src/app.js`
+- **Files created:** `src/modules/vehicle-models/vehicleModels.public.routes.js`
+
+#### 3. Apple Sign-In added to social auth
+- `POST /auth/social` now supports `provider: "apple"` in addition to `"google"` and `"facebook"`
+- Apple verifies `identity_token` as a JWT; public keys fetched from `https://appleid.apple.com/auth/keys` and verified using `jsonwebtoken`
+- Find-or-create logic: look up by `appleId` → then by email → create new user
+- New env var: `APPLE_CLIENT_ID` (the app's bundle ID, e.g. `com.yourcompany.tovo`) — used as the audience (`aud`) claim in token verification
+- New repo method in `auth.repository.js`: `findUserByAppleId()`
+- `appleId String? @unique` added to `User` model in `schema.prisma`
+- Migration: `20260316_add_apple_id`
+- No new packages required
+
+---
 
 ### 2026-03-14 (2) — Swagger Resolver Errors Fixed
 
@@ -75,18 +157,19 @@ Server was consuming excessive CPU and memory after deployment due to several is
 
 #### Social auth implemented (`POST /auth/social`)
 - **Previously:** threw `501 Not Implemented`
-- **Now:** supports `provider: "google"` and `provider: "facebook"` with find-or-create logic
+- **Now:** supports `provider: "google"`, `provider: "facebook"`, and `provider: "apple"` with find-or-create logic
 - **Google:** verifies `id_token` via `google-auth-library` (`OAuth2Client.verifyIdToken`)
 - **Facebook:** verifies `access_token` via Graph API HTTPS call (`no extra package`) — `https://graph.facebook.com/me?fields=id,name,email`
-- **Find-or-create priority:** look up by `googleId`/`facebookId` → then by email (links social ID) → then create new user
+- **Apple:** verifies `identity_token` JWT using public keys from `https://appleid.apple.com/auth/keys` via `jsonwebtoken` (no extra package)
+- **Find-or-create priority:** look up by `googleId`/`facebookId`/`appleId` → then by email (links social ID) → then create new user
 - **New user created:** `isVerified: true`, wallet auto-created, `phone` left null (allowed now)
 - **Role mismatch guard:** `409` if email/social ID belongs to a different role
 - **New package:** `google-auth-library`
 - **New config:** `src/config/google.js` — lazy `OAuth2Client` init (same pattern as `firebase.js`)
-- **New env var:** `GOOGLE_CLIENT_ID`
-- **Schema changes:** `phone` made optional (`String?`); `googleId String? @unique`, `facebookId String? @unique` added to `User`
-- **Migration:** `20260310200000_add_social_auth_fields`
-- **New repo methods in `auth.repository.js`:** `findUserByGoogleId()`, `findUserByFacebookId()`
+- **New env vars:** `GOOGLE_CLIENT_ID`, `APPLE_CLIENT_ID` (bundle ID, e.g. `com.yourcompany.tovo`)
+- **Schema changes:** `phone` made optional (`String?`); `googleId String? @unique`, `facebookId String? @unique`, `appleId String? @unique` added to `User`
+- **Migrations:** `20260310200000_add_social_auth_fields`, `20260316_add_apple_id`
+- **New repo methods in `auth.repository.js`:** `findUserByGoogleId()`, `findUserByFacebookId()`, `findUserByAppleId()`
 - **No controller/route changes** — already wired
 
 ---
@@ -225,7 +308,11 @@ HTTP Request
 Socket.io Events
   → socket.js auth middleware (JWT verification)
   → locationStore (in-memory Map — captain GPS)
-  → Emitters called from controllers to push events to rooms
+  → Emitters called from controllers to push events to rooms:
+      emitTripRequest(io, trip, radiusKm)   — queries locationStore, emits trip.new_request to nearby drivers
+      emitCaptainMatched(io, userId, trip)  — notifies passenger of driver match
+      emitTripStatusChanged(io, ...)        — broadcasts status change to trip room
+      emitTripCancelled(io, ...)            — notifies both parties of cancellation
 ```
 
 ---
@@ -448,7 +535,7 @@ https://tovo-b.developteam.site/api/v1  (production)
 | POST | `/otp/verify` | — | Verify OTP and mark user as verified |
 | POST | `/forgot-password` | — | Send 6-digit OTP to user's email. Body: `{ email }`. Always returns same message (prevents enumeration) |
 | POST | `/reset-password` | — | Verify OTP + set new password. Body: `{ email, otp, new_password }` |
-| POST | `/social` | — | Social auth (placeholder) |
+| POST | `/social` | — | Social auth — `provider: google \| facebook \| apple` |
 
 #### Users — `/api/v1/users`
 | Method | Path | Auth | Description |
@@ -478,7 +565,6 @@ https://tovo-b.developteam.site/api/v1  (production)
 #### Trips — `/api/v1/trips`
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| GET | `/regions/active` | — | Active service regions (public) |
 | GET | `/estimate` | user | Fare estimate |
 | POST | `/` | user | Create trip request |
 | GET | `/` | user | User trip history |
@@ -529,21 +615,45 @@ https://tovo-b.developteam.site/api/v1  (production)
 | PATCH | `/:id/activate` | admin | Activate rule — atomically deactivates current active rule for same service |
 | DELETE | `/:id` | admin | Delete rule |
 
-#### Services — `/api/v1/services`
+#### Vehicle Models — `/api/v1/vehicle-models` and `/api/v1/admin/vehicle-models`
+Public routes served by `vehicleModels.public.routes.js`; admin routes by `vehicleModels.admin.routes.js`.
+
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| GET | `/` | — | List active services |
-| GET | `/:id` | — | Service details |
-| POST | `/` | — | Create service |
-| PATCH | `/:id` | — | Update service |
+| GET | `/vehicle-models` | — | List active vehicle models |
+| GET | `/vehicle-models/:id` | — | Get active model by ID — 404 if inactive |
+| GET | `/admin/vehicle-models` | admin | List all vehicle models including inactive |
+| GET | `/admin/vehicle-models/:id` | admin | Get any vehicle model regardless of status |
+| POST | `/admin/vehicle-models` | admin | Create a vehicle model |
+| PUT | `/admin/vehicle-models/:id` | admin | Update a vehicle model |
+| DELETE | `/admin/vehicle-models/:id` | admin | Delete a vehicle model (`?confirm=true` required) |
+
+#### Services — `/api/v1/services` and `/api/v1/admin/services`
+Public routes served by `services.public.routes.js`; admin routes by `services.routes.js`.
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/services` | — | List active services only |
+| GET | `/services/:id` | — | Get service by ID — 404 if inactive |
+| GET | `/admin/services` | admin | List all services including inactive |
+| GET | `/admin/services/:id` | admin | Get any service regardless of status |
+| POST | `/admin/services` | admin | Create a service |
+| PATCH | `/admin/services/:id` | admin | Update name, baseFare, or isActive |
+| PATCH | `/admin/services/:id/image` | admin | Update service image (multipart) |
+| DELETE | `/admin/services/:id` | admin | Delete a service |
 
 #### Regions — `/api/v1/regions` and `/api/v1/admin/regions`
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/` | List all regions |
-| POST | `/` | Create region |
-| PATCH | `/:id` | Update region |
-| DELETE | `/:id` | Delete region |
+Public routes served by `regions.public.routes.js`; admin routes by `regions.admin.routes.js`.
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/regions` | — | List active regions only |
+| GET | `/regions/:id` | — | Get active region by ID — 404 if inactive |
+| GET | `/admin/regions` | admin | List all regions including inactive (paginated, filterable) |
+| GET | `/admin/regions/:id` | admin | Get any region regardless of status |
+| POST | `/admin/regions` | admin | Create a region |
+| PUT | `/admin/regions/:id` | admin | Update a region |
+| DELETE | `/admin/regions/:id` | admin | Delete a region |
 
 #### Payments — `/api/v1/payments` and `/api/v1/admin/payments`
 Both paths served by the same router (`payments.routes.js`). Auth enforced per route inline.
@@ -672,9 +782,9 @@ This is a **backend-only repository**. No frontend code exists in this project.
    - Pickup validated inside an active Region (haversine check)
    - fare = baseFare + distanceKm × FARE_PER_KM
    - commission + driverEarnings calculated via commission rules (see below)
-   - Nearby online drivers found from in-memory locationStore
-   - Each nearby driver receives 'trip.new_request' via Socket.io
-   - Each nearby driver receives FCM push "New Trip Request" (fire-and-forget)
+   - trips.service.js calls locationStore.getNearby() → sends FCM push to each nearby driver (fire-and-forget)
+   - trips.service.js returns just `trip`
+   - Controller calls emitTripRequest(io, trip, 10) → socket.js queries locationStore again and emits 'trip.new_request' to each nearby driver's private room
 
 3. Driver receives 'trip.new_request' event / push notification
 4. Driver calls PATCH /trips/:id/accept → status: matched
@@ -832,6 +942,7 @@ On success: customer wallet balance incremented + `WalletTransaction { type: cre
 | `SMTP_FROM_NAME` | Display name in From field | `Tovo` |
 | `SMTP_FROM_EMAIL` | From email address | — (required for email) |
 | `GOOGLE_CLIENT_ID` | Google OAuth 2.0 Client ID (from Google Cloud Console) | — (required for Google social login) |
+| `APPLE_CLIENT_ID` | Apple app bundle ID (e.g. `com.yourcompany.tovo`) — used as JWT audience claim | — (required for Apple Sign-In) |
 
 ### Important Config Files
 - `prisma/schema.prisma` — Single source of truth for the database schema
@@ -917,4 +1028,4 @@ Example stored filename: `avatar-1741427600000-482910372.jpg`. Avatar URLs retur
 
 ## Context Summary for AI Assistants
 
-Tovo is a Node.js/Express ride-hailing and package delivery backend. Stack: Express 4, Prisma ORM v5, MySQL, Socket.io, JWT auth, Firebase push notifications, Nodemailer (SMTP email), Swagger/OpenAPI docs at `/api/docs`. The project is backend-only with no frontend. Architecture is strictly layered: **Controller → Service → Repository** — only repositories access Prisma. Auth middleware sets `req.actor = { id, role }` (not `req.user`). Three roles: `customer` (riders), `driver` (drivers), `admin`. User and Driver models are merged into a single `User` table with `role` field and driver-only fields (`drivingLicense`, `licenseExpiryDate`, `isOnline`, `rating`, `totalTrips`, `serviceId`). AdminUser is a separate table for admin accounts. Login endpoint accepts `identifier` field (auto-detects email vs phone). Separate admin login endpoint: `POST /auth/admin/login` with email and password. All modules live under `src/modules/<name>/` with four files each: routes, controller, service, repository. Swagger docs are loaded from YAML files in `swagger/<module>/paths.yaml` and merged in `swagger/swagger.config.js`. Swagger server URLs: local = `http://localhost:3000/api/v1`, production = `https://tovo-b.developteam.site/api/v1`. Real-time driver GPS is stored in an in-memory `locationStore` (never written to DB); Socket.io rooms are `user:{id}`, `driver:{id}`, `trip:{id}`, `drivers:available`. Trip lifecycle states: `searching → matched → on_way → in_progress → completed | cancelled`. Fare = `driverEarnings + commission` (what customer pays). `driverEarnings = distanceKm × FARE_PER_KM`. Commission is **added on top** of driverEarnings via DB-driven `CommissionRule` records — NOT deducted from fare. `Service.baseFare` exists on the model but is not used in the current calculation. Driver wallet is automatically settled on `endTrip`: cash trips deduct commission (`reason: trip_commission_deduction`), card trips credit driverEarnings (`reason: trip_earnings_credit`). Every wallet balance change (trip settlement, admin adjust, refund) creates a `WalletTransaction` record atomically via Prisma `$transaction`. Commission rules are managed at `/api/v1/admin/commissions`; activate endpoint atomically swaps the active rule per service. Fallback when no active rule: `COMMISSION_PCT` env var as percentage. Trips store `paymentType` (`cash`/`card`), `commission`, and `driverEarnings` as explicit columns. Wallets module is at `src/modules/wallets/` — routes mounted at both `/api/v1/wallets` (user/driver) and `/api/v1/admin/wallets` (admin); auth is enforced inline per route. Payments module is at `src/modules/payments/` — has a `payments.repository.js`. Refund endpoint guards: trip completed, card payment only, amount ≤ fare, no duplicate (checked via `WalletTransaction` with `reason: refund` for same `tripId`). Helmet is bypassed for `/api/docs` to allow Swagger UI cross-origin requests; all other routes use `crossOriginResourcePolicy: cross-origin`. Response utility is at `src/utils/response.js` and exports `success, created, error, notFound, paginate`. Middleware paths are always `../../middleware/` from inside a module. Settings module is fully implemented: `settings.routes.js` (single file for public + admin routes), `settings.controller.js`, `settings.service.js`, `settings.repository.js`. Public `GET /settings` returns a flat `{ key: value }` map; admin routes are protected by inline `authenticate + authorize('admin')` and mounted at `/api/v1/admin/settings`. The `SystemSetting` model uses a UUID `id` primary key with `key` as a unique field — value is always stored as a plain string (client parses type). Avatar uploads use `multer.diskStorage` with a custom `filename` function that preserves the original file extension (`path.extname(file.originalname)`) — produces filenames like `avatar-1741427600000-482910372.jpg`. The `uploads/` directory is served as static files. Avatar URLs are always full backend URLs built with `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`. Always run `npx prisma generate` + `npx prisma migrate deploy` after any schema change on the server, or Prisma model accessors will be undefined at runtime. Firebase push notifications are fully integrated into the trip lifecycle inside `trips.service.js` — `notificationsService` (from `src/modules/notifications/notifications.service.js`) is called fire-and-forget at every lifecycle hook. The notifications module has `sendToUser(userId, title, body, data)`, `sendToDriver(driverId, title, body, data)`, `createAndSend(userId, title, body, data)` (persists + sends), and `sendBulk(tokens, ...)`. Device tokens stored in `DeviceToken` table; invalid tokens are auto-cleaned after FCM send failures. FCM provider at `src/providers/fcm.js` calls `messaging().sendEachForMulticast()`. Firebase config at `src/config/firebase.js` (lazy init, reads `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`). Notifications admin endpoints (`send-to-user`, `send-to-driver`) use standard JWT `authenticate + authorize('admin')` — NOT `X-Admin-Key`. Forgot password is fully implemented: `POST /auth/forgot-password` (body: `{ email }`) generates a 6-digit OTP, stores it in `PasswordResetToken` table (10-min expiry), and sends an HTML email via nodemailer. `POST /auth/reset-password` (body: `{ email, otp, new_password }`) verifies the OTP and updates the password. `src/config/mailer.js` is the lazy nodemailer transporter using `SMTP_*` env vars. `PasswordResetToken` model: `email`, `code`, `expiresAt`, `isUsed`, no FK to User. `locationStore.set()` does NOT log to console — the debug `console.log(store)` was removed (it was blocking the event loop on every GPS update). `trips.service.js` `createTrip()` returns `{ trip, nearbyCaptains }` (not just `trip`) — the controller destructures this to avoid a second `getNearby()` call for socket emission. `services.repository.js` `findAll()` uses a 60-second in-process TTL cache; `invalidateServicesCache()` is exported and called by `services.service.js` after every write. `regions.service.js` `listActiveRegions()` uses the same 60-second TTL cache pattern; cache is invalidated immediately on create/update/delete. DB indexes added to `Trip` (`userId`, `driverId`, `status`), `Rating` (`driverId`), `Notification` (`userId`), `DeviceToken` (`userId`) — migration `add_indexes` must be deployed to the server. Swagger `$ref` values in all `paths.yaml` files must use `'#/components/schemas/<Name>'` — never relative file paths like `'../module/schemas.yaml#/Name'`. All schemas are merged into a single flat namespace by `swagger/swagger.config.js`. `SuccessResponse` schema is defined in `swagger/auth/schemas.yaml` (loaded first) and is available globally as `#/components/schemas/SuccessResponse`.
+Tovo is a Node.js/Express ride-hailing and package delivery backend. Stack: Express 4, Prisma ORM v5, MySQL, Socket.io, JWT auth, Firebase push notifications, Nodemailer (SMTP email), Swagger/OpenAPI docs at `/api/docs`. The project is backend-only with no frontend. Architecture is strictly layered: **Controller → Service → Repository** — only repositories access Prisma. Auth middleware sets `req.actor = { id, role }` (not `req.user`). Three roles: `customer` (riders), `driver` (drivers), `admin`. User and Driver models are merged into a single `User` table with `role` field and driver-only fields (`drivingLicense`, `licenseExpiryDate`, `isOnline`, `rating`, `totalTrips`, `serviceId`). AdminUser is a separate table for admin accounts. Login endpoint accepts `identifier` field (auto-detects email vs phone). Separate admin login endpoint: `POST /auth/admin/login` with email and password. All modules live under `src/modules/<name>/` with four files each: routes, controller, service, repository. Swagger docs are loaded from YAML files in `swagger/<module>/paths.yaml` and merged in `swagger/swagger.config.js`. Swagger server URLs: local = `http://localhost:3000/api/v1`, production = `https://tovo-b.developteam.site/api/v1`. Real-time driver GPS is stored in an in-memory `locationStore` (never written to DB); Socket.io rooms are `user:{id}`, `driver:{id}`, `trip:{id}`, `drivers:available`. Trip lifecycle states: `searching → matched → on_way → in_progress → completed | cancelled`. Fare = `driverEarnings + commission` (what customer pays). `driverEarnings = distanceKm × FARE_PER_KM`. Commission is **added on top** of driverEarnings via DB-driven `CommissionRule` records — NOT deducted from fare. `Service.baseFare` exists on the model but is not used in the current calculation. Driver wallet is automatically settled on `endTrip`: cash trips deduct commission (`reason: trip_commission_deduction`), card trips credit driverEarnings (`reason: trip_earnings_credit`). Every wallet balance change (trip settlement, admin adjust, refund) creates a `WalletTransaction` record atomically via Prisma `$transaction`. Commission rules are managed at `/api/v1/admin/commissions`; activate endpoint atomically swaps the active rule per service. Fallback when no active rule: `COMMISSION_PCT` env var as percentage. Trips store `paymentType` (`cash`/`card`), `commission`, and `driverEarnings` as explicit columns. Wallets module is at `src/modules/wallets/` — routes mounted at both `/api/v1/wallets` (user/driver) and `/api/v1/admin/wallets` (admin); auth is enforced inline per route. Payments module is at `src/modules/payments/` — has a `payments.repository.js`. Refund endpoint guards: trip completed, card payment only, amount ≤ fare, no duplicate (checked via `WalletTransaction` with `reason: refund` for same `tripId`). Helmet is bypassed for `/api/docs` to allow Swagger UI cross-origin requests; all other routes use `crossOriginResourcePolicy: cross-origin`. Response utility is at `src/utils/response.js` and exports `success, created, error, notFound, paginate`. Middleware paths are always `../../middleware/` from inside a module. Settings module is fully implemented: `settings.routes.js` (single file for public + admin routes), `settings.controller.js`, `settings.service.js`, `settings.repository.js`. Public `GET /settings` returns a flat `{ key: value }` map; admin routes are protected by inline `authenticate + authorize('admin')` and mounted at `/api/v1/admin/settings`. The `SystemSetting` model uses a UUID `id` primary key with `key` as a unique field — value is always stored as a plain string (client parses type). Avatar uploads use `multer.diskStorage` with a custom `filename` function that preserves the original file extension (`path.extname(file.originalname)`) — produces filenames like `avatar-1741427600000-482910372.jpg`. The `uploads/` directory is served as static files. Avatar URLs are always full backend URLs built with `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`. Always run `npx prisma generate` + `npx prisma migrate deploy` after any schema change on the server, or Prisma model accessors will be undefined at runtime. Firebase push notifications are fully integrated into the trip lifecycle inside `trips.service.js` — `notificationsService` (from `src/modules/notifications/notifications.service.js`) is called fire-and-forget at every lifecycle hook. The notifications module has `sendToUser(userId, title, body, data)`, `sendToDriver(driverId, title, body, data)`, `createAndSend(userId, title, body, data)` (persists + sends), and `sendBulk(tokens, ...)`. Device tokens stored in `DeviceToken` table; invalid tokens are auto-cleaned after FCM send failures. FCM provider at `src/providers/fcm.js` calls `messaging().sendEachForMulticast()`. Firebase config at `src/config/firebase.js` (lazy init, reads `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`). Notifications admin endpoints (`send-to-user`, `send-to-driver`) use standard JWT `authenticate + authorize('admin')` — NOT `X-Admin-Key`. Forgot password is fully implemented: `POST /auth/forgot-password` (body: `{ email }`) generates a 6-digit OTP, stores it in `PasswordResetToken` table (10-min expiry), and sends an HTML email via nodemailer. `POST /auth/reset-password` (body: `{ email, otp, new_password }`) verifies the OTP and updates the password. `src/config/mailer.js` is the lazy nodemailer transporter using `SMTP_*` env vars. `PasswordResetToken` model: `email`, `code`, `expiresAt`, `isUsed`, no FK to User. `locationStore.set()` does NOT log to console — the debug `console.log(store)` was removed (it was blocking the event loop on every GPS update). `trips.service.js` `createTrip()` returns just `trip` (not `{ trip, nearbyCaptains }`). Socket emission is handled by `emitTripRequest(io, trip, radiusKm)` exported from `src/realtime/socket.js` — it queries `locationStore.getNearby()` internally. The service still calls `getNearby()` independently for FCM push notifications (fire-and-forget). `services.repository.js` `findAll()` uses a 60-second in-process TTL cache (returns active only); `invalidateServicesCache()` is exported and called by `services.service.js` after every write (create, update, delete). Services module uses two route files: `services.public.routes.js` (public, active-only GET endpoints, no auth) mounted at `/api/v1/services`, and `services.routes.js` (admin CRUD, requires admin JWT) mounted at `/api/v1/admin/services`. Public `GET /services/:id` returns 404 for inactive services. Admin `DELETE /admin/services/:id` calls `service.deleteService()` which validates existence, deletes, and invalidates the cache. `regions.service.js` `listActiveRegions()` uses the same 60-second TTL cache pattern; cache is invalidated immediately on create/update/delete. DB indexes added to `Trip` (`userId`, `driverId`, `status`), `Rating` (`driverId`), `Notification` (`userId`), `DeviceToken` (`userId`) — migration `add_indexes` must be deployed to the server. Swagger `$ref` values in all `paths.yaml` files must use `'#/components/schemas/<Name>'` — never relative file paths like `'../module/schemas.yaml#/Name'`. All schemas are merged into a single flat namespace by `swagger/swagger.config.js`. `SuccessResponse` schema is defined in `swagger/auth/schemas.yaml` (loaded first) and is available globally as `#/components/schemas/SuccessResponse`.

@@ -50,4 +50,21 @@ const deleteModel = async (req, res, next) => {
   }
 };
 
-module.exports = { listModels, getModel, createModel, updateModel, deleteModel };
+const listActiveModels = async (req, res, next) => {
+  try {
+    const data = await service.listActiveModels();
+    return success(res, data);
+  } catch (err) { next(err); }
+};
+
+const getActiveModel = async (req, res, next) => {
+  try {
+    const data = await service.getActiveModel(req.params.id);
+    return success(res, data);
+  } catch (err) {
+    if (err.status) return error(res, err.message, err.status);
+    next(err);
+  }
+};
+
+module.exports = { listModels, getModel, createModel, updateModel, deleteModel, listActiveModels, getActiveModel };

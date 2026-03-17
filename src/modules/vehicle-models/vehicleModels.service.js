@@ -1,10 +1,18 @@
 const repo = require('./vehicleModels.repository');
 const prisma = require('../../config/prisma');
 
-const listModels = (onlyActive = false) => repo.findAll(onlyActive);
+const listModels = () => repo.findAll();
+
+const listActiveModels = () => repo.findActive();
 
 const getModel = async (id) => {
   const model = await repo.findById(id);
+  if (!model) throw { status: 404, message: 'Vehicle model not found' };
+  return model;
+};
+
+const getActiveModel = async (id) => {
+  const model = await repo.findActiveById(id);
   if (!model) throw { status: 404, message: 'Vehicle model not found' };
   return model;
 };
@@ -34,4 +42,4 @@ const deleteModel = async (id) => {
   return repo.remove(id);
 };
 
-module.exports = { listModels, getModel, createModel, updateModel, deleteModel };
+module.exports = { listModels, listActiveModels, getModel, getActiveModel, createModel, updateModel, deleteModel };

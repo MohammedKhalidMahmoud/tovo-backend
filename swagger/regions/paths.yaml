@@ -1,7 +1,48 @@
+/regions:
+  get:
+    tags: [Regions]
+    summary: List active regions
+    description: Returns all active service regions. No authentication required.
+    responses:
+      '200':
+        description: Active regions retrieved
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success: { type: boolean, example: true }
+                data:
+                  type: array
+                  items: { $ref: '#/components/schemas/Region' }
+
+/regions/{id}:
+  get:
+    tags: [Regions]
+    summary: Get an active region by ID
+    description: Returns the region only if it is active. Returns 404 for inactive or non-existent regions.
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    responses:
+      '200':
+        description: Region retrieved
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success: { type: boolean }
+                data:    { $ref: '#/components/schemas/Region' }
+      '404': { description: Region not found or inactive }
+
 /admin/regions:
   get:
     tags: [Regions]
-    summary: List all regions
+    summary: List all regions (admin)
+    description: Returns all regions including inactive ones. Supports pagination, filtering, and search.
     security: [{ BearerAuth: [] }]
     parameters:
       - name: page
@@ -31,10 +72,12 @@
                   items: { $ref: '#/components/schemas/Region' }
                 total: { type: integer, example: 10 }
                 pages: { type: integer, example: 1 }
+      '401': { description: Unauthorized }
+      '403': { description: Forbidden }
   post:
     tags: [Regions]
-    summary: Create a region
-    description: Create a circular service region with center coordinates and radius
+    summary: Create a region (admin)
+    description: Create a circular service region with center coordinates and radius.
     security: [{ BearerAuth: [] }]
     requestBody:
       required: true
@@ -42,15 +85,14 @@
         application/json:
           schema:
             type: object
-            required: [name, country]
+            required: [name]
             properties:
               name:     { type: string, example: 'Downtown Cairo' }
-              country:  { type: string, example: Egypt }
               city:     { type: string, example: Cairo }
               lat:      { type: number, example: 30.0444, description: 'Center latitude' }
               lng:      { type: number, example: 31.2357, description: 'Center longitude' }
               radius:   { type: number, example: 25.5, description: 'Radius in kilometers' }
-              isActive: { type: boolean, default: true }
+              status:   { type: boolean, default: true, description: 'Active status' }
     responses:
       '201':
         description: Region created
@@ -61,11 +103,15 @@
               properties:
                 success: { type: boolean }
                 data:    { $ref: '#/components/schemas/Region' }
+      '400': { description: Validation error }
+      '401': { description: Unauthorized }
+      '403': { description: Forbidden }
 
 /admin/regions/{id}:
   get:
     tags: [Regions]
-    summary: Get a single region
+    summary: Get a region by ID (admin)
+    description: Returns any region regardless of active status.
     security: [{ BearerAuth: [] }]
     parameters:
       - name: id
@@ -82,11 +128,12 @@
               properties:
                 success: { type: boolean }
                 data:    { $ref: '#/components/schemas/Region' }
+      '401': { description: Unauthorized }
+      '403': { description: Forbidden }
       '404': { description: Region not found }
   put:
     tags: [Regions]
-    summary: Update a region
-    description: Update region details including center coordinates and radius
+    summary: Update a region (admin)
     security: [{ BearerAuth: [] }]
     parameters:
       - name: id
@@ -117,10 +164,12 @@
               properties:
                 success: { type: boolean }
                 data:    { $ref: '#/components/schemas/Region' }
+      '401': { description: Unauthorized }
+      '403': { description: Forbidden }
       '404': { description: Region not found }
   delete:
     tags: [Regions]
-    summary: Delete a region
+    summary: Delete a region (admin)
     security: [{ BearerAuth: [] }]
     parameters:
       - name: id
@@ -128,5 +177,15 @@
         required: true
         schema: { type: string, format: uuid }
     responses:
-      '200': { description: Region deleted }
+      '200':
+        description: Region deleted successfully
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success: { type: boolean, example: true }
+                message: { type: string, example: Region deleted successfully }
+      '401': { description: Unauthorized }
+      '403': { description: Forbidden }
       '404': { description: Region not found }

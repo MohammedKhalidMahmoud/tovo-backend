@@ -49,6 +49,7 @@ router.put(
 // DELETE /admin/vehicle-models/:id?confirm=true — delete model
 router.delete(
   '/:id',
+  ...adminOnly,
   [param('id').isUUID(), query('confirm').equals('true').withMessage('confirm=true is required')],
   validate,
   ctrl.deleteModel,

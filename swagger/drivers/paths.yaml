@@ -1,19 +1,19 @@
 # ════════════════════════════════════════════════════════════════════════════
 # CAPTAINS MODULE — paths.yaml
-# Covers: /api/v1/captains  (captain-facing) + /api/v1/admin/drivers  (admin)
+# Covers: /api/v1/drivers  (driver-facing) + /api/v1/admin/drivers  (admin)
 # ════════════════════════════════════════════════════════════════════════════
 
 # ── CAPTAIN-FACING ROUTES ────────────────────────────────────────────────────
 
-/captains/me:
+/drivers/me:
   get:
-    tags: [Captains]
-    summary: Get captain profile
-    description: Returns the authenticated captain's full profile.
+    tags: [Drivers]
+    summary: Get driver profile
+    description: Returns the authenticated driver's full profile.
     security: [{ BearerAuth: [] }]
     responses:
       '200':
-        description: Captain profile retrieved successfully
+        description: Driver profile retrieved successfully
         content:
           application/json:
             schema:
@@ -21,7 +21,7 @@
                 - $ref: '#/components/schemas/SuccessResponse'
                 - type: object
                   properties:
-                    data: { $ref: '#/components/schemas/Captain' }
+                    data: { $ref: '#/components/schemas/Driver' }
       '401':
         description: Unauthorized
         content:
@@ -29,9 +29,9 @@
             schema: { $ref: '#/components/schemas/ErrorResponse' }
 
   put:
-    tags: [Captains]
-    summary: Update captain profile
-    description: Updates one or more fields on the authenticated captain's profile.
+    tags: [Drivers]
+    summary: Update driver profile
+    description: Updates one or more fields on the authenticated driver's profile.
     security: [{ BearerAuth: [] }]
     requestBody:
       required: true
@@ -63,7 +63,7 @@
                 - $ref: '#/components/schemas/SuccessResponse'
                 - type: object
                   properties:
-                    data: { $ref: '#/components/schemas/Captain' }
+                    data: { $ref: '#/components/schemas/Driver' }
       '400':
         description: Validation error
         content:
@@ -75,11 +75,11 @@
           application/json:
             schema: { $ref: '#/components/schemas/ErrorResponse' }
 
-/captains/me/avatar:
+/drivers/me/avatar:
   patch:
-    tags: [Captains]
+    tags: [Drivers]
     summary: Upload profile avatar
-    description: Uploads a new profile photo for the authenticated captain. Accepts `multipart/form-data`.
+    description: Uploads a new profile photo for the authenticated driver. Accepts `multipart/form-data`.
     security: [{ BearerAuth: [] }]
     requestBody:
       required: true
@@ -106,7 +106,7 @@
                     data:
                       type: object
                       properties:
-                        avatarUrl: { type: string, example: 'https://cdn.tovo.app/avatars/captain-abc.jpg' }
+                        avatarUrl: { type: string, example: 'https://cdn.tovo.app/avatars/driver-abc.jpg' }
       '400':
         description: No file uploaded or invalid format
         content:
@@ -120,21 +120,21 @@
 
 # ── Duty ─────────────────────────────────────────────────────────────────────
 
-/captains/me/duty/start:
+/drivers/me/duty/start:
   post:
-    tags: [Captains]
+    tags: [Drivers]
     summary: Go on duty
     description: |
-      Marks the captain as online and visible to the dispatch system.
+      Marks the driver as online and visible to the dispatch system.
 
-      After calling this endpoint the captain **must** start emitting
-      `captain.location_update` events over the WebSocket connection so their
+      After calling this endpoint the driver **must** start emitting
+      `driver.location_update` events over the WebSocket connection so their
       GPS position is kept up to date. Trip requests are only broadcast to
-      captains whose stored location falls within **10 km** of the pickup point.
+      drivers whose stored location falls within **10 km** of the pickup point.
     security: [{ BearerAuth: [] }]
     responses:
       '200':
-        description: Captain is now on duty
+        description: Driver is now on duty
         content:
           application/json:
             schema:
@@ -152,23 +152,23 @@
           application/json:
             schema: { $ref: '#/components/schemas/ErrorResponse' }
       '409':
-        description: Captain is already on duty
+        description: Driver is already on duty
         content:
           application/json:
             schema: { $ref: '#/components/schemas/ErrorResponse' }
 
-/captains/me/duty/end:
+/drivers/me/duty/end:
   post:
-    tags: [Captains]
+    tags: [Drivers]
     summary: Go off duty
     description: |
-      Marks the captain as offline and clears their stored GPS coordinates.
-      They will not appear in any subsequent nearby-captain queries until
+      Marks the driver as offline and clears their stored GPS coordinates.
+      They will not appear in any subsequent nearby-driver queries until
       they call `/duty/start` again.
     security: [{ BearerAuth: [] }]
     responses:
       '200':
-        description: Captain is now off duty
+        description: Driver is now off duty
         content:
           application/json:
             schema:
@@ -186,18 +186,18 @@
           application/json:
             schema: { $ref: '#/components/schemas/ErrorResponse' }
       '409':
-        description: Captain is already off duty
+        description: Driver is already off duty
         content:
           application/json:
             schema: { $ref: '#/components/schemas/ErrorResponse' }
 
 # ── Wallet ────────────────────────────────────────────────────────────────────
 
-/captains/me/wallet:
+/drivers/me/wallet:
   get:
-    tags: [Captains]
-    summary: Get captain wallet & earnings
-    description: Returns the authenticated captain's wallet balance, currency, and earnings summary.
+    tags: [Drivers]
+    summary: Get driver wallet & earnings
+    description: Returns the authenticated driver's wallet balance, currency, and earnings summary.
     security: [{ BearerAuth: [] }]
     responses:
       '200':
@@ -218,11 +218,11 @@
 
 # ── Insurance ─────────────────────────────────────────────────────────────────
 
-/captains/me/insurance:
+/drivers/me/insurance:
   get:
-    tags: [Captains]
+    tags: [Drivers]
     summary: Get insurance cards
-    description: Returns all active insurance card records associated with the authenticated captain.
+    description: Returns all active insurance card records associated with the authenticated driver.
     security: [{ BearerAuth: [] }]
     responses:
       '200':
@@ -250,13 +250,13 @@
           application/json:
             schema: { $ref: '#/components/schemas/ErrorResponse' }
 
-# ── Trip Management (Captain side) ────────────────────────────────────────────
+# ── Trip Management (Driver side) ────────────────────────────────────────────
 
-/captains/me/trips:
+/drivers/me/trips:
   get:
-    tags: [Captains]
-    summary: List captain trips
-    description: Returns the authenticated captain's trip history and any pending incoming requests.
+    tags: [Drivers]
+    summary: List driver trips
+    description: Returns the authenticated driver's trip history and any pending incoming requests.
     security: [{ BearerAuth: [] }]
     parameters:
       - name: page
@@ -269,7 +269,7 @@
         description: Results per page
     responses:
       '200':
-        description: Captain trips retrieved successfully
+        description: Driver trips retrieved successfully
         content:
           application/json:
             schema:
@@ -287,13 +287,13 @@
           application/json:
             schema: { $ref: '#/components/schemas/ErrorResponse' }
 
-/captains/me/trips/{id}/accept:
+/drivers/me/trips/{id}/accept:
   patch:
-    tags: [Captains]
+    tags: [Drivers]
     summary: Accept a trip request
     description: |
-      Captain accepts an incoming trip request. The trip status transitions to `accepted`.
-      Returns `422` if the trip was already taken by another captain or cancelled by the user.
+      Driver accepts an incoming trip request. The trip status transitions to `accepted`.
+      Returns `422` if the trip was already taken by another driver or cancelled by the user.
     security: [{ BearerAuth: [] }]
     parameters:
       - name: id
@@ -333,11 +333,11 @@
           application/json:
             schema: { $ref: '#/components/schemas/ErrorResponse' }
 
-/captains/me/trips/{id}/decline:
+/drivers/me/trips/{id}/decline:
   patch:
-    tags: [Captains]
+    tags: [Drivers]
     summary: Decline a trip request
-    description: Captain declines an incoming trip request. The request will be broadcast to other nearby captains.
+    description: Driver declines an incoming trip request. The request will be broadcast to other nearby drivers.
     security: [{ BearerAuth: [] }]
     parameters:
       - name: id
@@ -372,12 +372,12 @@
           application/json:
             schema: { $ref: '#/components/schemas/ErrorResponse' }
 
-/captains/me/trips/{id}/start:
+/drivers/me/trips/{id}/start:
   patch:
-    tags: [Captains]
+    tags: [Drivers]
     summary: Start a trip
     description: |
-      Captain marks the trip as started (passenger has been picked up).
+      Driver marks the trip as started (passenger has been picked up).
       Trip status transitions from `accepted` → `in_progress`.
     security: [{ BearerAuth: [] }]
     parameters:
@@ -418,12 +418,12 @@
           application/json:
             schema: { $ref: '#/components/schemas/ErrorResponse' }
 
-/captains/me/trips/{id}/end:
+/drivers/me/trips/{id}/end:
   patch:
-    tags: [Captains]
+    tags: [Drivers]
     summary: End a trip
     description: |
-      Captain marks the trip as completed (passenger has been dropped off).
+      Driver marks the trip as completed (passenger has been dropped off).
       Trip status transitions from `in_progress` → `completed`.
       Fare calculation and wallet settlement are triggered server-side.
     security: [{ BearerAuth: [] }]
@@ -465,9 +465,9 @@
           application/json:
             schema: { $ref: '#/components/schemas/ErrorResponse' }
 
-/captains/me/trips/{tripId}/credit-customer:
+/drivers/me/trips/{tripId}/credit-customer:
   post:
-    tags: [Captains]
+    tags: [Drivers]
     summary: Credit customer wallet from trip
     description: Driver credits a customer's wallet after completing a trip. Trip must be completed and belong to the authenticated driver. Creates a wallet transaction with reason `driver_credit`.
     security: [{ BearerAuth: [] }]
@@ -532,9 +532,9 @@
 
 /admin/drivers:
   get:
-    tags: [Captains]
+    tags: [Drivers]
     summary: List all drivers
-    description: Returns a paginated, filterable, and searchable list of all captains/drivers. Admin only.
+    description: Returns a paginated, filterable, and searchable list of all drivers/drivers. Admin only.
     security: [{ BearerAuth: [] }]
     parameters:
       - name: page
@@ -596,7 +596,7 @@
                   properties:
                     data:
                       type: array
-                      items: { $ref: '#/components/schemas/Captain' }
+                      items: { $ref: '#/components/schemas/Driver' }
                     pagination: { $ref: '#/components/schemas/Pagination' }
       '400':
         description: Validation error in query params
@@ -615,9 +615,9 @@
             schema: { $ref: '#/components/schemas/ErrorResponse' }
 
   post:
-    tags: [Captains]
+    tags: [Drivers]
     summary: Create a new driver
-    description: Admin creates a new captain/driver account directly.
+    description: Admin creates a new driver account directly.
     security: [{ BearerAuth: [] }]
     requestBody:
       required: true
@@ -650,7 +650,7 @@
                 - $ref: '#/components/schemas/SuccessResponse'
                 - type: object
                   properties:
-                    data: { $ref: '#/components/schemas/Captain' }
+                    data: { $ref: '#/components/schemas/Driver' }
       '400':
         description: Validation error
         content:
@@ -674,7 +674,7 @@
 
 /admin/drivers/{driverId}:
   get:
-    tags: [Captains]
+    tags: [Drivers]
     summary: Get driver by ID
     description: Returns detailed information about a specific driver. Admin only.
     security: [{ BearerAuth: [] }]
@@ -694,7 +694,7 @@
                 - $ref: '#/components/schemas/SuccessResponse'
                 - type: object
                   properties:
-                    data: { $ref: '#/components/schemas/Captain' }
+                    data: { $ref: '#/components/schemas/Driver' }
       '400':
         description: Validation error (driverId must be a valid UUID)
         content:
@@ -717,7 +717,7 @@
             schema: { $ref: '#/components/schemas/ErrorResponse' }
 
   put:
-    tags: [Captains]
+    tags: [Drivers]
     summary: Update driver information
     description: Admin updates one or more profile fields for a specific driver.
     security: [{ BearerAuth: [] }]
@@ -769,7 +769,7 @@
                 - $ref: '#/components/schemas/SuccessResponse'
                 - type: object
                   properties:
-                    data: { $ref: '#/components/schemas/Captain' }
+                    data: { $ref: '#/components/schemas/Driver' }
       '400':
         description: Validation error
         content:
@@ -792,7 +792,7 @@
             schema: { $ref: '#/components/schemas/ErrorResponse' }
 
   delete:
-    tags: [Captains]
+    tags: [Drivers]
     summary: Delete a driver account
     description: |
       Permanently deletes a driver account. **Irreversible.**
@@ -838,7 +838,7 @@
 
 /admin/drivers/{driverId}/approve:
   post:
-    tags: [Captains]
+    tags: [Drivers]
     summary: Approve driver verification
     description: Approves a driver's submitted documents and activates their account.
     security: [{ BearerAuth: [] }]
@@ -868,7 +868,7 @@
                 - $ref: '#/components/schemas/SuccessResponse'
                 - type: object
                   properties:
-                    data: { $ref: '#/components/schemas/Captain' }
+                    data: { $ref: '#/components/schemas/Driver' }
       '400':
         description: Validation error
         content:
@@ -897,7 +897,7 @@
 
 /admin/drivers/{driverId}/reject:
   post:
-    tags: [Captains]
+    tags: [Drivers]
     summary: Reject driver application
     description: Rejects a driver's submitted documents. A reason is required.
     security: [{ BearerAuth: [] }]
@@ -930,7 +930,7 @@
                 - $ref: '#/components/schemas/SuccessResponse'
                 - type: object
                   properties:
-                    data: { $ref: '#/components/schemas/Captain' }
+                    data: { $ref: '#/components/schemas/Driver' }
       '400':
         description: Validation error (reason required, min 10 chars)
         content:
@@ -954,7 +954,7 @@
 
 /admin/drivers/{driverId}/suspend:
   post:
-    tags: [Captains]
+    tags: [Drivers]
     summary: Suspend or unsuspend a driver
     description: |
       Toggles the suspension status of a driver account.
@@ -1000,7 +1000,7 @@
                 - $ref: '#/components/schemas/SuccessResponse'
                 - type: object
                   properties:
-                    data: { $ref: '#/components/schemas/Captain' }
+                    data: { $ref: '#/components/schemas/Driver' }
       '400':
         description: Validation error
         content:
@@ -1024,7 +1024,7 @@
 
 /admin/drivers/{driverId}/refund:
   post:
-    tags: [Captains]
+    tags: [Drivers]
     summary: Issue a refund to driver wallet
     description: Credits a refund amount directly to the driver's in-app wallet. Optionally linked to a trip.
     security: [{ BearerAuth: [] }]
@@ -1098,7 +1098,7 @@
 
 /admin/drivers/{driverId}/reset-password:
   post:
-    tags: [Captains]
+    tags: [Drivers]
     summary: Reset driver password
     description: Admin sets a new password for a specific driver account.
     security: [{ BearerAuth: [] }]

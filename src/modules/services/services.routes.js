@@ -22,11 +22,10 @@ const upload = multer({ storage });
 
 const adminOnly = [authenticate, authorize('admin')];
 
-// ── Public ────────────────────────────────────────────────────────────────────
-router.get('/', ctrl.listServices);
-router.get('/:id', [param('id').isUUID()], validate, ctrl.getService);
-
 // ── Admin ─────────────────────────────────────────────────────────────────────
+router.get('/', ...adminOnly, ctrl.listServices);
+router.get('/:id', ...adminOnly, [param('id').isUUID()], validate, ctrl.getService);
+
 router.post(
   '/',
   ...adminOnly,
@@ -60,5 +59,7 @@ router.patch(
   validate,
   ctrl.updateServiceImage
 );
+
+router.delete('/:id', ...adminOnly, [param('id').isUUID()], validate, ctrl.deleteService);
 
 module.exports = router;

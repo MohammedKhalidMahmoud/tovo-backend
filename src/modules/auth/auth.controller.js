@@ -31,7 +31,7 @@ const login = async (req, res, next) => {
     const data = await authService.login(req.body);
     return success(res, data, 'Login successful');
   } catch (err) {
-    const statusCode = err.status === '401' ? 402 : err.status;
+    const statusCode = err.status === 401 ? 402 : err.status;
     if (err.status) return error(res, err.message, statusCode);
     next(err);
   }

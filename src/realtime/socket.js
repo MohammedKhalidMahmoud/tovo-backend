@@ -166,9 +166,28 @@ const emitTripCancelled = (io, tripId, userId, driverId, cancelledBy) => {
     .emit('trip.cancelled', { tripId, cancelledBy });
 };
 
+const emitTripRequest = (io, trip, radiusKm = 10) => {
+  const nearby = locationStore.getNearby(
+    trip.pickupLat,
+    trip.pickupLng,
+    radiusKm,
+    trip.serviceId ?? null,
+  );
+
+  if (!nearby.length) {
+    logger.info(`No nearby drivers found for trip ${trip.id}`);
+    return;
+  }
+
+  nearby.forEach(({ id: driverId }) => {
+    io.to(`driver:${driverId}`).emit('trip.new_request', trip);
+  });
+};
+
 module.exports = {
   setupSocket,
   emitCaptainMatched,
   emitTripStatusChanged,
   emitTripCancelled,
+  emitTripRequest,
 };

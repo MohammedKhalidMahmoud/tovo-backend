@@ -21,7 +21,7 @@ export function configureSwagger(app) {
   // ===== LOAD SCHEMAS =====
   const authSchemas = YAML.load(path.resolve(__dirname, "./auth/schemas.yaml"));
   const usersSchemas = YAML.load(path.resolve(__dirname, "./users/schemas.yaml"));
-  const captainsSchemas = YAML.load(path.resolve(__dirname, "./captains/schemas.yaml"));
+  const driversSchemas = YAML.load(path.resolve(__dirname, "./drivers/schemas.yaml"));
   const tripsSchemas = YAML.load(path.resolve(__dirname, "./trips/schemas.yaml"));
   const ridesSchemas = YAML.load(path.resolve(__dirname, "./rides/schemas.yaml"));
   const servicesSchemas = YAML.load(path.resolve(__dirname, "./services/schemas.yaml"));
@@ -45,7 +45,7 @@ export function configureSwagger(app) {
   // ===== LOAD PATHS =====
   const authPaths = YAML.load(path.resolve(__dirname, "./auth/paths.yaml"));
   const usersPaths = YAML.load(path.resolve(__dirname, "./users/paths.yaml"));
-  const captainsPaths = YAML.load(path.resolve(__dirname, "./captains/paths.yaml"));
+  const driversPaths = YAML.load(path.resolve(__dirname, "./drivers/paths.yaml"));
   const tripsPaths = YAML.load(path.resolve(__dirname, "./trips/paths.yaml"));
   const ridesPaths = YAML.load(path.resolve(__dirname, "./rides/paths.yaml"));
   const servicesPaths = YAML.load(path.resolve(__dirname, "./services/paths.yaml"));
@@ -73,7 +73,7 @@ export function configureSwagger(app) {
       schemas: {
         ...authSchemas,
         ...usersSchemas,
-        ...captainsSchemas,
+        ...driversSchemas,
         ...tripsSchemas,
         ...ridesSchemas,
         ...servicesSchemas,
@@ -100,7 +100,7 @@ export function configureSwagger(app) {
     paths: {
       ...authPaths,
       ...usersPaths,
-      ...captainsPaths,
+      ...driversPaths,
       ...tripsPaths,
       ...ridesPaths,
       ...servicesPaths,

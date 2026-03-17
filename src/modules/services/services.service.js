@@ -38,6 +38,13 @@ exports.updateService = async (id, { name, baseFare, isActive }) => {
   return svc;
 };
 
+exports.deleteService = async (id) => {
+  const svc = await repo.findById(id);
+  if (!svc) throw Object.assign(new Error('Service not found'), { statusCode: 404 });
+  await repo.remove(id);
+  invalidateServicesCache();
+};
+
 exports.updateServiceImage = async (id, imageUrl) => {
   const svc = await repo.findById(id);
   if (!svc) throw Object.assign(new Error('Service not found'), { statusCode: 404 });

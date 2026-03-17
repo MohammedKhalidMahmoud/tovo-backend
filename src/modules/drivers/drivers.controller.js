@@ -1,4 +1,4 @@
-const service = require('./captains.service');
+const service = require('./drivers.service');
 const { success, error } = require('../../utils/response');
 const { deleteLocalFile } = require('../../utils/uploads');
 

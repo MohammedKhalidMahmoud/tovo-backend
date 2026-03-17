@@ -33,7 +33,7 @@ tags:
   - name: Users
     description: Passenger profile & management
 
-  - name: Captains
+  - name: Drivers
     description: Driver profile & vehicle management
 
   - name: Trips

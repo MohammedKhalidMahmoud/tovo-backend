@@ -5,6 +5,7 @@ const {
   emitCaptainMatched,
   emitTripStatusChanged,
   emitTripCancelled,
+  emitTripRequest,
 } = require('../../realtime/socket');
 
 const estimateFare = async (req, res, next) => {
@@ -35,10 +36,10 @@ const getActiveRegions = async (req, res, next) => {
 
 const createTrip = async (req, res, next) => {
   try {
-    const { trip, nearbyCaptains } = await service.createTrip(req.actor.id, req.body);
+    const trip = await service.createTrip(req.actor.id, req.body);
     const io = req.app.get('io');
 
-    nearbyCaptains.forEach((c) => io.to(`driver:${c.id}`).emit('trip.new_request', trip));
+    emitTripRequest(io, trip, 10);
 
     return created(res, trip, 'Trip created and searching for captains');
   } catch (err) {

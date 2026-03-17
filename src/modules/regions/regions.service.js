@@ -4,6 +4,7 @@
 // ════════════════════════════════════════════════════════════════════════════════
 
 const prisma = require('../../config/prisma');
+const repo   = require('./regions.repository');
 
 // ── In-process TTL cache for active regions ───────────────────────────────────
 let _regionsCache = null;
@@ -93,4 +94,10 @@ exports.deleteRegion = async (id) => {
   await exports.getRegion(id); // ensure exists
   await prisma.region.delete({ where: { id } });
   invalidateRegionsCache();
+};
+
+exports.getActiveRegion = async (id) => {
+  const region = await repo.findActiveById(id);
+  if (!region) throw Object.assign(new Error('Region not found'), { statusCode: 404 });
+  return region;
 };

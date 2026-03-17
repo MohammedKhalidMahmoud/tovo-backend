@@ -1,0 +1,15 @@
+// ════════════════════════════════════════════════════════════════════════════════
+// Wallets - Routes
+// Path: src/modules/wallets/wallets.routes.js
+// ════════════════════════════════════════════════════════════════════════════════
+
+const router = require('express').Router();
+const walletsController = require('./wallets.controller');
+const { authenticate, authorize } = require('../../middleware/auth.middleware');
+
+router.get('/',                    authenticate, authorize('admin'), walletsController.listWallets);
+router.get('/:id',                 authenticate, authorize('admin'), walletsController.getWallet);
+router.get('/:id/transactions',    authenticate, authorize('admin'), walletsController.getWalletTransactions);
+router.post('/:id/adjust',         authenticate, authorize('admin'), walletsController.adjustWallet);
+
+module.exports = router;

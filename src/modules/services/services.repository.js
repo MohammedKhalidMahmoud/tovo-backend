@@ -28,4 +28,6 @@ const findById = (id) =>
 const updateImageUrl = (id, imageUrl) =>
   prisma.service.update({ where: { id }, data: { imageUrl } });
 
-module.exports = { findAll, findById, updateImageUrl, invalidateServicesCache };
+const remove = (id) => prisma.service.delete({ where: { id } });
+
+module.exports = { findAll, findById, updateImageUrl, invalidateServicesCache, remove };

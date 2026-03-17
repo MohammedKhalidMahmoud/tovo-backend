@@ -76,3 +76,20 @@ exports.deleteRegion = async (req, res, next) => {
     next(err);
   }
 };
+
+exports.listActiveRegions = async (req, res, next) => {
+  try {
+    const data = await service.listActiveRegions();
+    return success(res, data);
+  } catch (err) { next(err); }
+};
+
+exports.getActiveRegion = async (req, res, next) => {
+  try {
+    const region = await service.getActiveRegion(req.params.id);
+    return success(res, region);
+  } catch (err) {
+    if (err.statusCode) return error(res, err.message, err.statusCode);
+    next(err);
+  }
+};

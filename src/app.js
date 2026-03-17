@@ -19,24 +19,28 @@ const { setupSocket } = require('./realtime/socket');
 // ── Route Imports ─────────────────────────────────────────────────────────────
 const authRoutes          = require('./modules/auth/auth.routes');
 const usersRoutes         = require('./modules/users/users.routes');
-const captainsRoutes      = require('./modules/captains/captains.routes');
+const driversPublicRoutes      = require('./modules/drivers/drivers.public.routes');
+const driversAdminRoutes      = require('./modules/drivers/drivers.admin.routes');
 const tripsRoutes         = require('./modules/trips/trips.routes');
 const promotionsRoutes    = require('./modules/coupons/coupons.routes');
 const sosRoutes           = require('./modules/sos/sos.routes');
 const faqsRoutes          = require('./modules/faqs/faqs.routes');
 const servicesRoutes      = require('./modules/services/services.routes');
-const vehicleModelsRoutes = require('./modules/vehicle-models/vehicleModels.routes');
+const servicesPublicRoutes = require('./modules/services/services.public.routes');
+const vehicleModelsRoutes       = require('./modules/vehicle-models/vehicleModels.admin.routes');
+const vehicleModelsPublicRoutes = require('./modules/vehicle-models/vehicleModels.public.routes');
 const vehiclesRoutes = require('./modules/vehicles/vehicles.routes');
 const notificationsRoutes = require('./modules/notifications/notifications.routes');
 const supportRoutes       = require('./modules/support/support.routes');
-const regionstRoutes       = require('./modules/regions/regions.routes');
 // const adminRoutes         = require('./modules/admin/admin.routes');
 const dashboardRoutes     = require('./modules/dashboard/dashboard.routes');
-const regionsRoutes     = require('./modules/regions/regions.routes');
+const regionsAdminRoutes       = require('./modules/regions/regions.admin.routes');
+const regionsPublicRoutes = require('./modules/regions/regions.public.routes');
 const paymentsRoutes      = require('./modules/payments/payments.routes.js');
 const commissionsRoutes   = require('./modules/commissions/commissions.routes');
 const settingsRoutes      = require('./modules/settings/settings.routes');
-const walletsRoutes       = require('./modules/wallets/wallets.routes');
+const walletsPublicRoutes       = require('./modules/wallets/wallets.public.routes');
+const walletsAdminRoutes       = require('./modules/wallets/wallets.admin.routes');
 // ── App Setup ─────────────────────────────────────────────────────────────────
 const app = express();
 const server = http.createServer(app);
@@ -77,11 +81,6 @@ if (!RATE_LIMIT_DISABLED) {
 }
 
 // ── Swagger UI ────────────────────────────────────────────────────────────────
-// const swaggerDoc = YAML.load(path.join(__dirname, '../swagger/openapi.yaml'));
-// app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerDoc, {
-//   customSiteTitle: 'Tovo API Docs',
-//   customCss: '.swagger-ui .topbar { background-color: #1A3C5E; }',
-// }));
 configureSwagger(app);
 
 // ── API Routes ────────────────────────────────────────────────────────────────
@@ -90,33 +89,31 @@ const API = '/api/v1';
 app.use(`${API}/auth`,          authRoutes);
 app.use(`${API}/users`,         usersRoutes);
 app.use(`${API}/admin/users`,   usersRoutes);
-app.use(`${API}/captains`,      captainsRoutes);
-app.use(`${API}/admin/drivers`,      captainsRoutes);
+app.use(`${API}/drivers`,      driversPublicRoutes);
+app.use(`${API}/admin/drivers`,      driversAdminRoutes);
 app.use(`${API}/trips`,         tripsRoutes);
 app.use(`${API}/promotions`,     promotionsRoutes);
 app.use(`${API}/notifications`,  notificationsRoutes);
 app.use(`${API}/support`,        supportRoutes);
 app.use(`${API}/sos`,            sosRoutes);
 app.use(`${API}/faqs`,           faqsRoutes);
-app.use(`${API}/services`,       servicesRoutes);
-app.use(`${API}/vehicle-models`, vehicleModelsRoutes);
+app.use(`${API}/services`,       servicesPublicRoutes);
+app.use(`${API}/vehicle-models`, vehicleModelsPublicRoutes);
 app.use(`${API}/admin/vehicle-models`, vehicleModelsRoutes);
 app.use(`${API}/vehicles`, vehiclesRoutes);
 app.use(`${API}/admin/vehicles`, vehiclesRoutes);
 // app.use(`${API}/admin`,          adminRoutes);
-app.use(`${API}`, dashboardRoutes); // provides /ride-requests/... and /rides/upcoming (and also /admin-dashboard by accident)
 app.use(`${API}/dashboard`, dashboardRoutes);
-app.use(`${API}/admin/regions`, regionsRoutes);
-app.use(`${API}/regions`, regionsRoutes);
+app.use(`${API}/admin/regions`, regionsAdminRoutes);
+app.use(`${API}/regions`,       regionsPublicRoutes);
 app.use(`${API}/admin/services`, servicesRoutes);
-app.use(`${API}/services`, servicesRoutes);
 app.use(`${API}/admin/payments`, paymentsRoutes);
 app.use(`${API}/payments`, paymentsRoutes);
 app.use(`${API}/admin/commissions`, commissionsRoutes);
 app.use(`${API}/settings`,         settingsRoutes);
 app.use(`${API}/admin/settings`,   settingsRoutes);
-app.use(`${API}/wallets`,          walletsRoutes);
-app.use(`${API}/admin/wallets`,    walletsRoutes);
+app.use(`${API}/wallets`,          walletsPublicRoutes);
+app.use(`${API}/admin/wallets`,    walletsAdminRoutes);
 
 // ── Health Check ──────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
@@ -127,8 +124,8 @@ app.get('/debug/locations', (req, res) => {
   const storeData = locationStore.getAll();
   return res.json({
     timestamp: new Date().toISOString(),
-    captainsOnlineCount: Object.keys(storeData).length,
-    captains: storeData
+    driversOnlineCount: Object.keys(storeData).length,
+    drivers: storeData
   });
 });
 
@@ -139,7 +136,7 @@ app.use((req, res) => res.status(404).json({ success: false, message: `Route ${r
 app.use(errorHandler);
 
 // ── Start Server ──────────────────────────────────────────────────────────────
-const PORT = process.env.PORT;
+const PORT = process.env.PORT || 3000;
 const prisma = require('./config/prisma');
 
 // Clear stale isOnline flags from a previous crash or restart.
