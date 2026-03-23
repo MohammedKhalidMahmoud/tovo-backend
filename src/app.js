@@ -32,6 +32,7 @@ const vehicleModelsPublicRoutes = require('./modules/vehicle-models/vehicleModel
 const vehiclesRoutes = require('./modules/vehicles/vehicles.routes');
 const notificationsRoutes = require('./modules/notifications/notifications.routes');
 const supportRoutes       = require('./modules/support/support.routes');
+const supportAdminRoutes  = require('./modules/support/support.admin.routes');
 // const adminRoutes         = require('./modules/admin/admin.routes');
 const dashboardRoutes     = require('./modules/dashboard/dashboard.routes');
 const regionsAdminRoutes       = require('./modules/regions/regions.admin.routes');
@@ -95,6 +96,7 @@ app.use(`${API}/trips`,         tripsRoutes);
 app.use(`${API}/promotions`,     promotionsRoutes);
 app.use(`${API}/notifications`,  notificationsRoutes);
 app.use(`${API}/support`,        supportRoutes);
+app.use(`${API}/admin/support`,  supportAdminRoutes);
 app.use(`${API}/sos`,            sosRoutes);
 app.use(`${API}/faqs`,           faqsRoutes);
 app.use(`${API}/services`,       servicesPublicRoutes);

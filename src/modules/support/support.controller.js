@@ -1,5 +1,5 @@
 const service = require('./support.service');
-const { success, created, error, paginate } = require('../../utils/response');
+const { success, created, error, notFound, paginate } = require('../../utils/response');
 
 const createTicket = async (req, res, next) => {
   try {
@@ -33,4 +33,36 @@ const addMessage = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-module.exports = { createTicket, getTickets, getTicketById, addMessage };
+// ── Admin handlers ────────────────────────────────────────────────────────────
+
+const listComplaints = async (req, res, next) => {
+  try {
+    const { page = 1, limit = 20, status, type, search } = req.query;
+    const result = await service.listComplaints({ page: +page, limit: +limit, status, type, search });
+    return success(res, result.data, 'Success', 200, paginate(page, limit, result.total));
+  } catch (err) { next(err); }
+};
+
+const getComplaint = async (req, res, next) => {
+  try {
+    const data = await service.getComplaint(req.params.id);
+    if (!data) return notFound(res, 'Ticket not found');
+    return success(res, data);
+  } catch (err) { next(err); }
+};
+
+const respondToComplaint = async (req, res, next) => {
+  try {
+    const data = await service.respondToComplaint(req.params.id, req.body.response);
+    return success(res, data, 'Response sent');
+  } catch (err) { next(err); }
+};
+
+const resolveComplaint = async (req, res, next) => {
+  try {
+    const data = await service.resolveComplaint(req.params.id);
+    return success(res, data, 'Ticket resolved');
+  } catch (err) { next(err); }
+};
+
+module.exports = { createTicket, getTickets, getTicketById, addMessage, listComplaints, getComplaint, respondToComplaint, resolveComplaint };

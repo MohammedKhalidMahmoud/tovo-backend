@@ -15,7 +15,7 @@ async function main() {
   await prisma.walletTransaction.deleteMany();
   await prisma.trip.deleteMany();
   await prisma.vehicle.deleteMany();
-  await prisma.vehicleModel.deleteMany();
+  await prisma.admin.deleteMany();
   await prisma.commissionRule.deleteMany();
   await prisma.service.deleteMany();
   await prisma.ticketMessage.deleteMany();
