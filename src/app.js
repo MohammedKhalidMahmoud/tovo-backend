@@ -14,7 +14,6 @@ const { configureSwagger } = require ('../swagger/swagger.config.js');
 
 const logger = require('./config/logger');
 const errorHandler = require('./middleware/error.middleware');
-const { authenticate } = require('./middleware/auth.middleware');
 const { setupSocket } = require('./realtime/socket');
 
 // ── Route Imports ─────────────────────────────────────────────────────────────
@@ -84,7 +83,11 @@ if (!RATE_LIMIT_DISABLED) {
 
 // ── Swagger UI ────────────────────────────────────────────────────────────────
 const { adminSwaggerSpec } = configureSwagger(app);
-app.use('/docs/admin', authenticate, swaggerUi.serve, swaggerUi.setup(adminSwaggerSpec));
+app.use(
+  '/docs/admin',
+  swaggerUi.serveFiles(adminSwaggerSpec),
+  swaggerUi.setup(adminSwaggerSpec)
+);
 
 // ── API Routes ────────────────────────────────────────────────────────────────
 const API = '/api/v1';
