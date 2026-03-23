@@ -14,6 +14,7 @@ const { configureSwagger } = require ('../swagger/swagger.config.js');
 
 const logger = require('./config/logger');
 const errorHandler = require('./middleware/error.middleware');
+const { authenticate } = require('./middleware/auth.middleware');
 const { setupSocket } = require('./realtime/socket');
 
 // ── Route Imports ─────────────────────────────────────────────────────────────
@@ -55,7 +56,7 @@ app.set('io', io); // make io available in controllers via req.app.get('io')
 
 // ── Security & Middleware ─────────────────────────────────────────────────────
 app.use((req, res, next) => {
-  if (req.path.startsWith('/api/docs')) return next();
+  if (req.path.startsWith('/api/docs') || req.path.startsWith('/docs/')) return next();
   helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } })(req, res, next);
 });
 app.use(cors({ origin: '*' }));
@@ -82,7 +83,8 @@ if (!RATE_LIMIT_DISABLED) {
 }
 
 // ── Swagger UI ────────────────────────────────────────────────────────────────
-configureSwagger(app);
+const { adminSwaggerSpec } = configureSwagger(app);
+app.use('/docs/admin', authenticate, swaggerUi.serve, swaggerUi.setup(adminSwaggerSpec));
 
 // ── API Routes ────────────────────────────────────────────────────────────────
 const API = '/api/v1';
@@ -150,7 +152,10 @@ prisma.user.updateMany({ where: { role: 'driver', isOnline: true }, data: { isOn
 server.listen(PORT, () => {
   logger.info(`🚀 Tovo API running on http://localhost:${PORT}`);
   logger.info(`📖 Swagger docs at http://localhost:${PORT}/api/docs`);
+  logger.info(`Public Swagger docs at http://localhost:${PORT}/docs/public`);
+  logger.info(`Admin Swagger docs at http://localhost:${PORT}/docs/admin`);
   logger.info(`🔌 Socket.io ready`);
 });
 
 module.exports = { app, server, io };
+

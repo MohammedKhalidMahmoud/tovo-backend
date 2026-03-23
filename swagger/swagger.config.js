@@ -4,6 +4,39 @@ import YAML from "yamljs";
 import path from "path";
 import { fileURLToPath } from "url";
 
+const ADMIN_PATH_SEGMENT = "/admin/";
+const ADMIN_ONLY_PATHS = new Set([
+  "/dashboard/admin-dashboard",
+  "/notifications/send-to-user",
+  "/notifications/send-to-captain",
+]);
+
+function buildSwaggerSpec(info, schemas, paths) {
+  const swaggerDefinition = {
+    ...info,
+    components: {
+      schemas,
+      securitySchemes: info.components?.securitySchemes,
+    },
+    paths,
+  };
+
+  return swaggerJSDoc({
+    definition: swaggerDefinition,
+    apis: [],
+  });
+}
+
+function filterPaths(paths, predicate) {
+  return Object.fromEntries(
+    Object.entries(paths).filter(([routePath]) => predicate(routePath))
+  );
+}
+
+function isAdminPath(routePath) {
+  return routePath.includes(ADMIN_PATH_SEGMENT) || ADMIN_ONLY_PATHS.has(routePath);
+}
+
 export function configureSwagger(app) {
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = path.dirname(__filename);
@@ -67,67 +100,68 @@ export function configureSwagger(app) {
   const settingsPaths = YAML.load(path.resolve(__dirname, "./settings/paths.yaml"));
   const commissionsPaths = YAML.load(path.resolve(__dirname, "./commissions/paths.yaml"));
 
-  const swaggerDefinition = {
-    ...info,
-    components: {
-      schemas: {
-        ...authSchemas,
-        ...usersSchemas,
-        ...driversSchemas,
-        ...tripsSchemas,
-        ...ridesSchemas,
-        ...servicesSchemas,
-        ...regionsSchemas,
-        ...vehiclesSchemas,
-        ...vehicleModelsSchemas,
-        ...walletsSchemas,
-        ...paymentsSchemas,
-        
-        ...couponsSchemas,
-        ...notificationsSchemas,
-        ...complaintsSchemas,
-        ...supportSchemas,
-        ...faqsSchemas,
-        ...sosSchemas,
-        ...dashboardSchemas,
-        ...analyticsSchemas,
-       
-        ...settingsSchemas,
-        ...commissionsSchemas
-      },
-      securitySchemes: info.components?.securitySchemes
-    },
-    paths: {
-      ...authPaths,
-      ...usersPaths,
-      ...driversPaths,
-      ...tripsPaths,
-      ...ridesPaths,
-      ...servicesPaths,
-      ...regionsPaths,
-      ...vehiclesPaths,
-      ...vehicleModelsPaths,
-      ...walletsPaths,
-      ...paymentsPaths,
-      
-      ...couponsPaths,
-      ...notificationsPaths,
-      ...complaintsPaths,
-      ...supportPaths,
-      ...faqsPaths,
-      ...sosPaths,
-      ...dashboardPaths,
-      ...analyticsPaths,
-      
-      ...settingsPaths,
-      ...commissionsPaths
-    }
+  const schemas = {
+    ...authSchemas,
+    ...usersSchemas,
+    ...driversSchemas,
+    ...tripsSchemas,
+    ...ridesSchemas,
+    ...servicesSchemas,
+    ...regionsSchemas,
+    ...vehiclesSchemas,
+    ...vehicleModelsSchemas,
+    ...walletsSchemas,
+    ...paymentsSchemas,
+    ...couponsSchemas,
+    ...notificationsSchemas,
+    ...complaintsSchemas,
+    ...supportSchemas,
+    ...faqsSchemas,
+    ...sosSchemas,
+    ...dashboardSchemas,
+    ...analyticsSchemas,
+    ...settingsSchemas,
+    ...commissionsSchemas,
   };
 
-  const swaggerSpec = swaggerJSDoc({
-    definition: swaggerDefinition,
-    apis: []
-  });
+  const paths = {
+    ...authPaths,
+    ...usersPaths,
+    ...driversPaths,
+    ...tripsPaths,
+    ...ridesPaths,
+    ...servicesPaths,
+    ...regionsPaths,
+    ...vehiclesPaths,
+    ...vehicleModelsPaths,
+    ...walletsPaths,
+    ...paymentsPaths,
+    ...couponsPaths,
+    ...notificationsPaths,
+    ...complaintsPaths,
+    ...supportPaths,
+    ...faqsPaths,
+    ...sosPaths,
+    ...dashboardPaths,
+    ...analyticsPaths,
+    ...settingsPaths,
+    ...commissionsPaths,
+  };
+
+  const swaggerSpec = buildSwaggerSpec(info, schemas, paths);
+  const publicSwaggerSpec = buildSwaggerSpec(
+    { ...info, info: { ...info.info, title: `${info.info.title} - Public` } },
+    schemas,
+    filterPaths(paths, (routePath) => !isAdminPath(routePath))
+  );
+  const adminSwaggerSpec = buildSwaggerSpec(
+    { ...info, info: { ...info.info, title: `${info.info.title} - Admin` } },
+    schemas,
+    filterPaths(paths, (routePath) => isAdminPath(routePath))
+  );
 
   app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+  app.use("/docs/public", swaggerUi.serve, swaggerUi.setup(publicSwaggerSpec));
+
+  return { swaggerSpec, publicSwaggerSpec, adminSwaggerSpec };
 }
