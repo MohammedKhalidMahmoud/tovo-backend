@@ -2,6 +2,9 @@ const router = require('express').Router();
 const { body, param, query } = require('express-validator');
 const validate = require('../../middleware/validate.middleware');
 const controller = require('./complaints.controller');
+const { authenticate, authorize } = require('../../middleware/auth.middleware');
+
+router.use(authenticate, authorize('admin'));
 
 // GET /admin/complaints - List all complaints
 router.get(
@@ -10,8 +13,8 @@ router.get(
     query('page').optional().isInt({ min: 1 }).toInt(),
     query('limit').optional().isInt({ min: 1, max: 100 }).toInt(),
     query('status').optional().isIn(['open', 'in_progress', 'resolved', 'closed']),
-    validate,
   ],
+  validate,
   controller.listComplaints
 );
 
@@ -20,8 +23,8 @@ router.get(
   '/:id',
   [
     param('id').isUUID().withMessage('Invalid complaint ID'),
-    validate,
   ],
+  validate,
   controller.getComplaintDetails
 );
 
@@ -31,8 +34,8 @@ router.post(
   [
     param('id').isUUID().withMessage('Invalid complaint ID'),
     body('response').trim().notEmpty().withMessage('Response message is required'),
-    validate,
   ],
+  validate,
   controller.respondToComplaint
 );
 
@@ -44,9 +47,22 @@ router.patch(
     body('status')
       .isIn(['open', 'in_progress', 'resolved', 'closed'])
       .withMessage('Status must be one of: open, in_progress, resolved, closed'),
-    validate,
   ],
+  validate,
   controller.updateComplaintStatus
+);
+
+// POST /admin/complaints/:id/resolve - Mark complaint resolved
+router.post(
+  '/:id/resolve',
+  [
+    param('id').isUUID().withMessage('Invalid complaint ID'),
+  ],
+  validate,
+  (req, res, next) => {
+    req.body.status = 'resolved';
+    return controller.updateComplaintStatus(req, res, next);
+  }
 );
 
 // DELETE /admin/complaints/:id - Delete complaint
@@ -54,8 +70,8 @@ router.delete(
   '/:id',
   [
     param('id').isUUID().withMessage('Invalid complaint ID'),
-    validate,
   ],
+  validate,
   controller.deleteComplaint
 );
 

@@ -90,7 +90,22 @@ Mounted at `/api/v1/admin/support` via `src/modules/support/support.admin.routes
 | `POST` | `/api/v1/admin/support/:id/respond` | Respond to complaint |
 | `PATCH` | `/api/v1/admin/support/:id/resolve` | Resolve complaint |
 
-### 5. Vehicle Models
+### 5. Complaints
+
+Mounted at `/api/v1/admin/complaints` via `src/modules/complaints/complaints.routes.js`.
+
+This complaints module operates on the same underlying `SupportTicket` data, but exposes a complaints-specific admin path used by existing Swagger/docs and clients.
+
+| Method | Path | Notes |
+|---|---|---|
+| `GET` | `/api/v1/admin/complaints` | List complaints. Query: `page`, `limit`, `status` |
+| `GET` | `/api/v1/admin/complaints/:id` | Get complaint detail |
+| `POST` | `/api/v1/admin/complaints/:id/respond` | Respond to complaint |
+| `PATCH` | `/api/v1/admin/complaints/:id` | Update complaint status |
+| `POST` | `/api/v1/admin/complaints/:id/resolve` | Mark complaint as resolved |
+| `DELETE` | `/api/v1/admin/complaints/:id` | Delete complaint |
+
+### 6. Vehicle Models
 
 Mounted at `/api/v1/admin/vehicle-models` via `src/modules/vehicle-models/vehicleModels.admin.routes.js`.
 
@@ -102,7 +117,7 @@ Mounted at `/api/v1/admin/vehicle-models` via `src/modules/vehicle-models/vehicl
 | `PUT` | `/api/v1/admin/vehicle-models/:id` | Update model |
 | `DELETE` | `/api/v1/admin/vehicle-models/:id?confirm=true` | Delete model |
 
-### 6. Regions
+### 7. Regions
 
 Mounted at `/api/v1/admin/regions` via `src/modules/regions/regions.admin.routes.js`.
 
@@ -114,7 +129,7 @@ Mounted at `/api/v1/admin/regions` via `src/modules/regions/regions.admin.routes
 | `PUT` | `/api/v1/admin/regions/:id` | Update region |
 | `DELETE` | `/api/v1/admin/regions/:id` | Delete region |
 
-### 7. Services
+### 8. Services
 
 Mounted at `/api/v1/admin/services` via `src/modules/services/services.routes.js`.
 
@@ -127,7 +142,7 @@ Mounted at `/api/v1/admin/services` via `src/modules/services/services.routes.js
 | `PATCH` | `/api/v1/admin/services/:id/image` | Update service image. Multipart field: `image` |
 | `DELETE` | `/api/v1/admin/services/:id` | Delete service |
 
-### 8. Payments
+### 9. Payments
 
 Mounted at `/api/v1/admin/payments` via `src/modules/payments/payments.routes.js`.
 
@@ -137,7 +152,7 @@ Mounted at `/api/v1/admin/payments` via `src/modules/payments/payments.routes.js
 | `GET` | `/api/v1/admin/payments/:id` | Get payment detail |
 | `POST` | `/api/v1/admin/payments/:id/refund` | Refund card payment |
 
-### 9. Promotions And Coupons
+### 10. Promotions And Coupons
 
 Mounted at `/api/v1/admin/promotions/coupons` via `src/modules/coupons/coupons.admin.routes.js`.
 
@@ -149,7 +164,7 @@ Mounted at `/api/v1/admin/promotions/coupons` via `src/modules/coupons/coupons.a
 | `PUT` | `/api/v1/admin/promotions/coupons/:id` | Update coupon |
 | `DELETE` | `/api/v1/admin/promotions/coupons/:id` | Delete coupon |
 
-### 10. Commission Rules
+### 11. Commission Rules
 
 Mounted at `/api/v1/admin/commission-rules` via `src/modules/commission-rules/commission-rules.routes.js`.
 
@@ -170,7 +185,7 @@ Supported rule types:
 - `tiered_fixed`
 - `tiered_percentage`
 
-### 11. Earnings
+### 12. Earnings
 
 Mounted at `/api/v1/admin/earnings` via `src/modules/earnings/earnings.routes.js`.
 
@@ -180,7 +195,7 @@ This is the current replacement for the old `/api/v1/admin/commissions/earnings`
 |---|---|---|
 | `GET` | `/api/v1/admin/earnings` | List platform commission logs. Common filters: `dateFrom`, `dateTo`, `paymentType`, `serviceId`, `page`, `perPage` |
 
-### 12. Settings
+### 13. Settings
 
 Mounted at `/api/v1/admin/settings` via `src/modules/settings/settings.routes.js`.
 
@@ -197,7 +212,7 @@ Validation notes:
 - `key` must match `^[a-z0-9_.]+$`
 - `id` is a UUID
 
-### 13. Wallets
+### 14. Wallets
 
 Mounted at `/api/v1/admin/wallets` via `src/modules/wallets/wallets.admin.routes.js`.
 
@@ -208,7 +223,7 @@ Mounted at `/api/v1/admin/wallets` via `src/modules/wallets/wallets.admin.routes
 | `GET` | `/api/v1/admin/wallets/:id/transactions` | Get wallet transactions |
 | `POST` | `/api/v1/admin/wallets/:id/adjust` | Manual wallet adjustment |
 
-### 14. Vehicles
+### 15. Vehicles
 
 Mounted at `/api/v1/admin/vehicles` via `src/modules/vehicles/vehicles.routes.js`.
 
@@ -254,6 +269,7 @@ Mounted at `/api/v1/notifications` via `src/modules/notifications/notifications.
 - Users admin CRUD and actions
 - Driver admin detail/actions, but no list endpoint
 - Support admin ticket management
+- Complaints admin management
 - Regions admin CRUD
 - Vehicle models admin CRUD
 - Services admin CRUD
