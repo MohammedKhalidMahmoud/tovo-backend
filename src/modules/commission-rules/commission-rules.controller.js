@@ -1,4 +1,4 @@
-const service = require('./commissions.service');
+const service = require('./commission-rules.service');
 const { success, created, error, notFound } = require('../../utils/response');
 
 const list = async (req, res, next) => {

@@ -1,4 +1,4 @@
-const repo = require('./commissions.repository');
+const repo = require('./commission-rules.repository');
 
 const VALID_TYPES = ['fixed_amount', 'percentage', 'tiered_fixed', 'tiered_percentage'];
 const COMMISSION_PCT = Number(process.env.COMMISSION_PCT) || 15;

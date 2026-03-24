@@ -28,3 +28,5 @@
                     monthlyRevenue:  { type: number }
                     activeDrivers:   { type: integer }
                     activeRiders:    { type: integer }
+                    totalCommission: { type: number, description: All-time platform commission from commission_logs }
+                    todayCommission: { type: number, description: Platform commission earned today }

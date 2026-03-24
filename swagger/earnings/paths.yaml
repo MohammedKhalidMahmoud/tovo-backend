@@ -1,0 +1,60 @@
+/admin/earnings:
+  get:
+    tags: [Earnings]
+    summary: List platform commission earnings
+    description: |
+      Returns a paginated list of `CommissionLog` entries (one per completed trip)
+      and the all-time `totalEarned` sum. Supports filtering by date range,
+      payment type, and service.
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: dateFrom
+        in: query
+        schema: { type: string, format: date-time }
+        description: Filter logs created on or after this timestamp (ISO 8601)
+      - name: dateTo
+        in: query
+        schema: { type: string, format: date-time }
+        description: Filter logs created on or before this timestamp (ISO 8601)
+      - name: paymentType
+        in: query
+        schema: { type: string, enum: [cash, card] }
+        description: Filter by payment type
+      - name: serviceId
+        in: query
+        schema: { type: string, format: uuid }
+        description: Filter by service
+      - name: page
+        in: query
+        schema: { type: integer, default: 1 }
+      - name: perPage
+        in: query
+        schema: { type: integer, default: 20 }
+    responses:
+      '200':
+        description: Paginated commission logs with all-time total
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success: { type: boolean, example: true }
+                message: { type: string, example: Commission earnings }
+                data:
+                  type: object
+                  properties:
+                    logs:
+                      type: array
+                      items: { $ref: '#/components/schemas/CommissionLog' }
+                    totalEarned:
+                      type: number
+                      format: float
+                      description: All-time sum of platform commission across all trips
+                      example: 1540.75
+                pagination:
+                  type: object
+                  properties:
+                    page:     { type: integer, example: 1 }
+                    perPage:  { type: integer, example: 20 }
+                    total:    { type: integer, example: 87 }
+                    lastPage: { type: integer, example: 5 }

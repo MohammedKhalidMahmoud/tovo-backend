@@ -1,0 +1,29 @@
+CommissionLog:
+  type: object
+  description: Immutable record of platform commission earned for a completed trip. One log per trip.
+  properties:
+    id:
+      type: string
+      format: uuid
+    tripId:
+      type: string
+      format: uuid
+      description: FK to the completed trip (unique — one log per trip)
+    amount:
+      type: number
+      format: float
+      example: 12.50
+      description: Platform commission amount earned for this trip
+    paymentType:
+      type: string
+      enum: [cash, card]
+      example: cash
+    serviceId:
+      type: string
+      format: uuid
+      nullable: true
+      description: FK to the service used for this trip (nullable)
+    createdAt:
+      type: string
+      format: date-time
+      description: Timestamp when the commission was settled

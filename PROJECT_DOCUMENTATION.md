@@ -1,11 +1,90 @@
 # Tovo Backend — Project Documentation
 
-> Last updated: 2026-03-23
+> Last updated: 2026-03-24 (rev 2)
 > Purpose: Persistent technical reference for developers and AI assistants continuing development across sessions.
 
 ---
 
 ## Changelog
+
+### 2026-03-24 (rev 2) — Commission Module Split: commission-rules + earnings
+
+#### Problem
+The single `commissions` module combined two unrelated concerns: commission rule configuration (CRUD, activate/deactivate) and commission log records (immutable earnings per trip). This caused naming ambiguity — "commissions" could mean either the rules engine or the financial records.
+
+#### Solution: split into two dedicated modules
+
+**`src/modules/commission-rules/`** — rule configuration (renamed from `commissions/`)
+- Files: `commission-rules.repository.js`, `commission-rules.service.js`, `commission-rules.controller.js`, `commission-rules.routes.js`
+- Mounted at `/api/v1/admin/commission-rules`
+- Contains: all rule CRUD, `validateConfig`, `evaluateRule`, `calculateCommission`
+
+**`src/modules/earnings/`** — platform commission log (extracted from `commissions/`)
+- Files: `earnings.repository.js`, `earnings.controller.js`, `earnings.routes.js`
+- Mounted at `/api/v1/admin/earnings`
+- Contains: `createCommissionLog`, `listCommissionLogs`, `sumCommissionLogs`
+
+**API path changes:**
+| Old | New |
+|---|---|
+| `GET /api/v1/admin/commissions` | `GET /api/v1/admin/commission-rules` |
+| `POST /api/v1/admin/commissions` | `POST /api/v1/admin/commission-rules` |
+| `GET /api/v1/admin/commissions/:id` | `GET /api/v1/admin/commission-rules/:id` |
+| `PATCH /api/v1/admin/commissions/:id` | `PATCH /api/v1/admin/commission-rules/:id` |
+| `PATCH /api/v1/admin/commissions/:id/activate` | `PATCH /api/v1/admin/commission-rules/:id/activate` |
+| `DELETE /api/v1/admin/commissions/:id` | `DELETE /api/v1/admin/commission-rules/:id` |
+| `GET /api/v1/admin/commissions/earnings` | `GET /api/v1/admin/earnings` |
+
+**Files created:** `src/modules/commission-rules/` (4 files), `src/modules/earnings/` (3 files), `swagger/commission-rules/` (2 yaml files), `swagger/earnings/` (2 yaml files)
+**Files deleted:** entire `src/modules/commissions/` directory, entire `swagger/commissions/` directory
+**Files changed:** `src/app.js`, `src/modules/trips/trips.service.js`, `src/modules/dashboard/dashboard.service.js`, `swagger/swagger.config.js`
+
+---
+
+### 2026-03-24 — CommissionLog: Platform Earnings Tracking
+
+#### Problem
+Commission per trip was stored only in the `trips.commission` field. For cash trips a `WalletTransaction` existed showing the driver's deduction, but for card trips the platform's cut was retained implicitly with no record written anywhere. The dashboard exposed total fares only, not platform commission. There was no admin endpoint to inspect earnings.
+
+#### Solution: new `CommissionLog` model + admin endpoint + dashboard update
+
+**New model — `CommissionLog` (`commission_logs` table):**
+| Field | Type | Description |
+|---|---|---|
+| `id` | UUID | PK |
+| `tripId` | String @unique | One log per completed trip (FK → trips) |
+| `amount` | Decimal(10,2) | Platform commission earned |
+| `paymentType` | String | `'cash'` or `'card'` |
+| `serviceId` | String? | FK → services (nullable) |
+| `createdAt` | DateTime | Timestamp of settlement |
+
+**Where the log is written:**
+- `trips.service.js` `endTrip()` — after wallet settlement, if `trip.commission > 0`, `commissionRepo.createCommissionLog()` is called. Works for both cash and card trips.
+
+**New repository functions** in `src/modules/earnings/earnings.repository.js` (originally added to `commissions.repository.js`, moved in rev 2):
+- `createCommissionLog({ tripId, amount, paymentType, serviceId })` — insert one log
+- `listCommissionLogs({ dateFrom, dateTo, paymentType, serviceId, page, perPage })` — paginated list with filters
+- `sumCommissionLogs(where)` — aggregate sum (used by earnings endpoint and dashboard)
+
+**New admin endpoint** — `GET /api/v1/admin/earnings` (originally `GET /api/v1/admin/commissions/earnings`, renamed in rev 2)
+- Query params: `dateFrom`, `dateTo`, `paymentType` (`cash`|`card`), `serviceId`, `page`, `perPage`
+- Returns paginated `logs` array + `totalEarned` (all-time sum)
+
+**Dashboard update** — `GET /api/v1/dashboard` now includes two new fields:
+- `totalCommission` — all-time platform commission from `commission_logs`
+- `todayCommission` — today's platform commission
+
+**Migration:** `20260324085145_add_commission_log`
+
+**Files changed:**
+- `prisma/schema.prisma` — `CommissionLog` model added; back-relations on `Trip` and `Service`
+- `src/modules/earnings/earnings.repository.js` — 3 new functions (file path updated in rev 2)
+- `src/modules/trips/trips.service.js` — imports `commissionRepo`; `endTrip()` writes log after wallet settlement
+- `src/modules/earnings/earnings.controller.js` — `listEarnings` handler (file path updated in rev 2)
+- `src/modules/earnings/earnings.routes.js` — `GET /` route (file path updated in rev 2)
+- `src/modules/dashboard/dashboard.service.js` — imports `commissionRepo`; `adminDashboard()` returns `totalCommission` + `todayCommission`
+
+---
 
 ### 2026-03-23 - Support Module Admin Routes + Swagger Updates
 
@@ -371,7 +450,8 @@ tovo-backend/
 │       ├── vehicle-models/
 │       ├── wallets/
 │       ├── payments/
-│       ├── commissions/       # NEW — commission rule management
+│       ├── commission-rules/  # Commission rule configuration (CRUD + calculateCommission)
+│       ├── earnings/          # Platform commission log (immutable earnings records)
 │       ├── coupons/
 │       ├── notifications/
 │       ├── support/
@@ -446,6 +526,7 @@ Prisma v5 with MySQL. Schema at `prisma/schema.prisma`.
 | `Wallet` | `wallets` | Balance for customer or driver. Credited/debited automatically on trip completion |
 | `WalletTransaction` | `wallet_transactions` | Immutable log of every credit/debit on a wallet. Created atomically with every balance change |
 | `CommissionRule` | `commission_rules` | DB-driven commission rules with type, config JSON, and per-service scoping |
+| `CommissionLog` | `commission_logs` | Immutable log of platform commission earned per completed trip. One record per trip (`tripId @unique`). Fields: `amount`, `paymentType` (`cash`\|`card`), `serviceId?`, `createdAt` |
 | `Promotion` | `promotions` | Marketing banners/promotions |
 | `Coupon` | `coupons` | Discount codes with usage limits and expiry |
 | `SupportTicket` | `support_tickets` | Ticket raised by user or driver |
@@ -622,7 +703,7 @@ https://tovo-b.developteam.site/api/v1  (production)
 }
 ```
 
-#### Commission Rules — `/api/v1/admin/commissions`
+#### Commission Rules — `/api/v1/admin/commission-rules`
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
 | GET | `/` | admin | List all commission rules |
@@ -631,6 +712,11 @@ https://tovo-b.developteam.site/api/v1  (production)
 | PATCH | `/:id` | admin | Update rule fields (name, type, config, serviceId) |
 | PATCH | `/:id/activate` | admin | Activate rule — atomically deactivates current active rule for same service |
 | DELETE | `/:id` | admin | Delete rule |
+
+#### Earnings — `/api/v1/admin/earnings`
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/` | admin | List platform commission logs. Query params: `dateFrom`, `dateTo`, `paymentType` (`cash`\|`card`), `serviceId`, `page`, `perPage`. Returns paginated `logs` + `totalEarned` |
 
 #### Vehicle Models — `/api/v1/vehicle-models` and `/api/v1/admin/vehicle-models`
 Public routes served by `vehicleModels.public.routes.js`; admin routes by `vehicleModels.admin.routes.js`.
@@ -879,7 +965,7 @@ Commission rules are stored in the `CommissionRule` table and managed by admins.
 
 **Activation rules:**
 - New rules are always created with `status = false`
-- Activating a rule via `PATCH /admin/commissions/:id/activate` runs an atomic transaction:
+- Activating a rule via `PATCH /admin/commission-rules/:id/activate` runs an atomic transaction:
   1. Deactivates any currently active rule for the same `serviceId`
   2. Activates the requested rule
 - Only one rule can be active per `serviceId` (including `null`) at any time

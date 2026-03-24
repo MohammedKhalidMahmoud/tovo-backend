@@ -1,6 +1,6 @@
-/admin/commissions:
+/admin/commission-rules:
   get:
-    tags: [Commissions]
+    tags: [Commission Rules]
     summary: List all commission rules
     security: [{ BearerAuth: [] }]
     responses:
@@ -17,7 +17,7 @@
                   items: { $ref: '#/components/schemas/CommissionRule' }
 
   post:
-    tags: [Commissions]
+    tags: [Commission Rules]
     summary: Create a commission rule
     description: |
       Creates a new commission rule. The rule is always created with `status: false` (inactive).
@@ -65,9 +65,9 @@
       '400':
         description: Validation error (invalid type or config shape)
 
-/admin/commissions/{id}:
+/admin/commission-rules/{id}:
   get:
-    tags: [Commissions]
+    tags: [Commission Rules]
     summary: Get a single commission rule
     security: [{ BearerAuth: [] }]
     parameters:
@@ -88,7 +88,7 @@
       '404': { description: Commission rule not found }
 
   patch:
-    tags: [Commissions]
+    tags: [Commission Rules]
     summary: Update a commission rule
     description: |
       Updates editable fields of a commission rule (name, type, config, serviceId).
@@ -132,7 +132,7 @@
       '404': { description: Commission rule not found }
 
   delete:
-    tags: [Commissions]
+    tags: [Commission Rules]
     summary: Delete a commission rule
     security: [{ BearerAuth: [] }]
     parameters:
@@ -144,9 +144,9 @@
       '200': { description: Commission rule deleted }
       '404': { description: Commission rule not found }
 
-/admin/commissions/{id}/activate:
+/admin/commission-rules/{id}/activate:
   patch:
-    tags: [Commissions]
+    tags: [Commission Rules]
     summary: Activate a commission rule
     description: |
       Atomically activates the specified rule and deactivates any currently active rule

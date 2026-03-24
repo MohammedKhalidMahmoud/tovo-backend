@@ -73,7 +73,8 @@ export function configureSwagger(app) {
   const analyticsSchemas = YAML.load(path.resolve(__dirname, "./analytics/schemas.yaml"));
   
   const settingsSchemas = YAML.load(path.resolve(__dirname, "./settings/schemas.yaml"));
-  const commissionsSchemas = YAML.load(path.resolve(__dirname, "./commissions/schemas.yaml"));
+  const commissionRulesSchemas = YAML.load(path.resolve(__dirname, "./commission-rules/schemas.yaml"));
+  const earningsSchemas        = YAML.load(path.resolve(__dirname, "./earnings/schemas.yaml"));
 
   // ===== LOAD PATHS =====
   const authPaths = YAML.load(path.resolve(__dirname, "./auth/paths.yaml"));
@@ -98,7 +99,8 @@ export function configureSwagger(app) {
   const analyticsPaths = YAML.load(path.resolve(__dirname, "./analytics/paths.yaml"));
   
   const settingsPaths = YAML.load(path.resolve(__dirname, "./settings/paths.yaml"));
-  const commissionsPaths = YAML.load(path.resolve(__dirname, "./commissions/paths.yaml"));
+  const commissionRulesPaths = YAML.load(path.resolve(__dirname, "./commission-rules/paths.yaml"));
+  const earningsPaths        = YAML.load(path.resolve(__dirname, "./earnings/paths.yaml"));
 
   const schemas = {
     ...authSchemas,
@@ -121,7 +123,8 @@ export function configureSwagger(app) {
     ...dashboardSchemas,
     ...analyticsSchemas,
     ...settingsSchemas,
-    ...commissionsSchemas,
+    ...commissionRulesSchemas,
+    ...earningsSchemas,
   };
 
   const paths = {
@@ -145,7 +148,8 @@ export function configureSwagger(app) {
     ...dashboardPaths,
     ...analyticsPaths,
     ...settingsPaths,
-    ...commissionsPaths,
+    ...commissionRulesPaths,
+    ...earningsPaths,
   };
 
   const swaggerSpec = buildSwaggerSpec(info, schemas, paths);

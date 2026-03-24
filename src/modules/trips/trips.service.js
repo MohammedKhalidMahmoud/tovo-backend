@@ -4,7 +4,8 @@ const locationStore = require('../../realtime/locationStore');
 const serviceRepo = require('../services/services.repository');
 const regionsService = require('../regions/regions.service');
 const locationUtils = require('../../utils/location');
-const commissionService = require('../commissions/commissions.service');
+const commissionService = require('../commission-rules/commission-rules.service');
+const commissionRepo = require('../earnings/earnings.repository');
 const walletsRepo = require('../wallets/wallets.repository');
 const notificationsService = require('../notifications/notifications.service');
 
@@ -243,6 +244,16 @@ const endTrip = async (tripId, driverId) => {
         tripId,
       });
     }
+  }
+
+  // Log platform commission earned
+  if (trip.commission && parseFloat(trip.commission) > 0) {
+    await commissionRepo.createCommissionLog({
+      tripId: trip.id,
+      amount: trip.commission,
+      paymentType: trip.paymentType ?? 'cash',
+      serviceId: trip.serviceId ?? null,
+    });
   }
 
   const fareDisplay = Number(completed.fare).toFixed(2);

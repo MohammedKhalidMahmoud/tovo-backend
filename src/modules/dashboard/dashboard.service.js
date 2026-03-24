@@ -1,5 +1,6 @@
 const prisma = require('../../config/prisma');
 const analyticsService = require('../analytics/analytics.service');
+const commissionRepo = require('../earnings/earnings.repository');
 
 /**
  * Return a consolidated set of analytics that the admin dashboard UI needs.
@@ -50,6 +51,11 @@ const adminDashboard = async () => {
     where: { createdAt: { gte: yesterday } },
   }).then(r => r._count.userId);
 
+  const [totalCommission, todayCommission] = await Promise.all([
+    commissionRepo.sumCommissionLogs(),
+    commissionRepo.sumCommissionLogs({ createdAt: { gte: startOfToday } }),
+  ]);
+
   return {
     totalRiders,
     totalDrivers,
@@ -61,6 +67,8 @@ const adminDashboard = async () => {
     totalRevenue,
     todayRevenue,
     monthlyRevenue,
+    totalCommission,
+    todayCommission,
     activeDrivers,
     activeRiders,
   };
