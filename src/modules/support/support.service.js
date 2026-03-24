@@ -27,7 +27,7 @@ const listComplaints = async ({ page = 1, limit = 20, status, type, search } = {
   const where = {};
   if (status && status !== 'all') where.status = status;
   if (type)   where.type = type;
-  if (search) where.message = { contains: search, mode: 'insensitive' };
+  if (search) where.message = { contains: search };
 
   const total = await prisma.supportTicket.count({ where });
   const data  = await prisma.supportTicket.findMany({ where, skip: (page - 1) * limit, take: limit });

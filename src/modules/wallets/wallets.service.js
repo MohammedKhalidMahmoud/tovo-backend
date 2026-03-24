@@ -26,7 +26,7 @@ exports.listWallets = async (filters) => {
   if (ownerType === 'driver')   where.user = { role: 'driver' };
 
   if (search) {
-    where.user = { ...where.user, OR: [{ name: { contains: search, mode: 'insensitive' } }, { email: { contains: search, mode: 'insensitive' } }] };
+    where.user = { ...where.user, OR: [{ name: { contains: search } }, { email: { contains: search } }] };
   }
 
   const [total, data] = await Promise.all([

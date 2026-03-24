@@ -18,9 +18,9 @@ exports.listRegions = async ({ page = 1, limit = 20, isActive, search } = {}) =>
   if (isActive !== undefined) where.status = isActive;
   if (search) {
     where.OR = [
-      { name:    { contains: search, mode: 'insensitive' } },
-      { country: { contains: search, mode: 'insensitive' } },
-      { city:    { contains: search, mode: 'insensitive' } },
+      { name:    { contains: search } },
+      { country: { contains: search } },
+      { city:    { contains: search } },
     ];
   }
 

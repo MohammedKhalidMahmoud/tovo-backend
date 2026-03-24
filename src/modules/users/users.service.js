@@ -75,9 +75,9 @@ const listUsers = async (filters) => {
 
   if (search) {
     where.OR = [
-      { name:  { contains: search, mode: 'insensitive' } },
-      { email: { contains: search, mode: 'insensitive' } },
-      { phone: { contains: search, mode: 'insensitive' } },
+      { name:  { contains: search } },
+      { email: { contains: search } },
+      { phone: { contains: search } },
     ];
   }
 

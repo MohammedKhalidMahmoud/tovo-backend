@@ -19,7 +19,7 @@ const validateCoupon = async (code) => {
 const listCoupons = async ({ page = 1, limit = 20, status, search } = {}) => {
   const where = {};
   if (status && status !== 'all') where.isActive = status === 'active';
-  if (search) where.code = { contains: search, mode: 'insensitive' };
+  if (search) where.code = { contains: search };
 
   const total = await prisma.coupon.count({ where });
   const data  = await prisma.coupon.findMany({ where, skip: (page - 1) * limit, take: limit });

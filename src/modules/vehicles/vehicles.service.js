@@ -10,10 +10,10 @@ exports.listVehicles = async ({ page = 1, limit = 20, vehicleModelId, search } =
   if (vehicleModelId) where.vehicleModelId = vehicleModelId;
   if (search) {
     where.OR = [
-      { vin:  { contains: search, mode: 'insensitive' } },
+      { vin:  { contains: search } },
       { user: { OR: [
-        { name:  { contains: search, mode: 'insensitive' } },
-        { email: { contains: search, mode: 'insensitive' } },
+        { name:  { contains: search } },
+        { email: { contains: search } },
       ] } },
     ];
   }

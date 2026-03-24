@@ -46,9 +46,9 @@ exports.listDrivers = async ({ page = 1, limit = 20, sortBy = 'createdAt', sortO
   if (onlineStatus && onlineStatus !== 'all') where.isOnline = onlineStatus === 'online';
   if (search) {
     where.OR = [
-      { name:           { contains: search, mode: 'insensitive' } },
-      { email:          { contains: search, mode: 'insensitive' } },
-      { drivingLicense: { contains: search, mode: 'insensitive' } },
+      { name:           { contains: search } },
+      { email:          { contains: search } },
+      { drivingLicense: { contains: search } },
     ];
   }
 
