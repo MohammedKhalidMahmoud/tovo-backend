@@ -23,6 +23,7 @@ const driversPublicRoutes      = require('./modules/drivers/drivers.public.route
 const driversAdminRoutes      = require('./modules/drivers/drivers.admin.routes');
 const tripsRoutes         = require('./modules/trips/trips.routes');
 const promotionsRoutes    = require('./modules/coupons/coupons.routes');
+const promotionsAdminRoutes = require('./modules/coupons/coupons.admin.routes');
 const sosRoutes           = require('./modules/sos/sos.routes');
 const faqsRoutes          = require('./modules/faqs/faqs.routes');
 const servicesRoutes      = require('./modules/services/services.routes');
@@ -100,6 +101,7 @@ app.use(`${API}/drivers`,      driversPublicRoutes);
 app.use(`${API}/admin/drivers`,      driversAdminRoutes);
 app.use(`${API}/trips`,         tripsRoutes);
 app.use(`${API}/promotions`,     promotionsRoutes);
+app.use(`${API}/admin/promotions/coupons`, promotionsAdminRoutes);
 app.use(`${API}/notifications`,  notificationsRoutes);
 app.use(`${API}/support`,        supportRoutes);
 app.use(`${API}/admin/support`,  supportAdminRoutes);
@@ -163,4 +165,3 @@ server.listen(PORT, () => {
 });
 
 module.exports = { app, server, io };
-

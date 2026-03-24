@@ -137,7 +137,19 @@ Mounted at `/api/v1/admin/payments` via `src/modules/payments/payments.routes.js
 | `GET` | `/api/v1/admin/payments/:id` | Get payment detail |
 | `POST` | `/api/v1/admin/payments/:id/refund` | Refund card payment |
 
-### 9. Commission Rules
+### 9. Promotions And Coupons
+
+Mounted at `/api/v1/admin/promotions/coupons` via `src/modules/coupons/coupons.admin.routes.js`.
+
+| Method | Path | Notes |
+|---|---|---|
+| `GET` | `/api/v1/admin/promotions/coupons` | List coupons. Query: `page`, `limit`, `status`, `search` |
+| `POST` | `/api/v1/admin/promotions/coupons` | Create coupon |
+| `GET` | `/api/v1/admin/promotions/coupons/:id` | Get coupon detail |
+| `PUT` | `/api/v1/admin/promotions/coupons/:id` | Update coupon |
+| `DELETE` | `/api/v1/admin/promotions/coupons/:id` | Delete coupon |
+
+### 10. Commission Rules
 
 Mounted at `/api/v1/admin/commission-rules` via `src/modules/commission-rules/commission-rules.routes.js`.
 
@@ -158,7 +170,7 @@ Supported rule types:
 - `tiered_fixed`
 - `tiered_percentage`
 
-### 10. Earnings
+### 11. Earnings
 
 Mounted at `/api/v1/admin/earnings` via `src/modules/earnings/earnings.routes.js`.
 
@@ -168,7 +180,7 @@ This is the current replacement for the old `/api/v1/admin/commissions/earnings`
 |---|---|---|
 | `GET` | `/api/v1/admin/earnings` | List platform commission logs. Common filters: `dateFrom`, `dateTo`, `paymentType`, `serviceId`, `page`, `perPage` |
 
-### 11. Settings
+### 12. Settings
 
 Mounted at `/api/v1/admin/settings` via `src/modules/settings/settings.routes.js`.
 
@@ -185,7 +197,7 @@ Validation notes:
 - `key` must match `^[a-z0-9_.]+$`
 - `id` is a UUID
 
-### 12. Wallets
+### 13. Wallets
 
 Mounted at `/api/v1/admin/wallets` via `src/modules/wallets/wallets.admin.routes.js`.
 
@@ -196,7 +208,7 @@ Mounted at `/api/v1/admin/wallets` via `src/modules/wallets/wallets.admin.routes
 | `GET` | `/api/v1/admin/wallets/:id/transactions` | Get wallet transactions |
 | `POST` | `/api/v1/admin/wallets/:id/adjust` | Manual wallet adjustment |
 
-### 13. Vehicles
+### 14. Vehicles
 
 Mounted at `/api/v1/admin/vehicles` via `src/modules/vehicles/vehicles.routes.js`.
 
@@ -246,6 +258,7 @@ Mounted at `/api/v1/notifications` via `src/modules/notifications/notifications.
 - Vehicle models admin CRUD
 - Services admin CRUD
 - Payments admin listing and refund
+- Promotions/coupons admin CRUD
 - Commission rules admin CRUD + activate
 - Earnings listing
 - Settings CRUD
