@@ -1,23 +1,22 @@
-// prisma/seed.js
 const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
 
 const prisma = new PrismaClient();
 
-async function main() {
-  console.log('🌱 Seeding Tovo database...\n');
+const PASSWORD = 'password123';
+const OTP_AHMED = '123456';
+const OTP_YOUSSEF = '654321';
 
-  // ─────────────────────────────────────────────
-  //  CLEANUP (order matters — children before parents)
-  // ─────────────────────────────────────────────
+const daysFromNow = (days) => new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+const daysAgo = (days) => new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
+async function cleanup() {
   await prisma.rating.deleteMany();
   await prisma.tripDecline.deleteMany();
+  await prisma.commissionLog.deleteMany();
   await prisma.walletTransaction.deleteMany();
   await prisma.trip.deleteMany();
   await prisma.vehicle.deleteMany();
-  await prisma.admin.deleteMany();
-  await prisma.commissionRule.deleteMany();
-  await prisma.service.deleteMany();
   await prisma.ticketMessage.deleteMany();
   await prisma.supportTicket.deleteMany();
   await prisma.notification.deleteMany();
@@ -26,448 +25,1005 @@ async function main() {
   await prisma.paymentMethod.deleteMany();
   await prisma.otp.deleteMany();
   await prisma.refreshToken.deleteMany();
+  await prisma.passwordResetToken.deleteMany();
   await prisma.insuranceCard.deleteMany();
   await prisma.wallet.deleteMany();
+  await prisma.wishlistItem.deleteMany();
+  await prisma.sosAlert.deleteMany();
   await prisma.coupon.deleteMany();
   await prisma.promotion.deleteMany();
   await prisma.faq.deleteMany();
   await prisma.region.deleteMany();
+  await prisma.commissionRule.deleteMany();
+  await prisma.vehicleModel.deleteMany();
+  await prisma.user.deleteMany();
   await prisma.adminUser.deleteMany();
   await prisma.systemSetting.deleteMany();
-  await prisma.wishlistItem.deleteMany();
-  await prisma.sosAlert.deleteMany();
-  await prisma.user.deleteMany();
+  await prisma.service.deleteMany();
+}
 
-  console.log('✅ Cleaned existing data\n');
+async function main() {
+  console.log('Seeding Tovo database...\n');
 
-  // ─────────────────────────────────────────────
-  //  SERVICES
-  // ─────────────────────────────────────────────
+  await cleanup();
+  console.log('Cleaned existing data');
+
+  const passwordHash = await bcrypt.hash(PASSWORD, 10);
+
   const [svcComfort, svcRegular, svcMoto, svcPackage] = await Promise.all([
-    prisma.service.create({ data: { name: 'Comfort',    baseFare: 20.00, isActive: true } }),
-    prisma.service.create({ data: { name: 'Normal',     baseFare: 10.00, isActive: true } }),
-    prisma.service.create({ data: { name: 'Motorcycle', baseFare: 5.00,  isActive: true } }),
-    prisma.service.create({ data: { name: 'Packages',   baseFare: 15.00, isActive: true } }),
+    prisma.service.create({
+      data: {
+        name: 'Comfort',
+        baseFare: 20,
+        imageUrl: 'https://assets.tovo.app/services/comfort.png',
+        isActive: true,
+      },
+    }),
+    prisma.service.create({
+      data: {
+        name: 'Normal',
+        baseFare: 10,
+        imageUrl: 'https://assets.tovo.app/services/normal.png',
+        isActive: true,
+      },
+    }),
+    prisma.service.create({
+      data: {
+        name: 'Motorcycle',
+        baseFare: 5,
+        imageUrl: 'https://assets.tovo.app/services/moto.png',
+        isActive: true,
+      },
+    }),
+    prisma.service.create({
+      data: {
+        name: 'Packages',
+        baseFare: 15,
+        imageUrl: 'https://assets.tovo.app/services/packages.png',
+        isActive: true,
+      },
+    }),
   ]);
-  console.log('✅ Services created');
+  console.log('Seeded services');
 
-  // ─────────────────────────────────────────────
-  //  VEHICLE MODELS
-  // ─────────────────────────────────────────────
-  const [camry, corolla, bmw5] = await Promise.all([
+  const [camry, corolla, bmw5, sonata, cb125, hiAce] = await Promise.all([
     prisma.vehicleModel.create({
       data: {
-        name: 'Toyota Camry', brand: 'Toyota',
-        description: 'Comfortable everyday rides at affordable prices',
-        imageUrl:    'https://assets.tovo.app/vehicles/camry.png',
-        serviceId:   svcRegular.id,
-        isActive:    true,
+        name: 'Toyota Camry',
+        brand: 'Toyota',
+        description: 'Comfortable everyday sedan for city rides',
+        imageUrl: 'https://assets.tovo.app/vehicles/camry.png',
+        serviceId: svcRegular.id,
+        isActive: true,
       },
     }),
     prisma.vehicleModel.create({
       data: {
-        name: 'Toyota Corolla', brand: 'Toyota',
+        name: 'Toyota Corolla',
+        brand: 'Toyota',
         description: 'Reliable and fuel-efficient city car',
-        imageUrl:    'https://assets.tovo.app/vehicles/corolla.png',
-        serviceId:   svcRegular.id,
-        isActive:    true,
+        imageUrl: 'https://assets.tovo.app/vehicles/corolla.png',
+        serviceId: svcRegular.id,
+        isActive: true,
       },
     }),
     prisma.vehicleModel.create({
       data: {
-        name: 'BMW 5 Series', brand: 'BMW',
-        description: 'Premium vehicles with top-rated drivers',
-        imageUrl:    'https://assets.tovo.app/vehicles/bmw5.png',
-        serviceId:   svcComfort.id,
-        isActive:    true,
+        name: 'BMW 5 Series',
+        brand: 'BMW',
+        description: 'Premium sedan for higher-end rides',
+        imageUrl: 'https://assets.tovo.app/vehicles/bmw5.png',
+        serviceId: svcComfort.id,
+        isActive: true,
+      },
+    }),
+    prisma.vehicleModel.create({
+      data: {
+        name: 'Hyundai Sonata',
+        brand: 'Hyundai',
+        description: 'Mid-size sedan for regular rides',
+        imageUrl: 'https://assets.tovo.app/vehicles/sonata.png',
+        serviceId: svcRegular.id,
+        isActive: true,
+      },
+    }),
+    prisma.vehicleModel.create({
+      data: {
+        name: 'Honda CB125',
+        brand: 'Honda',
+        description: 'Fast two-wheel city commute option',
+        imageUrl: 'https://assets.tovo.app/vehicles/cb125.png',
+        serviceId: svcMoto.id,
+        isActive: true,
+      },
+    }),
+    prisma.vehicleModel.create({
+      data: {
+        name: 'Toyota Hi-Ace',
+        brand: 'Toyota',
+        description: 'Large vehicle for package delivery',
+        imageUrl: 'https://assets.tovo.app/vehicles/hiace.png',
+        serviceId: svcPackage.id,
+        isActive: true,
       },
     }),
   ]);
+  console.log('Seeded vehicle models');
 
-  await prisma.vehicleModel.createMany({
-    data: [
-      { name: 'Hyundai Sonata',        brand: 'Hyundai',       serviceId: svcRegular.id,  isActive: true },
-      { name: 'Mercedes-Benz E-Class', brand: 'Mercedes-Benz', serviceId: svcComfort.id,  isActive: true },
-      { name: 'Honda CB125',           brand: 'Honda',          serviceId: svcMoto.id,     isActive: true },
-      { name: 'Bajaj Pulsar',          brand: 'Bajaj',          serviceId: svcMoto.id,     isActive: true },
-      { name: 'Toyota Hi-Ace',         brand: 'Toyota',         serviceId: svcPackage.id,  isActive: true },
-    ],
-  });
-  console.log('✅ Vehicle models created');
-
-  // ─────────────────────────────────────────────
-  //  USERS (customers)
-  // ─────────────────────────────────────────────
-  const passwordHash = await bcrypt.hash('password123', 10);
-
-  const [ahmed, sara, omar] = await Promise.all([
+  const [ahmed, sara, omar, driver1, driver2, driver3] = await Promise.all([
     prisma.user.create({
       data: {
-        name:         'Ahmed Hassan',
-        email:        'ahmed.hassan@example.com',
-        phone:        '+201001234567',
+        name: 'Ahmed Hassan',
+        email: 'ahmed.hassan@example.com',
+        phone: '+201001234567',
         passwordHash,
-        avatarUrl:    'https://assets.tovo.app/avatars/user1.png',
-        role:         'customer',
-        isVerified:   true,
-        language:     'ar',
+        googleId: 'google-ahmed-001',
+        avatarUrl: 'https://assets.tovo.app/avatars/user1.png',
+        role: 'customer',
+        isVerified: true,
+        language: 'ar',
+        notificationsEnabled: true,
       },
     }),
     prisma.user.create({
       data: {
-        name:         'Sara Mohamed',
-        email:        'sara.mohamed@example.com',
-        phone:        '+201009876543',
+        name: 'Sara Mohamed',
+        email: 'sara.mohamed@example.com',
+        phone: '+201009876543',
         passwordHash,
-        avatarUrl:    'https://assets.tovo.app/avatars/user2.png',
-        role:         'customer',
-        isVerified:   true,
-        language:     'en',
+        appleId: 'apple-sara-001',
+        avatarUrl: 'https://assets.tovo.app/avatars/user2.png',
+        role: 'customer',
+        isVerified: true,
+        language: 'en',
+        notificationsEnabled: true,
       },
     }),
     prisma.user.create({
       data: {
-        name:         'Omar Khaled',
-        email:        'omar.khaled@example.com',
-        phone:        '+201115557890',
+        name: 'Omar Khaled',
+        email: 'omar.khaled@example.com',
+        phone: '+201115557890',
         passwordHash,
-        avatarUrl:    null,
-        role:         'customer',
-        isVerified:   false,
-        language:     'en',
+        avatarUrl: null,
+        role: 'customer',
+        isVerified: false,
+        language: 'en',
+        notificationsEnabled: false,
       },
     }),
-  ]);
-  console.log('✅ Customers created');
-
-  // ─────────────────────────────────────────────
-  //  DRIVERS (role: driver)
-  // ─────────────────────────────────────────────
-  const [driver1, driver2, driver3] = await Promise.all([
     prisma.user.create({
       data: {
-        name:              'Mostafa Ali',
-        email:             'mostafa.ali@example.com',
-        phone:             '+201234567890',
+        name: 'Mostafa Ali',
+        email: 'mostafa.ali@example.com',
+        phone: '+201234567890',
         passwordHash,
-        avatarUrl:         'https://assets.tovo.app/avatars/captain1.png',
-        role:              'driver',
-        drivingLicense:    'DL-2019-EG-001234',
+        facebookId: 'facebook-mostafa-001',
+        avatarUrl: 'https://assets.tovo.app/avatars/captain1.png',
+        role: 'driver',
+        drivingLicense: 'DL-2019-EG-001234',
         licenseExpiryDate: new Date('2027-06-30'),
-        isVerified:        true,
-        isOnline:          true,
-        rating:            4.8,
-        totalTrips:        312,
-        language:          'ar',
-        serviceId:         camry.serviceId,
+        isVerified: true,
+        isOnline: true,
+        rating: 4.8,
+        totalTrips: 312,
+        language: 'ar',
+        serviceId: svcRegular.id,
       },
     }),
     prisma.user.create({
       data: {
-        name:              'Karim Samir',
-        email:             'karim.samir@example.com',
-        phone:             '+201098765432',
+        name: 'Karim Samir',
+        email: 'karim.samir@example.com',
+        phone: '+201098765432',
         passwordHash,
-        avatarUrl:         'https://assets.tovo.app/avatars/captain2.png',
-        role:              'driver',
-        drivingLicense:    'DL-2020-EG-005678',
+        avatarUrl: 'https://assets.tovo.app/avatars/captain2.png',
+        role: 'driver',
+        drivingLicense: 'DL-2020-EG-005678',
         licenseExpiryDate: new Date('2026-09-15'),
-        isVerified:        true,
-        isOnline:          true,
-        rating:            4.5,
-        totalTrips:        178,
-        language:          'ar',
-        serviceId:         bmw5.serviceId,
+        isVerified: true,
+        isOnline: true,
+        rating: 4.5,
+        totalTrips: 178,
+        language: 'ar',
+        serviceId: svcComfort.id,
       },
     }),
     prisma.user.create({
       data: {
-        name:              'Youssef Nour',
-        email:             'youssef.nour@example.com',
-        phone:             '+201122334455',
+        name: 'Youssef Nour',
+        email: 'youssef.nour@example.com',
+        phone: '+201122334455',
         passwordHash,
-        avatarUrl:         null,
-        role:              'driver',
-        drivingLicense:    'DL-2021-EG-009999',
+        avatarUrl: null,
+        role: 'driver',
+        drivingLicense: 'DL-2021-EG-009999',
         licenseExpiryDate: new Date('2025-12-31'),
-        isVerified:        true,
-        isOnline:          false,
-        rating:            4.2,
-        totalTrips:        89,
-        language:          'en',
-        serviceId:         corolla.serviceId,
+        isVerified: true,
+        isOnline: false,
+        rating: 4.2,
+        totalTrips: 89,
+        language: 'en',
+        serviceId: svcRegular.id,
       },
     }),
   ]);
-  console.log('✅ Drivers created');
+  console.log('Seeded users and drivers');
 
-  // ─────────────────────────────────────────────
-  //  ADMIN ACCOUNT
-  // ─────────────────────────────────────────────
-  await prisma.adminUser.create({
-    data: {
-      name:         'Super Admin',
-      email:        'admin@example.com',
-      role:         'superadmin',
-      passwordHash,
-    },
-  });
-  console.log('✅ Admin user created (admin@example.com / password123)');
+  const [superAdmin, opsAdmin] = await Promise.all([
+    prisma.adminUser.create({
+      data: {
+        name: 'Super Admin',
+        email: 'admin@example.com',
+        role: 'superadmin',
+        passwordHash,
+        isActive: true,
+      },
+    }),
+    prisma.adminUser.create({
+      data: {
+        name: 'Operations Admin',
+        email: 'ops@example.com',
+        role: 'operations',
+        passwordHash,
+        isActive: true,
+      },
+    }),
+  ]);
+  console.log('Seeded admin users');
 
-  // ─────────────────────────────────────────────
-  //  SYSTEM SETTINGS
-  // ─────────────────────────────────────────────
   await prisma.systemSetting.createMany({
     data: [
-      { key: 'maintenance_mode',        value: 'false' },
-      { key: 'default_currency',        value: 'EGP' },
-      { key: 'fare_per_km',             value: '5' },
-      { key: 'commission_pct',          value: '15' },
-      { key: 'support_email',           value: 'support@tovo.app' },
-      { key: 'support_phone',           value: '+20222345678' },
-      { key: 'app_name',                value: 'Tovo' },
-      { key: 'app_version_android',     value: '1.2.0' },
-      { key: 'app_version_ios',         value: '1.2.0' },
+      { key: 'maintenance_mode', value: 'false' },
+      { key: 'default_currency', value: 'EGP' },
+      { key: 'fare_per_km', value: '5' },
+      { key: 'commission_pct', value: '15' },
+      { key: 'support_email', value: 'support@tovo.app' },
+      { key: 'support_phone', value: '+20222345678' },
+      { key: 'app_name', value: 'Tovo' },
+      { key: 'app_version_android', value: '1.2.0' },
+      { key: 'app_version_ios', value: '1.2.0' },
       { key: 'cancellation_window_sec', value: '60' },
-      { key: 'max_search_radius_km',    value: '10' },
-      { key: 'min_trip_distance_km',    value: '0.5' },
+      { key: 'max_search_radius_km', value: '10' },
+      { key: 'min_trip_distance_km', value: '0.5' },
     ],
   });
-  console.log('✅ System settings seeded');
+  console.log('Seeded system settings');
 
-  // ─────────────────────────────────────────────
-  //  VEHICLES
-  // ─────────────────────────────────────────────
-  await Promise.all([
-    prisma.vehicle.create({ data: { userId: driver1.id, vehicleModelId: camry.id,   vin: '1HGCM82633A123456' } }),
-    prisma.vehicle.create({ data: { userId: driver2.id, vehicleModelId: bmw5.id,    vin: '2T1BURHE0JC987654' } }),
-    prisma.vehicle.create({ data: { userId: driver3.id, vehicleModelId: corolla.id, vin: '3VWFE21C04M000001' } }),
+  await prisma.region.createMany({
+    data: [
+      {
+        name: 'Downtown Cairo',
+        city: 'Cairo',
+        lat: 30.0444,
+        lng: 31.2357,
+        radius: 12,
+        status: true,
+      },
+      {
+        name: 'Giza',
+        city: 'Giza',
+        lat: 30.0131,
+        lng: 31.2089,
+        radius: 15,
+        status: true,
+      },
+      {
+        name: 'Alexandria Pilot',
+        city: 'Alexandria',
+        lat: 31.2001,
+        lng: 29.9187,
+        radius: 8,
+        status: false,
+      },
+    ],
+  });
+  console.log('Seeded regions');
+
+  const [globalRule, comfortRule, packageRule, motoRule] = await Promise.all([
+    prisma.commissionRule.create({
+      data: {
+        name: 'Global 15 Percent',
+        type: 'percentage',
+        serviceId: null,
+        status: true,
+        config: { pct: 15 },
+      },
+    }),
+    prisma.commissionRule.create({
+      data: {
+        name: 'Comfort Tiered Percentage',
+        type: 'tiered_percentage',
+        serviceId: svcComfort.id,
+        status: true,
+        config: [
+          { minFare: 0, maxFare: 100, pct: 18 },
+          { minFare: 100, maxFare: null, pct: 20 },
+        ],
+      },
+    }),
+    prisma.commissionRule.create({
+      data: {
+        name: 'Package Fixed Amount',
+        type: 'fixed_amount',
+        serviceId: svcPackage.id,
+        status: true,
+        config: [
+          { minFare: 0, maxFare: 99.99, amount: 8 },
+          { minFare: 100, maxFare: null, amount: 15 },
+        ],
+      },
+    }),
+    prisma.commissionRule.create({
+      data: {
+        name: 'Moto Tiered Fixed Draft',
+        type: 'tiered_fixed',
+        serviceId: svcMoto.id,
+        status: false,
+        config: [
+          { minFare: 0, maxFare: 60, amount: 4 },
+          { minFare: 60, maxFare: null, amount: 6 },
+        ],
+      },
+    }),
   ]);
-  console.log('✅ Vehicles created');
+  console.log('Seeded commission rules');
 
-  // ─────────────────────────────────────────────
-  //  WALLETS
-  // ─────────────────────────────────────────────
-  await Promise.all([
-    prisma.wallet.create({ data: { userId: ahmed.id,   balance: 250.00,  currency: 'EGP' } }),
-    prisma.wallet.create({ data: { userId: sara.id,    balance: 75.50,   currency: 'EGP' } }),
-    prisma.wallet.create({ data: { userId: omar.id,    balance: 0.00,    currency: 'EGP' } }),
-    prisma.wallet.create({ data: { userId: driver1.id, balance: 1840.00, currency: 'EGP' } }),
-    prisma.wallet.create({ data: { userId: driver2.id, balance: 920.75,  currency: 'EGP' } }),
-    prisma.wallet.create({ data: { userId: driver3.id, balance: 310.00,  currency: 'EGP' } }),
+  const [vehicle1, vehicle2, vehicle3] = await Promise.all([
+    prisma.vehicle.create({
+      data: { userId: driver1.id, vehicleModelId: camry.id, vin: '1HGCM82633A123456' },
+    }),
+    prisma.vehicle.create({
+      data: { userId: driver2.id, vehicleModelId: bmw5.id, vin: '2T1BURHE0JC987654' },
+    }),
+    prisma.vehicle.create({
+      data: { userId: driver3.id, vehicleModelId: corolla.id, vin: '3VWFE21C04M000001' },
+    }),
   ]);
-  console.log('✅ Wallets created');
+  console.log('Seeded vehicles');
 
-  // ─────────────────────────────────────────────
-  //  PAYMENT METHODS
-  // ─────────────────────────────────────────────
-  const [ahmedCard1, ahmedCard2, saraCard] = await Promise.all([
+  const [walletAhmed, walletSara, walletOmar, walletDriver1, walletDriver2, walletDriver3] = await Promise.all([
+    prisma.wallet.create({ data: { userId: ahmed.id, balance: 300, currency: 'EGP' } }),
+    prisma.wallet.create({ data: { userId: sara.id, balance: 75.5, currency: 'EGP' } }),
+    prisma.wallet.create({ data: { userId: omar.id, balance: 15, currency: 'EGP' } }),
+    prisma.wallet.create({ data: { userId: driver1.id, balance: 1900, currency: 'EGP' } }),
+    prisma.wallet.create({ data: { userId: driver2.id, balance: 915.75, currency: 'EGP' } }),
+    prisma.wallet.create({ data: { userId: driver3.id, balance: 310, currency: 'EGP' } }),
+  ]);
+  console.log('Seeded wallets');
+
+  const [ahmedVisa, ahmedMastercard, saraApplePay] = await Promise.all([
     prisma.paymentMethod.create({
-      data: { userId: ahmed.id, brand: 'visa',       lastFour: '4242', maskedNumber: '4242 **** **** 4242', expiry: '12/27', isDefault: true },
+      data: {
+        userId: ahmed.id,
+        brand: 'visa',
+        lastFour: '4242',
+        maskedNumber: '4242 **** **** 4242',
+        expiry: '12/27',
+        isDefault: true,
+      },
     }),
     prisma.paymentMethod.create({
-      data: { userId: ahmed.id, brand: 'mastercard', lastFour: '8888', maskedNumber: '5555 **** **** 8888', expiry: '08/26', isDefault: false },
+      data: {
+        userId: ahmed.id,
+        brand: 'mastercard',
+        lastFour: '8888',
+        maskedNumber: '5555 **** **** 8888',
+        expiry: '08/26',
+        isDefault: false,
+      },
     }),
     prisma.paymentMethod.create({
-      data: { userId: sara.id,  brand: 'apple_pay',  lastFour: null,   maskedNumber: null, expiry: null, isDefault: true },
+      data: {
+        userId: sara.id,
+        brand: 'apple_pay',
+        lastFour: null,
+        maskedNumber: null,
+        expiry: null,
+        isDefault: true,
+      },
     }),
   ]);
-  console.log('✅ Payment methods created');
+  console.log('Seeded payment methods');
 
-  // ─────────────────────────────────────────────
-  //  SAVED ADDRESSES
-  // ─────────────────────────────────────────────
-  await Promise.all([
-    prisma.savedAddress.create({ data: { userId: ahmed.id, label: 'Home', address: '15 El-Tahrir Square, Downtown Cairo', lat: 30.0444, lng: 31.2357 } }),
-    prisma.savedAddress.create({ data: { userId: ahmed.id, label: 'Work', address: 'Smart Village, 6th of October City',   lat: 30.0710, lng: 30.9800 } }),
-    prisma.savedAddress.create({ data: { userId: sara.id,  label: 'Home', address: '7 Hassan Sabri St, Zamalek, Cairo',   lat: 30.0626, lng: 31.2197 } }),
-  ]);
-  console.log('✅ Saved addresses created');
+  await prisma.savedAddress.createMany({
+    data: [
+      {
+        userId: ahmed.id,
+        label: 'Home',
+        address: '15 El-Tahrir Square, Downtown Cairo',
+        lat: 30.0444,
+        lng: 31.2357,
+      },
+      {
+        userId: ahmed.id,
+        label: 'Work',
+        address: 'Smart Village, 6th of October City',
+        lat: 30.071,
+        lng: 30.98,
+      },
+      {
+        userId: sara.id,
+        label: 'Home',
+        address: '7 Hassan Sabri St, Zamalek, Cairo',
+        lat: 30.0626,
+        lng: 31.2197,
+      },
+    ],
+  });
+  console.log('Seeded saved addresses');
 
-  // ─────────────────────────────────────────────
-  //  PROMOTIONS
-  // ─────────────────────────────────────────────
-  await Promise.all([
-    prisma.promotion.create({ data: { title: '20% Off Your First Ride',  description: 'New users get 20% off their first trip with Tovo',        discountPct: 20, imageUrl: 'https://assets.tovo.app/promos/welcome.png',  validUntil: new Date('2026-12-31'), isActive: true  } }),
-    prisma.promotion.create({ data: { title: 'Weekend Special',           description: '15% off all VIP rides every Friday and Saturday',        discountPct: 15, imageUrl: 'https://assets.tovo.app/promos/weekend.png',  validUntil: new Date('2026-06-30'), isActive: true  } }),
-    prisma.promotion.create({ data: { title: 'Ramadan Offer',             description: 'Special fares during Ramadan nights',                    discountPct: 25, imageUrl: 'https://assets.tovo.app/promos/ramadan.png',  validUntil: new Date('2025-04-30'), isActive: false } }),
-  ]);
-  console.log('✅ Promotions created');
+  await prisma.wishlistItem.createMany({
+    data: [
+      { userId: ahmed.id, itemRef: `service:${svcComfort.id}` },
+      { userId: ahmed.id, itemRef: `coupon:${'TOVO2025'}` },
+      { userId: sara.id, itemRef: `service:${svcPackage.id}` },
+    ],
+  });
+  console.log('Seeded wishlist items');
 
-  // ─────────────────────────────────────────────
-  //  COUPONS
-  // ─────────────────────────────────────────────
-  await Promise.all([
-    prisma.coupon.create({ data: { code: 'TOVO2025',  discount_type: 'percentage', discount: 10.00, expiry_date: new Date('2026-01-01'), usage_limit: 100, usage_limit_per_rider: 1, min_amount: 0, max_discount: 20.00, coupon_type: 'all', status: 1, used_count: 14 } }),
-    prisma.coupon.create({ data: { code: 'WELCOME50', discount_type: 'percentage', discount: 50.00, expiry_date: new Date('2026-12-31'), usage_limit: 1,   usage_limit_per_rider: 1, min_amount: 0, max_discount: 50.00, coupon_type: 'all', status: 1, used_count: 0  } }),
-    prisma.coupon.create({ data: { code: 'EXPIRED10', discount_type: 'percentage', discount: 10.00, expiry_date: new Date('2024-01-01'), usage_limit: 50,  usage_limit_per_rider: 1, min_amount: 0, max_discount: 10.00, coupon_type: 'all', status: 0, used_count: 50 } }),
-  ]);
-  console.log('✅ Coupons created');
+  await prisma.promotion.createMany({
+    data: [
+      {
+        title: '20% Off Your First Ride',
+        description: 'New users get 20% off their first trip with Tovo',
+        discountPct: 20,
+        imageUrl: 'https://assets.tovo.app/promos/welcome.png',
+        validUntil: new Date('2026-12-31'),
+        isActive: true,
+      },
+      {
+        title: 'Weekend Special',
+        description: '15% off all comfort rides every Friday and Saturday',
+        discountPct: 15,
+        imageUrl: 'https://assets.tovo.app/promos/weekend.png',
+        validUntil: new Date('2026-06-30'),
+        isActive: true,
+      },
+      {
+        title: 'Ramadan Offer',
+        description: 'Special fares during Ramadan nights',
+        discountPct: 25,
+        imageUrl: 'https://assets.tovo.app/promos/ramadan.png',
+        validUntil: new Date('2025-04-30'),
+        isActive: false,
+      },
+    ],
+  });
+  console.log('Seeded promotions');
 
-  // ─────────────────────────────────────────────
-  //  TRIPS
-  // ─────────────────────────────────────────────
-  const completedTrip = await prisma.trip.create({
+  await prisma.coupon.createMany({
+    data: [
+      {
+        code: 'TOVO2025',
+        discount_type: 'percentage',
+        discount: 10,
+        expiry_date: new Date('2026-12-31'),
+        usage_limit: 100,
+        usage_limit_per_rider: 1,
+        min_amount: 0,
+        max_discount: 20,
+        coupon_type: 'all',
+        status: 1,
+        used_count: 14,
+      },
+      {
+        code: 'WELCOME50',
+        discount_type: 'percentage',
+        discount: 50,
+        expiry_date: new Date('2026-12-31'),
+        usage_limit: 1,
+        usage_limit_per_rider: 1,
+        min_amount: 0,
+        max_discount: 50,
+        coupon_type: 'all',
+        status: 1,
+        used_count: 0,
+      },
+      {
+        code: 'FLAT30',
+        discount_type: 'amount',
+        discount: 30,
+        expiry_date: new Date('2026-09-01'),
+        usage_limit: 250,
+        usage_limit_per_rider: 2,
+        min_amount: 100,
+        max_discount: 30,
+        coupon_type: 'all',
+        status: 1,
+        used_count: 5,
+      },
+    ],
+  });
+  console.log('Seeded coupons');
+
+  const tripCompletedCard = await prisma.trip.create({
     data: {
-      user:          { connect: { id: ahmed.id } },
-      driver:        { connect: { id: driver1.id } },
-      service:       { connect: { id: svcComfort.id } },
-      paymentMethod: { connect: { id: ahmedCard1.id } },
+      userId: ahmed.id,
+      driverId: driver1.id,
+      serviceId: svcComfort.id,
+      paymentMethodId: ahmedVisa.id,
       status: 'completed',
-      pickupLat: 30.0444, pickupLng: 31.2357, pickupAddress: 'Tahrir Square, Downtown Cairo',
-      dropoffLat: 30.0626, dropoffLng: 31.2497, dropoffAddress: 'Ramses Square, Cairo',
-      fare: 45.00, currency: 'EGP', distanceKm: 4.2, durationMinutes: 18,
-      startedAt: new Date('2025-12-01T10:00:00Z'),
-      endedAt:   new Date('2025-12-01T10:18:00Z'),
+      pickupLat: 30.0444,
+      pickupLng: 31.2357,
+      pickupAddress: 'Tahrir Square, Downtown Cairo',
+      dropoffLat: 30.0626,
+      dropoffLng: 31.2497,
+      dropoffAddress: 'Ramses Square, Cairo',
+      paymentType: 'card',
+      fare: 70.8,
+      commission: 10.8,
+      driverEarnings: 60,
+      currency: 'EGP',
+      distanceKm: 4.2,
+      durationMinutes: 18,
+      startedAt: daysAgo(4),
+      endedAt: daysAgo(4 - 0.01),
     },
   });
 
-  await prisma.trip.create({
+  const tripCompletedCash = await prisma.trip.create({
     data: {
-      user:          { connect: { id: sara.id } },
-      service:       { connect: { id: svcRegular.id } },
-      paymentMethod: { connect: { id: saraCard.id } },
+      userId: sara.id,
+      driverId: driver2.id,
+      serviceId: svcRegular.id,
+      status: 'completed',
+      pickupLat: 30.0626,
+      pickupLng: 31.2197,
+      pickupAddress: 'Zamalek, Cairo',
+      dropoffLat: 30.0131,
+      dropoffLng: 31.2089,
+      dropoffAddress: 'Maadi, Cairo',
+      paymentType: 'cash',
+      fare: 46,
+      commission: 6,
+      driverEarnings: 40,
+      currency: 'EGP',
+      distanceKm: 7.8,
+      durationMinutes: 24,
+      startedAt: daysAgo(3),
+      endedAt: daysAgo(3 - 0.01),
+    },
+  });
+
+  const tripMatched = await prisma.trip.create({
+    data: {
+      userId: omar.id,
+      driverId: driver3.id,
+      serviceId: svcRegular.id,
+      status: 'matched',
+      pickupLat: 30.055,
+      pickupLng: 31.24,
+      pickupAddress: 'Abdeen, Cairo',
+      dropoffLat: 30.03,
+      dropoffLng: 31.21,
+      dropoffAddress: 'Old Cairo',
+      paymentType: 'cash',
+      fare: 55,
+      commission: 7.5,
+      driverEarnings: 47.5,
+      currency: 'EGP',
+      distanceKm: 5.1,
+      durationMinutes: 22,
+    },
+  });
+
+  const tripOnWay = await prisma.trip.create({
+    data: {
+      userId: ahmed.id,
+      driverId: driver2.id,
+      serviceId: svcComfort.id,
+      paymentMethodId: ahmedMastercard.id,
+      status: 'on_way',
+      pickupLat: 30.0444,
+      pickupLng: 31.2357,
+      pickupAddress: 'Tahrir Square, Downtown Cairo',
+      dropoffLat: 30.0761,
+      dropoffLng: 31.2986,
+      dropoffAddress: 'Cairo International Airport',
+      paymentType: 'card',
+      fare: 132,
+      commission: 22,
+      driverEarnings: 110,
+      currency: 'EGP',
+      distanceKm: 20.1,
+      durationMinutes: 35,
+    },
+  });
+
+  const tripInProgress = await prisma.trip.create({
+    data: {
+      userId: sara.id,
+      driverId: driver1.id,
+      serviceId: svcRegular.id,
+      paymentMethodId: saraApplePay.id,
+      status: 'in_progress',
+      pickupLat: 30.05,
+      pickupLng: 31.24,
+      pickupAddress: 'Garden City, Cairo',
+      dropoffLat: 30.09,
+      dropoffLng: 31.29,
+      dropoffAddress: 'Nasr City, Cairo',
+      paymentType: 'card',
+      fare: 92,
+      commission: 12,
+      driverEarnings: 80,
+      currency: 'EGP',
+      distanceKm: 14.2,
+      durationMinutes: 28,
+      startedAt: daysAgo(0.1),
+    },
+  });
+
+  const tripSearching = await prisma.trip.create({
+    data: {
+      userId: omar.id,
+      serviceId: svcPackage.id,
+      status: 'searching',
+      pickupLat: 30.07,
+      pickupLng: 31.31,
+      pickupAddress: 'Heliopolis, Cairo',
+      dropoffLat: 30.12,
+      dropoffLng: 31.36,
+      dropoffAddress: 'New Cairo',
+      paymentType: 'cash',
+      fare: 88,
+      commission: 8,
+      driverEarnings: 80,
+      currency: 'EGP',
+      distanceKm: 12.6,
+      durationMinutes: 31,
+    },
+  });
+
+  const tripCancelled = await prisma.trip.create({
+    data: {
+      userId: sara.id,
+      serviceId: svcRegular.id,
+      paymentMethodId: saraApplePay.id,
       status: 'cancelled',
-      pickupLat: 30.0626, pickupLng: 31.2197, pickupAddress: 'Zamalek, Cairo',
-      dropoffLat: 30.0131, dropoffLng: 31.2089, dropoffAddress: 'Maadi, Cairo',
-      fare: null, currency: 'EGP', distanceKm: 7.8,
-      cancelledAt: new Date('2025-12-05T14:30:00Z'),
+      pickupLat: 30.0626,
+      pickupLng: 31.2197,
+      pickupAddress: 'Zamalek, Cairo',
+      dropoffLat: 30.0131,
+      dropoffLng: 31.2089,
+      dropoffAddress: 'Maadi, Cairo',
+      paymentType: 'card',
+      fare: null,
+      commission: null,
+      driverEarnings: null,
+      currency: 'EGP',
+      distanceKm: 7.8,
+      durationMinutes: 20,
+      cancelledAt: daysAgo(1),
       cancelledBy: sara.id,
     },
   });
+  console.log('Seeded trips');
 
-  await prisma.trip.create({
-    data: {
-      user:          { connect: { id: ahmed.id } },
-      driver:        { connect: { id: driver2.id } },
-      service:       { connect: { id: svcComfort.id } },
-      paymentMethod: { connect: { id: ahmedCard2.id } },
-      status: 'on_way',
-      pickupLat: 30.0444, pickupLng: 31.2357, pickupAddress: 'Tahrir Square, Downtown Cairo',
-      dropoffLat: 30.0761, dropoffLng: 31.2986, dropoffAddress: 'Cairo International Airport',
-      fare: 120.0, currency: 'EGP', distanceKm: 20.1, durationMinutes: 35,
-    },
-  });
-
-  await prisma.trip.create({
-    data: {
-      user:    { connect: { id: omar.id } },
-      service: { connect: { id: svcRegular.id } },
-      status: 'searching',
-      pickupLat: 30.0550, pickupLng: 31.2400, pickupAddress: 'Abdeen, Cairo',
-      dropoffLat: 30.0300, dropoffLng: 31.2100, dropoffAddress: 'Old Cairo',
-      fare: 55.0, currency: 'EGP', distanceKm: 5.1, durationMinutes: 22,
-    },
-  });
-  console.log('✅ Trips created');
-
-  // ─────────────────────────────────────────────
-  //  RATINGS
-  // ─────────────────────────────────────────────
-  await prisma.rating.create({
-    data: {
-      tripId:   completedTrip.id,
-      userId:   ahmed.id,
-      driverId: driver1.id,
-      stars:    5,
-      comment:  'Very smooth ride, driver was polite and on time!',
-    },
-  });
-  console.log('✅ Ratings created');
-
-  // ─────────────────────────────────────────────
-  //  INSURANCE CARDS
-  // ─────────────────────────────────────────────
-  await Promise.all([
-    prisma.insuranceCard.create({ data: { userId: driver1.id, provider: 'Misr Insurance', policyNumber: 'MI-2024-00123',  expiresAt: new Date('2026-03-31') } }),
-    prisma.insuranceCard.create({ data: { userId: driver2.id, provider: 'AXA Egypt',      policyNumber: 'AXA-2024-99876', expiresAt: new Date('2025-12-31') } }),
-  ]);
-  console.log('✅ Insurance cards created');
-
-  // ─────────────────────────────────────────────
-  //  NOTIFICATIONS
-  // ─────────────────────────────────────────────
-  await Promise.all([
-    prisma.notification.create({ data: { userId: ahmed.id, title: 'Trip Completed',   body: 'Your trip to Ramses Square has been completed. Rate your driver!', isRead: true  } }),
-    prisma.notification.create({ data: { userId: ahmed.id, title: 'Weekend Special',  body: 'Get 15% off all VIP rides this Friday and Saturday.',              isRead: false } }),
-    prisma.notification.create({ data: { userId: sara.id,  title: 'Trip Cancelled',   body: 'Your trip has been cancelled. No charges were made.',              isRead: false } }),
-  ]);
-  console.log('✅ Notifications created');
-
-  // ─────────────────────────────────────────────
-  //  DEVICE TOKENS
-  // ─────────────────────────────────────────────
-  await Promise.all([
-    prisma.deviceToken.create({ data: { userId: ahmed.id,   token: 'fcm_token_ahmed_iphone_abc123',    platform: 'ios'     } }),
-    prisma.deviceToken.create({ data: { userId: sara.id,    token: 'fcm_token_sara_android_xyz789',    platform: 'android' } }),
-    prisma.deviceToken.create({ data: { userId: driver1.id, token: 'fcm_token_mostafa_android_def456', platform: 'android' } }),
-  ]);
-  console.log('✅ Device tokens created');
-
-  // ─────────────────────────────────────────────
-  //  SUPPORT TICKETS
-  // ─────────────────────────────────────────────
-  const ticket = await prisma.supportTicket.create({
-    data: { userId: ahmed.id, subject: 'Charged twice for the same trip', status: 'open' },
-  });
-  await prisma.ticketMessage.create({
-    data: { ticketId: ticket.id, senderId: ahmed.id, body: 'Hello, I was charged twice for my trip on Dec 1st. Transaction IDs: TXN001 and TXN002. Please refund the duplicate.' },
-  });
-  console.log('✅ Support tickets created');
-
-  // ─────────────────────────────────────────────
-  //  OTPs
-  // ─────────────────────────────────────────────
-  await Promise.all([
-    prisma.otp.create({ data: { userId: ahmed.id,   phone: '+201001234567', code: '123456', expiresAt: new Date(Date.now() + 10 * 60 * 1000), isUsed: false } }),
-    prisma.otp.create({ data: { userId: driver3.id, phone: '+201122334455', code: '654321', expiresAt: new Date(Date.now() + 10 * 60 * 1000), isUsed: false } }),
-  ]);
-  console.log('✅ OTPs created');
-
-  // ─────────────────────────────────────────────
-  //  FAQs
-  // ─────────────────────────────────────────────
-  await prisma.faq.createMany({
+  await prisma.tripDecline.createMany({
     data: [
-      { question: 'How do I book a ride?',              answer: 'Open the Tovo app, enter your pickup and drop-off locations, choose a service type, and tap "Request Ride". Nearby drivers will be notified instantly.',                                                                           order: 1,  isActive: true },
-      { question: 'How is my fare calculated?',         answer: 'Your fare is based on the distance of your trip multiplied by the fare per kilometre, plus a platform commission. You can always see the estimated fare before confirming your booking.',                                          order: 2,  isActive: true },
-      { question: 'What payment methods are accepted?', answer: 'Tovo accepts cash, Visa, Mastercard, and Apple Pay. You can manage your saved cards from the Payment Methods section in your profile.',                                                                                          order: 3,  isActive: true },
-      { question: 'How do I cancel a ride?',            answer: 'You can cancel a ride from the trip screen before the driver arrives. Note that cancellations after the driver is on the way may incur a small fee.',                                                                            order: 4,  isActive: true },
-      { question: 'How does the wallet work?',          answer: 'Your Tovo wallet holds your balance for in-app use. Refunds for card payments are credited to your wallet. You can view your balance and full transaction history in the Wallet section.',                                        order: 5,  isActive: true },
-      { question: 'How do I rate my driver?',           answer: 'After your trip is completed, you will be prompted to rate your driver from 1 to 5 stars. You can also leave an optional comment. Ratings help us maintain service quality.',                                                    order: 6,  isActive: true },
-      { question: 'What should I do in an emergency?',  answer: 'Use the SOS button inside the trip screen to send an emergency alert with your location to our safety team. We will contact you immediately.',                                                                                    order: 7,  isActive: true },
-      { question: 'How do I apply a coupon code?',      answer: 'At the booking confirmation screen, tap "Add Coupon" and enter your code. Valid codes will automatically apply the discount to your fare.',                                                                                       order: 8,  isActive: true },
-      { question: 'How do I become a driver?',          answer: 'Download Tovo, register with the driver role, upload your driving licence, and wait for admin verification. Once approved, register your vehicle and go online to start accepting trips.',                                        order: 9,  isActive: true },
-      { question: 'Is my payment information secure?',  answer: 'Yes. Tovo does not store your full card number. All payment data is tokenised and handled securely. We never share your financial details with third parties.',                                                                    order: 10, isActive: true },
-      { question: 'What areas does Tovo operate in?',   answer: 'Tovo currently operates in defined service regions. Your pickup location must be within an active region. Check the app map to see coverage in your area.',                                                                       order: 11, isActive: true },
-      { question: 'How do I contact support?',          answer: 'You can reach our support team by opening a ticket inside the app under Help & Support, or by emailing support@tovo.app. We aim to respond within 24 hours.',                                                                     order: 12, isActive: true },
+      { tripId: tripSearching.id, driverId: driver1.id },
+      { tripId: tripSearching.id, driverId: driver3.id },
+      { tripId: tripMatched.id, driverId: driver1.id },
     ],
   });
-  console.log('✅ FAQs seeded');
+  console.log('Seeded trip declines');
 
-  console.log('\n🎉 Seeding complete!\n');
-  console.log('──────────────────────────────────────────');
-  console.log('Test credentials (all passwords: password123)');
-  console.log('──────────────────────────────────────────');
-  console.log('Customers:');
-  console.log('  ahmed.hassan@example.com   (verified, has wallet + cards)');
-  console.log('  sara.mohamed@example.com   (verified, Apple Pay)');
-  console.log('  omar.khaled@example.com    (unverified, no payment method)');
-  console.log('Drivers:');
-  console.log('  mostafa.ali@example.com    (online, Regular Car)');
-  console.log('  karim.samir@example.com    (online, VIP Car)');
-  console.log('  youssef.nour@example.com   (offline, Regular Car)');
-  console.log('──────────────────────────────────────────');
-  console.log('Login role values: customer | driver | admin');
-  console.log('OTP codes:');
-  console.log('  +201001234567  →  123456');
-  console.log('  +201122334455  →  654321');
-  console.log('──────────────────────────────────────────\n');
+  await prisma.commissionLog.createMany({
+    data: [
+      {
+        tripId: tripCompletedCard.id,
+        amount: 10.8,
+        paymentType: 'card',
+        serviceId: svcComfort.id,
+      },
+      {
+        tripId: tripCompletedCash.id,
+        amount: 6,
+        paymentType: 'cash',
+        serviceId: svcRegular.id,
+      },
+    ],
+  });
+  console.log('Seeded commission logs');
+
+  await prisma.rating.createMany({
+    data: [
+      {
+        tripId: tripCompletedCard.id,
+        userId: ahmed.id,
+        driverId: driver1.id,
+        stars: 5,
+        comment: 'Very smooth ride, driver was polite and on time.',
+      },
+      {
+        tripId: tripCompletedCash.id,
+        userId: sara.id,
+        driverId: driver2.id,
+        stars: 4,
+        comment: 'Ride was good overall and the driver was helpful.',
+      },
+    ],
+  });
+  console.log('Seeded ratings');
+
+  await prisma.walletTransaction.createMany({
+    data: [
+      {
+        walletId: walletDriver1.id,
+        type: 'credit',
+        amount: 60,
+        reason: 'trip_earnings_credit',
+        tripId: tripCompletedCard.id,
+      },
+      {
+        walletId: walletDriver2.id,
+        type: 'debit',
+        amount: 6,
+        reason: 'trip_commission_deduction',
+        tripId: tripCompletedCash.id,
+      },
+      {
+        walletId: walletAhmed.id,
+        type: 'credit',
+        amount: 50,
+        reason: 'refund',
+        tripId: tripCompletedCard.id,
+      },
+      {
+        walletId: walletOmar.id,
+        type: 'credit',
+        amount: 15,
+        reason: 'admin_welcome_credit',
+        tripId: null,
+      },
+    ],
+  });
+  console.log('Seeded wallet transactions');
+
+  await prisma.insuranceCard.createMany({
+    data: [
+      {
+        userId: driver1.id,
+        provider: 'Misr Insurance',
+        policyNumber: 'MI-2024-00123',
+        expiresAt: new Date('2026-03-31'),
+      },
+      {
+        userId: driver2.id,
+        provider: 'AXA Egypt',
+        policyNumber: 'AXA-2024-99876',
+        expiresAt: new Date('2025-12-31'),
+      },
+      {
+        userId: driver3.id,
+        provider: 'Allianz',
+        policyNumber: 'ALL-2025-22001',
+        expiresAt: new Date('2026-07-15'),
+      },
+    ],
+  });
+  console.log('Seeded insurance cards');
+
+  await prisma.notification.createMany({
+    data: [
+      {
+        userId: ahmed.id,
+        title: 'Trip Completed',
+        body: 'Your trip to Ramses Square has been completed. Rate your driver.',
+        isRead: true,
+      },
+      {
+        userId: ahmed.id,
+        title: 'Refund Issued',
+        body: 'A wallet refund for your last card trip has been processed.',
+        isRead: false,
+      },
+      {
+        userId: sara.id,
+        title: 'Weekend Special',
+        body: 'Get 15% off all comfort rides this Friday and Saturday.',
+        isRead: false,
+      },
+      {
+        userId: driver1.id,
+        title: 'New Rating',
+        body: 'You received a 5-star rating from Ahmed Hassan.',
+        isRead: false,
+      },
+    ],
+  });
+  console.log('Seeded notifications');
+
+  await prisma.deviceToken.createMany({
+    data: [
+      {
+        userId: ahmed.id,
+        token: 'fcm_token_ahmed_ios_abc123',
+        platform: 'ios',
+      },
+      {
+        userId: sara.id,
+        token: 'fcm_token_sara_android_xyz789',
+        platform: 'android',
+      },
+      {
+        userId: driver1.id,
+        token: 'fcm_token_mostafa_android_def456',
+        platform: 'android',
+      },
+      {
+        userId: driver2.id,
+        token: 'fcm_token_karim_android_ghi890',
+        platform: 'android',
+      },
+    ],
+  });
+  console.log('Seeded device tokens');
+
+  const ticketOpen = await prisma.supportTicket.create({
+    data: {
+      userId: ahmed.id,
+      subject: 'Charged twice for the same trip',
+      status: 'open',
+    },
+  });
+
+  const ticketResolved = await prisma.supportTicket.create({
+    data: {
+      userId: sara.id,
+      subject: 'Driver arrived late',
+      status: 'resolved',
+    },
+  });
+
+  await prisma.ticketMessage.createMany({
+    data: [
+      {
+        ticketId: ticketOpen.id,
+        senderId: ahmed.id,
+        body: 'Hello, I was charged twice for my trip on Dec 1st. Please refund the duplicate.',
+      },
+      {
+        ticketId: ticketOpen.id,
+        senderId: superAdmin.id,
+        body: 'We have reviewed the payment and issued a wallet refund.',
+      },
+      {
+        ticketId: ticketResolved.id,
+        senderId: sara.id,
+        body: 'The driver was polite but arrived much later than the estimate.',
+      },
+      {
+        ticketId: ticketResolved.id,
+        senderId: opsAdmin.id,
+        body: 'Thanks for reporting this. We have documented the incident and resolved the ticket.',
+      },
+    ],
+  });
+  console.log('Seeded support tickets and messages');
+
+  await prisma.otp.createMany({
+    data: [
+      {
+        userId: ahmed.id,
+        phone: ahmed.phone,
+        code: OTP_AHMED,
+        expiresAt: daysFromNow(1 / 24),
+        isUsed: false,
+      },
+      {
+        userId: driver3.id,
+        phone: driver3.phone,
+        code: OTP_YOUSSEF,
+        expiresAt: daysFromNow(1 / 24),
+        isUsed: false,
+      },
+    ],
+  });
+  console.log('Seeded OTPs');
+
+  await prisma.refreshToken.createMany({
+    data: [
+      {
+        userId: ahmed.id,
+        token: 'refresh_token_ahmed_active',
+        expiresAt: daysFromNow(7),
+      },
+      {
+        userId: driver1.id,
+        token: 'refresh_token_driver1_active',
+        expiresAt: daysFromNow(7),
+      },
+    ],
+  });
+  console.log('Seeded refresh tokens');
+
+  await prisma.passwordResetToken.createMany({
+    data: [
+      {
+        email: ahmed.email,
+        code: '112233',
+        expiresAt: daysFromNow(1 / 24),
+        isUsed: false,
+      },
+      {
+        email: omar.email,
+        code: '445566',
+        expiresAt: daysAgo(1),
+        isUsed: true,
+      },
+    ],
+  });
+  console.log('Seeded password reset tokens');
+
+  await prisma.faq.createMany({
+    data: [
+      {
+        question: 'How do I book a ride?',
+        answer: 'Open the app, enter your pickup and drop-off, choose a service, and request a trip.',
+        order: 1,
+        isActive: true,
+      },
+      {
+        question: 'How is my fare calculated?',
+        answer: 'Fare is driver earnings plus platform commission based on the active commission rule.',
+        order: 2,
+        isActive: true,
+      },
+      {
+        question: 'What payment methods are accepted?',
+        answer: 'Tovo supports cash, Visa, Mastercard, and Apple Pay.',
+        order: 3,
+        isActive: true,
+      },
+      {
+        question: 'How do refunds work?',
+        answer: 'Card trip refunds are credited to the customer wallet after admin approval.',
+        order: 4,
+        isActive: true,
+      },
+    ],
+  });
+  console.log('Seeded FAQs');
+
+  await prisma.sosAlert.createMany({
+    data: [
+      {
+        userId: ahmed.id,
+        lat: 30.0444,
+        lng: 31.2357,
+        message: 'Passenger reported feeling unsafe during an in-progress trip.',
+        status: 'resolved',
+        resolvedAt: daysAgo(2),
+      },
+      {
+        userId: sara.id,
+        lat: 30.0626,
+        lng: 31.2197,
+        message: 'Emergency assistance requested from the trip screen.',
+        status: 'pending',
+        resolvedAt: null,
+      },
+    ],
+  });
+  console.log('Seeded SOS alerts');
+
+  console.log('\nSeed complete.\n');
+  console.log('Test credentials (passwords: password123)');
+  console.log('Admin: admin@example.com');
+  console.log('Customer: ahmed.hassan@example.com');
+  console.log('Driver: mostafa.ali@example.com');
+  console.log(`OTP ${ahmed.phone}: ${OTP_AHMED}`);
+  console.log(`OTP ${driver3.phone}: ${OTP_YOUSSEF}`);
+  console.log(`Commission rules created: ${[globalRule, comfortRule, packageRule, motoRule].length}`);
+  console.log(`Vehicles created: ${[vehicle1, vehicle2, vehicle3].length}`);
 }
 
 main()
-  .catch((e) => {
-    console.error('❌ Seed failed:', e);
+  .catch((error) => {
+    console.error('Seed failed:', error);
     process.exit(1);
   })
   .finally(async () => {
