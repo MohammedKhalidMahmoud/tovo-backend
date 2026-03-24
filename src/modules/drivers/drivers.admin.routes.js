@@ -9,7 +9,26 @@ const driverController      = require('./drivers.controller');
 const validate = require('../../middleware/validate.middleware');
 const { authenticate, authorize } = require('../../middleware/auth.middleware');
 
+const adminOnly = [authenticate, authorize('admin')];
 
+router.use(...adminOnly);
+
+// LIST drivers - admin
+router.get(
+  '/',
+  [
+    query('page').optional().isInt({ min: 1 }).withMessage('page must be > 0'),
+    query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('limit must be between 1 and 100'),
+    query('sortBy').optional().isIn(['createdAt', 'updatedAt', 'name', 'email', 'rating', 'totalTrips']),
+    query('sortOrder').optional().isIn(['asc', 'desc']),
+    query('search').optional().trim().isLength({ min: 1, max: 100 }),
+    query('status').optional().isIn(['all', 'active', 'suspended', 'pending', 'rejected']),
+    query('isVerified').optional().isIn(['all', 'verified', 'unverified', 'pending']),
+    query('onlineStatus').optional().isIn(['all', 'online', 'offline']),
+  ],
+  validate,
+  driverController.listDrivers
+);
 
 // CREATE driver - admin
 router.post(

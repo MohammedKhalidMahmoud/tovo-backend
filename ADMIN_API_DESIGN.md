@@ -16,7 +16,6 @@ It replaces the older future-state admin panel spec with the endpoints that exis
   - `POST /api/v1/auth/admin/login`
 - Most admin routes are protected with `authenticate + authorize('admin')`
 - Important current exceptions:
-  - `src/modules/drivers/drivers.admin.routes.js` is mounted under `/api/v1/admin/drivers` but currently does not apply auth middleware in the route file
   - `src/modules/vehicles/vehicles.routes.js` is mounted under both `/api/v1/vehicles` and `/api/v1/admin/vehicles` and currently does not apply auth middleware in the route file
 
 ## Response Shape
@@ -67,10 +66,9 @@ Mounted at `/api/v1/admin/users` via `src/modules/users/users.routes.js`.
 
 Mounted at `/api/v1/admin/drivers` via `src/modules/drivers/drivers.admin.routes.js`.
 
-Current implementation note: these routes are admin-facing by path, but the route file does not currently apply `authenticate` or `authorize('admin')`.
-
 | Method | Path | Notes |
 |---|---|---|
+| `GET` | `/api/v1/admin/drivers` | List drivers. Query: `page`, `limit`, `sortBy`, `sortOrder`, `search`, `status`, `isVerified`, `onlineStatus` |
 | `POST` | `/api/v1/admin/drivers` | Create driver |
 | `GET` | `/api/v1/admin/drivers/:driverId` | Get driver detail |
 | `PUT` | `/api/v1/admin/drivers/:driverId` | Update driver |
@@ -80,9 +78,6 @@ Current implementation note: these routes are admin-facing by path, but the rout
 | `POST` | `/api/v1/admin/drivers/:driverId/refund` | Refund to driver |
 | `POST` | `/api/v1/admin/drivers/:driverId/reset-password` | Reset driver password |
 | `DELETE` | `/api/v1/admin/drivers/:driverId?confirm=true` | Delete driver |
-
-Current gap:
-- No `GET /api/v1/admin/drivers` list endpoint is mounted right now
 
 ### 4. Support
 
