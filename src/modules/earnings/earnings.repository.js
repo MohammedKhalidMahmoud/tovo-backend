@@ -23,7 +23,7 @@ const listCommissionLogs = async ({ dateFrom, dateTo, paymentType, serviceId, pa
       orderBy: { createdAt: 'desc' },
       skip: (page - 1) * perPage,
       take: perPage,
-      include: { trip: { select: { id: true, fare: true, status: true } } },
+      include: { trip: { select: { id: true, finalFare: true, originalFare: true, discountAmount: true, status: true } } },
     }),
     prisma.commissionLog.count({ where }),
   ]);

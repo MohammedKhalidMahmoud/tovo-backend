@@ -68,7 +68,7 @@ const evaluateRule = (rule, baseAmount) => {
 //  CALCULATE COMMISSION  (called by trips.service.js)
 // ─────────────────────────────────────────────────────────────────────────────
 // baseAmount = driverEarnings (what the driver earns before commission).
-// Returns commission to add on top. Caller computes: fare = baseAmount + commission.
+// Returns commission to add on top. Caller computes: originalFare = baseAmount + commission.
 const calculateCommission = async (baseAmount) => {
   const rule = await repo.findActiveRule();
 

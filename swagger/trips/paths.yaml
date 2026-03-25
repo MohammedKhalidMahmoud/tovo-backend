@@ -1,7 +1,7 @@
 /trips/estimate:
   get:
     tags: [Trips]
-    summary: Get fare estimates for all services based on pickup and dropoff locations
+    summary: Get trip price estimates for all services based on pickup and dropoff locations
     parameters:
       - name: lat_pick
         in: query
@@ -39,9 +39,11 @@
                       serviceName:   { type: string, example: Normal }
                       distanceKm:    { type: number, example: 10.69 }
                       farePerKm:     { type: number, example: 5.0 }
-                      driverEarnings: { type: number, example: 53.45, description: 'What the driver receives' }
-                      commission:    { type: number, example: 9.52, description: "Platform commission added on top" }
-                      fare:          { type: number, example: 62.97, description: 'Total charged to the customer' }
+                      driverEarnings: { type: number, example: 53.45, description: 'Driver earnings before any coupon discount' }
+                      commission:    { type: number, example: 9.52, description: "Platform commission calculated from the original fare" }
+                      originalFare:  { type: number, example: 62.97, description: 'Raw calculated trip fare before any coupon discount' }
+                      discountAmount: { type: number, example: 0, description: 'Estimated discount amount. Zero at estimate time unless a coupon is later applied.' }
+                      finalFare:     { type: number, example: 62.97, description: 'Amount the rider would pay after discount. Equals originalFare when no coupon is applied.' }
                       currency:      { type: string, example: EGP }
       '400': { description: Invalid coordinates }
 

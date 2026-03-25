@@ -21,27 +21,27 @@ const adminDashboard = async () => {
   const pendingRides = totalRides - completedRides - cancelledRides;
 
   const revenueAggregate = await prisma.trip.aggregate({
-    _sum: { fare: true },
+    _sum: { finalFare: true },
     where: { status: 'completed' },
   });
-  const totalRevenue = parseFloat(revenueAggregate._sum.fare || 0);
+  const totalRevenue = parseFloat(revenueAggregate._sum.finalFare || 0);
 
   const startOfToday = new Date();
   startOfToday.setHours(0, 0, 0, 0);
   const todayAggr = await prisma.trip.aggregate({
-    _sum: { fare: true },
+    _sum: { finalFare: true },
     where: { status: 'completed', createdAt: { gte: startOfToday } },
   });
-  const todayRevenue = parseFloat(todayAggr._sum.fare || 0);
+  const todayRevenue = parseFloat(todayAggr._sum.finalFare || 0);
 
   const startOfMonth = new Date();
   startOfMonth.setDate(1);
   startOfMonth.setHours(0, 0, 0, 0);
   const monthAggr = await prisma.trip.aggregate({
-    _sum: { fare: true },
+    _sum: { finalFare: true },
     where: { status: 'completed', createdAt: { gte: startOfMonth } },
   });
-  const monthlyRevenue = parseFloat(monthAggr._sum.fare || 0);
+  const monthlyRevenue = parseFloat(monthAggr._sum.finalFare || 0);
 
   const activeDrivers = await prisma.user.count({ where: { role: 'driver', isOnline: true } });
   // active riders: users with at least one trip in last 24h
@@ -102,7 +102,7 @@ const rideRequestList = async ({ page = 1, limit = 20, status, userId, driverId,
 
     return {
       ...t,
-      totalAmount: t.fare ? parseFloat(t.fare) : 0,
+      totalAmount: t.finalFare ? parseFloat(t.finalFare) : 0,
       startAddress: t.pickupAddress,
       driver,
       isSchedule: isSchedule,
@@ -136,7 +136,7 @@ const upcomingRides = async (limit = 10, includeAll = false) => {
 
   return records.map((t) => ({
     ...t,
-    totalAmount: t.fare ? parseFloat(t.fare) : 0,
+    totalAmount: t.finalFare ? parseFloat(t.finalFare) : 0,
     startAddress: t.pickupAddress,
     driver: t.driver ? { firstName: t.driver.name || '', lastName: '' } : null,
     isSchedule: false,

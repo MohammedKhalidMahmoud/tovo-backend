@@ -1,5 +1,8 @@
 Trip:
   type: object
+  description: >
+    `originalFare` is the trip price before discounts, `discountAmount` is the applied coupon value,
+    and `finalFare` is always `originalFare - discountAmount`.
   properties:
     id: { type: string, format: uuid }
     status:
@@ -11,8 +14,8 @@ Trip:
     pickupLng:        { type: number }
     dropoffLat:       { type: number }
     dropoffLng:       { type: number }
-    fare:             { type: number, example: 300.00 }
-    fareBeforeDiscount: { type: number, example: 300.00, nullable: true }
+    finalFare:        { type: number, example: 275.00 }
+    originalFare:     { type: number, example: 300.00, nullable: true }
     discountAmount:   { type: number, example: 25.00 }
     couponCode:       { type: string, nullable: true }
     currency:         { type: string, example: EGP }
@@ -45,16 +48,18 @@ RideCreate:
     dropoffLng:     { type: number }
     pickupAddress:  { type: string }
     dropoffAddress: { type: string }
-    fare:           { type: number }
+    finalFare:      { type: number }
+    originalFare:   { type: number }
     distanceKm:     { type: number }
     status:         { type: string }
 
 RideUpdate:
   type: object
   properties:
-    status:    { type: string }
-    fare:      { type: number }
-    captainId: { type: string, format: uuid }
+    status:       { type: string }
+    finalFare:    { type: number }
+    originalFare: { type: number }
+    captainId:    { type: string, format: uuid }
 
 Rating:
   type: object

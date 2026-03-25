@@ -16,7 +16,7 @@ exports.rideStats = async (filters) => {
   const onWay = await prisma.trip.count({ where: { ...where, status: 'on_way' } });
   const searching = await prisma.trip.count({ where: { ...where, status: 'searching' } });
   // other statuses could be added as needed
-  const revenueData = await prisma.trip.aggregate({ _sum: { fare: true }, where: { ...where, status: 'completed' } });
+  const revenueData = await prisma.trip.aggregate({ _sum: { finalFare: true }, where: { ...where, status: 'completed' } });
 
   return {
     totalRides: total,
@@ -24,7 +24,7 @@ exports.rideStats = async (filters) => {
     cancelled,
     onWay,
     searching,
-    revenue: revenueData._sum.fare || 0,
+    revenue: revenueData._sum.finalFare || 0,
   };
 };
 
@@ -45,7 +45,7 @@ exports.driverPerformance = async (filters) => {
     if (!map[id]) map[id] = { driverId: id, ridesCompleted: 0, totalEarnings: 0, ratings: [] };
     if (t.status === 'completed') {
       map[id].ridesCompleted++;
-      map[id].totalEarnings += parseFloat(t.fare || 0);
+      map[id].totalEarnings += parseFloat(t.driverEarnings || 0) + parseFloat(t.discountAmount || 0);
     }
   });
 
@@ -67,7 +67,7 @@ exports.userActivity = async (filters) => {
     if (!map[id]) map[id] = { userId: id, ridesTaken: 0, totalSpent: 0, ratings: [] };
     if (t.status === 'completed') {
       map[id].ridesTaken++;
-      map[id].totalSpent += parseFloat(t.fare || 0);
+      map[id].totalSpent += parseFloat(t.finalFare || 0);
     }
   });
 

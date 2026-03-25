@@ -111,7 +111,7 @@
       **Guards:**
       - Trip must have status `completed`
       - Payment type must be `card` (cash payments were not collected by the platform)
-      - Amount cannot exceed the original fare
+      - Amount cannot exceed the final fare actually paid by the rider
       - A trip can only be refunded once
     security: [{ BearerAuth: [] }]
     parameters:
@@ -130,7 +130,7 @@
               amount:
                 type: number
                 example: 50.00
-                description: Amount to credit to the user's wallet (must not exceed original fare)
+                description: Amount to credit to the user's wallet (must not exceed final fare)
               reason:
                 type: string
                 example: Customer complaint — late arrival
@@ -149,4 +149,4 @@
       '403': { description: Forbidden — admin only }
       '404': { description: Payment or user wallet not found }
       '409': { description: Conflict — this payment has already been refunded }
-      '422': { description: Trip not completed, payment type is cash, or amount exceeds fare }
+      '422': { description: Trip not completed, payment type is cash, or amount exceeds final fare }

@@ -13,6 +13,7 @@ WalletTransaction:
       description: >
         Standard values: `trip_earnings_credit` (card trip settlement),
         `trip_commission_deduction` (cash trip settlement),
+        `trip_coupon_reimbursement` (driver reimbursement for rider coupon discounts),
         `admin_adjustment` (manual admin change).
     tripId:    { type: string, format: uuid, nullable: true }
     createdAt: { type: string, format: date-time }

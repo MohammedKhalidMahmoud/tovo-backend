@@ -34,9 +34,9 @@ const applyCouponToTrip = async (userId, tripId, code) =>
     if (coupon.status !== 1) throw { status: 422, message: 'Coupon is inactive' };
     if (coupon.expiry_date && coupon.expiry_date < new Date()) throw { status: 422, message: 'Coupon has expired' };
 
-    const fareBeforeDiscount = trip.fareBeforeDiscount != null ? toNumber(trip.fareBeforeDiscount) : toNumber(trip.fare);
-    if (fareBeforeDiscount <= 0) throw { status: 422, message: 'Trip fare is not eligible for coupon application' };
-    if (coupon.min_amount != null && fareBeforeDiscount < toNumber(coupon.min_amount)) {
+    const originalFare = trip.originalFare != null ? toNumber(trip.originalFare) : toNumber(trip.finalFare);
+    if (originalFare <= 0) throw { status: 422, message: 'Trip fare is not eligible for coupon application' };
+    if (coupon.min_amount != null && originalFare < toNumber(coupon.min_amount)) {
       throw { status: 422, message: 'Trip fare does not meet the coupon minimum amount' };
     }
 
@@ -77,24 +77,24 @@ const applyCouponToTrip = async (userId, tripId, code) =>
 
     let discountAmount =
       coupon.discount_type === 'percentage'
-        ? (fareBeforeDiscount * toNumber(coupon.discount)) / 100
+        ? (originalFare * toNumber(coupon.discount)) / 100
         : toNumber(coupon.discount);
 
     if (coupon.max_discount != null) {
       discountAmount = Math.min(discountAmount, toNumber(coupon.max_discount));
     }
 
-    discountAmount = roundMoney(Math.max(0, Math.min(discountAmount, fareBeforeDiscount)));
-    const finalFare = roundMoney(fareBeforeDiscount - discountAmount);
+    discountAmount = roundMoney(Math.max(0, Math.min(discountAmount, originalFare)));
+    const finalFare = roundMoney(originalFare - discountAmount);
 
     return tx.trip.update({
       where: { id: trip.id },
       data: {
         couponId: coupon.id,
         couponCode: coupon.code,
-        fareBeforeDiscount,
+        originalFare,
         discountAmount,
-        fare: finalFare,
+        finalFare,
       },
       include: TRIP_INCLUDE,
     });

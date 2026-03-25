@@ -67,9 +67,9 @@ exports.refundPayment = async (id, { amount, reason }) => {
   if (trip.paymentType !== 'card')
     throw Object.assign(new Error('Only card payments can be refunded via wallet'), { statusCode: 422 });
 
-  // Guard: amount must not exceed original fare
-  if (parseFloat(amount) > parseFloat(trip.fare))
-    throw Object.assign(new Error(`Refund amount cannot exceed the original fare of ${trip.fare}`), { statusCode: 422 });
+  // Guard: amount must not exceed what the rider actually paid
+  if (parseFloat(amount) > parseFloat(trip.finalFare))
+    throw Object.assign(new Error(`Refund amount cannot exceed the final fare of ${trip.finalFare}`), { statusCode: 422 });
 
   // Guard: no duplicate refund
   const existing = await repo.findRefundTransaction(id);

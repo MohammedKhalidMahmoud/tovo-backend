@@ -122,7 +122,7 @@ const getUserDetails = async (userId) => {
 
   const completedTrips = user.tripsAsCustomer.filter((t) => t.status === 'completed').length;
   const cancelledTrips = user.tripsAsCustomer.filter((t) => t.status === 'cancelled').length;
-  const totalSpent     = user.tripsAsCustomer.reduce((sum, t) => sum + (t.fare ? parseFloat(t.fare) : 0), 0);
+  const totalSpent     = user.tripsAsCustomer.reduce((sum, t) => sum + (t.finalFare ? parseFloat(t.finalFare) : 0), 0);
 
   const ratingDistribution = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
   user.ratingsGiven.forEach((r) => { ratingDistribution[r.stars]++; });

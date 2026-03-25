@@ -47,7 +47,7 @@ const findUserWithDetails = (id) =>
       savedAddresses: true,
       paymentMethods: true,
       deviceTokens:   true,
-      tripsAsCustomer: { select: { id: true, status: true, fare: true, createdAt: true } },
+      tripsAsCustomer: { select: { id: true, status: true, finalFare: true, createdAt: true } },
       ratingsGiven:    true,
       supportTickets: { select: { id: true, status: true } },
     },

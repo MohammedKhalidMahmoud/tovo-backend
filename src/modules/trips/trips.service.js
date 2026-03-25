@@ -28,6 +28,7 @@ const haversineKm = (lat1, lng1, lat2, lng2) => {
 //  FARE ESTIMATE
 // ─────────────────────────────────────────────────────────────────────────────
 const FARE_PER_KM = Number(process.env.FARE_PER_KM) || 5.0;
+const roundMoney = (value) => +Number(value).toFixed(2);
 
 const estimateFare = async ({ pickupLat, pickupLng, dropoffLat, dropoffLng }) => {
   const distanceKm = haversineKm(pickupLat, pickupLng, dropoffLat, dropoffLng);
@@ -35,16 +36,18 @@ const estimateFare = async ({ pickupLat, pickupLng, dropoffLat, dropoffLng }) =>
   const services = await serviceRepo.findAll();
   const estimates = await Promise.all(
     services.map(async (service) => {
-      const driverEarnings = +(distanceKm * FARE_PER_KM).toFixed(2);
+      const driverEarnings = roundMoney(distanceKm * FARE_PER_KM);
       const { commission } = await commissionService.calculateCommission(driverEarnings);
-      const fare = +(driverEarnings + commission).toFixed(2);
+      const originalFare = roundMoney(driverEarnings + commission);
 
       return {
         serviceId:     service.id,
         serviceName:   service.name,
         distanceKm:    +distanceKm.toFixed(2),
         farePerKm:     FARE_PER_KM,
-        fare,
+        originalFare,
+        finalFare:     originalFare,
+        discountAmount: 0,
         commission,
         driverEarnings,
         currency:      'EGP',
@@ -94,9 +97,9 @@ const createTrip = async (userId, body) => {
   await validatePickupInRegion(pickup_lat, pickup_lng);
 
   const distanceKm     = haversineKm(pickup_lat, pickup_lng, dropoff_lat, dropoff_lng);
-  const driverEarnings = +(distanceKm * FARE_PER_KM).toFixed(2);
+  const driverEarnings = roundMoney(distanceKm * FARE_PER_KM);
   const { commission } = await commissionService.calculateCommission(driverEarnings);
-  const fare           = +(driverEarnings + commission).toFixed(2);
+  const originalFare   = roundMoney(driverEarnings + commission);
 
   const trip = await repo.createTrip({
     user:          { connect: { id: userId } },
@@ -109,8 +112,8 @@ const createTrip = async (userId, body) => {
     dropoffLng:     dropoff_lng,
     dropoffAddress: dropoff_address,
     distanceKm:     +distanceKm.toFixed(2),
-    fare,
-    fareBeforeDiscount: fare,
+    finalFare:      originalFare,
+    originalFare,
     discountAmount: 0,
     commission,
     driverEarnings,
@@ -238,18 +241,28 @@ const endTrip = async (tripId, driverId) => {
     });
   }
 
-  // Wallet settlement based on payment type
-  if (trip.commission !== null && trip.driverEarnings !== null) {
+  const commission = trip.commission !== null ? Number(trip.commission) : null;
+  const driverEarnings = trip.driverEarnings !== null ? Number(trip.driverEarnings) : null;
+  const discountAmount = Number(trip.discountAmount ?? 0);
+
+  // Stored commission and driver earnings are based on originalFare, not the discounted finalFare.
+  if (commission !== null && driverEarnings !== null) {
     if (trip.paymentType === 'cash') {
-      // Driver collected full cash fare — deduct commission from wallet
-      await walletsRepo.adjustUserWallet(driverId, -Number(trip.commission), {
+      // Driver collected the discounted cash fare directly, so only settle the platform cut in-wallet.
+      await walletsRepo.adjustUserWallet(driverId, -commission, {
         reason: 'trip_commission_deduction',
         tripId,
       });
     } else {
-      // Platform collected payment — credit driver with earnings
-      await walletsRepo.adjustUserWallet(driverId, +Number(trip.driverEarnings), {
+      await walletsRepo.adjustUserWallet(driverId, +driverEarnings, {
         reason: 'trip_earnings_credit',
+        tripId,
+      });
+    }
+
+    if (discountAmount > 0) {
+      await walletsRepo.adjustUserWallet(driverId, +discountAmount, {
+        reason: 'trip_coupon_reimbursement',
         tripId,
       });
     }
@@ -265,12 +278,12 @@ const endTrip = async (tripId, driverId) => {
     });
   }
 
-  const fareDisplay = Number(completed.fare).toFixed(2);
+  const finalFareDisplay = Number(completed.finalFare ?? 0).toFixed(2);
   notificationsService.createAndSend(
     completed.userId,
     'Trip Completed',
-    `You've arrived! Total fare: ${fareDisplay} EGP`,
-    { type: 'trip_completed', tripId: completed.id, fare: fareDisplay }
+    `You've arrived! Total fare: ${finalFareDisplay} EGP`,
+    { type: 'trip_completed', tripId: completed.id, finalFare: finalFareDisplay }
   ).catch(() => {});
 
   return completed;

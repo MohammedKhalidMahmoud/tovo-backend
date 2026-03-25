@@ -1,9 +1,16 @@
 Payment:
   type: object
-  description: A completed trip record representing a payment transaction.
+  description: >
+    A completed trip record representing a payment transaction.
+    `originalFare` is the raw priced amount before discounts, `discountAmount` is the rider coupon value,
+    and `finalFare` is what the rider actually pays.
+    On trip completion, cash trips deduct commission from the driver wallet and add any coupon reimbursement,
+    while card trips credit `driverEarnings` and separately credit the coupon reimbursement so the driver is not penalized by the rider discount.
   properties:
     id:             { type: string, format: uuid }
-    fare:           { type: number, example: 72.50 }
+    finalFare:      { type: number, example: 62.50 }
+    originalFare:   { type: number, example: 72.50, nullable: true }
+    discountAmount: { type: number, example: 10.00 }
     commission:     { type: number, example: 5.00, nullable: true }
     driverEarnings: { type: number, example: 67.50, nullable: true }
     paymentType:    { type: string, enum: [cash, card], nullable: true }
