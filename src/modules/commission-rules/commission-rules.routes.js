@@ -20,7 +20,6 @@ router.post(
   [
     body('name').notEmpty().withMessage('name is required'),
     body('type').isIn(VALID_TYPES).withMessage(`type must be one of: ${VALID_TYPES.join(', ')}`),
-    body('serviceId').optional({ nullable: true }).isUUID().withMessage('serviceId must be a valid UUID'),
     body('config').notEmpty().withMessage('config is required'),
   ],
   validate,
@@ -33,7 +32,6 @@ router.patch(
   [
     body('name').optional().notEmpty().withMessage('name must not be empty'),
     body('type').optional().isIn(VALID_TYPES).withMessage(`type must be one of: ${VALID_TYPES.join(', ')}`),
-    body('serviceId').optional({ nullable: true }).isUUID().withMessage('serviceId must be a valid UUID'),
     body('config').optional().notEmpty().withMessage('config must not be empty'),
   ],
   validate,

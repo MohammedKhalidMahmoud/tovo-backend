@@ -11,15 +11,10 @@ CommissionRule:
       type: string
       enum: [fixed_amount, percentage, tiered_fixed, tiered_percentage]
       example: fixed_amount
-    serviceId:
-      type: string
-      format: uuid
-      nullable: true
-      description: 'null = global rule; UUID = applies to that service only'
     status:
       type: boolean
       example: false
-      description: 'false by default. Only one rule can be active per serviceId at a time.'
+      description: 'false by default. Only one rule can be active at a time.'
     config:
       description: 'Shape depends on type — see examples below'
       oneOf:
@@ -36,11 +31,5 @@ CommissionRule:
               maxFare:  { type: number, nullable: true, example: 99.99 }
               amount:   { type: number, example: 5, description: 'Used for fixed_amount and tiered_fixed' }
               pct:      { type: number, example: 8, description: 'Used for tiered_percentage' }
-    service:
-      type: object
-      nullable: true
-      properties:
-        id:   { type: string, format: uuid }
-        name: { type: string, example: Economy }
     createdAt: { type: string, format: date-time }
     updatedAt: { type: string, format: date-time }

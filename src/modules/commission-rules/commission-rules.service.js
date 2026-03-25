@@ -69,8 +69,8 @@ const evaluateRule = (rule, baseAmount) => {
 // ─────────────────────────────────────────────────────────────────────────────
 // baseAmount = driverEarnings (what the driver earns before commission).
 // Returns commission to add on top. Caller computes: fare = baseAmount + commission.
-const calculateCommission = async (baseAmount, serviceId) => {
-  const rule = await repo.findActiveRule(serviceId);
+const calculateCommission = async (baseAmount) => {
+  const rule = await repo.findActiveRule();
 
   let commission;
   if (!rule) {
@@ -98,20 +98,20 @@ const getRuleById = async (id) => {
 };
 
 const createRule = (data) => {
-  const { name, type, serviceId, config } = data;
+  const { name, type, config } = data;
   if (!VALID_TYPES.includes(type)) {
     throw Object.assign(new Error(`type must be one of: ${VALID_TYPES.join(', ')}`), { statusCode: 400 });
   }
   validateConfig(type, config);
   // status is never set from request — schema default (false) applies
-  return repo.create({ name, type, serviceId: serviceId ?? null, config });
+  return repo.create({ name, type, config });
 };
 
 const updateRule = async (id, data) => {
   const rule = await repo.findById(id);
   if (!rule) throw Object.assign(new Error('Commission rule not found'), { statusCode: 404 });
 
-  const { name, type, serviceId, config } = data;
+  const { name, type, config } = data;
   const resolvedType = type ?? rule.type;
   const resolvedConfig = config ?? rule.config;
 
@@ -122,7 +122,6 @@ const updateRule = async (id, data) => {
   const updateData = {};
   if (name !== undefined)      updateData.name      = name;
   if (type !== undefined)      updateData.type      = type;
-  if (serviceId !== undefined) updateData.serviceId = serviceId;
   if (config !== undefined)    updateData.config    = config;
 
   return repo.update(id, updateData);
@@ -132,7 +131,7 @@ const activateRule = async (id) => {
   const rule = await repo.findById(id);
   if (!rule) throw Object.assign(new Error('Commission rule not found'), { statusCode: 404 });
 
-  const [, activated] = await repo.activateRule(id, rule.serviceId);
+  const [, activated] = await repo.activateRule(id);
   return activated;
 };
 

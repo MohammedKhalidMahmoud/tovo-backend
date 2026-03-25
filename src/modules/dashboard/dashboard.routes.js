@@ -11,17 +11,17 @@ const { authenticate, authorize } = require('../../middleware/auth.middleware');
 const adminOnly = [authenticate, authorize('admin')];
 
 /**
- * GET /api/v1/dashboard/admin-dashboard
+ * GET /api/v1/dashboard/statistics
  * high‑level summary used by the admin UI and owner dashboard
  */
-router.get('/admin-dashboard', adminOnly, controller.adminDashboard);
+router.get(['/statistics', '/admin-dashboard'], adminOnly, controller.adminDashboard);
 
 /**
- * GET /api/v1/ride-requests/riderequest-list
+ * GET /api/v1/dashboard/ride-requests
  * generic list of ride requests for dashboard views
  */
 router.get(
-  '/ride-requests/riderequest-list',
+  ['/ride-requests', '/ride-requests/riderequest-list'],
   [
     query('page').optional().isInt({ min: 1 }).withMessage('page must be > 0'),
     query('per_page').optional().isInt({ min: 1, max: 100 }).withMessage('per_page must be between 1-100'),
@@ -36,7 +36,7 @@ router.get(
 );
 
 /**
- * GET /api/v1/rides/upcoming
+ * GET /api/v1/dashboard/rides/upcoming
  * fetch short list of upcoming/in-progress rides
  */
 router.get(

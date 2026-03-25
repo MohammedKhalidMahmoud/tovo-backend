@@ -35,6 +35,7 @@ const notificationsRoutes = require('./modules/notifications/notifications.route
 const supportRoutes       = require('./modules/support/support.routes');
 const supportAdminRoutes  = require('./modules/support/support.admin.routes');
 const complaintsRoutes    = require('./modules/complaints/complaints.routes');
+const analyticsRoutes     = require('./modules/analytics/analytics.routes');
 // const adminRoutes         = require('./modules/admin/admin.routes');
 const dashboardRoutes     = require('./modules/dashboard/dashboard.routes');
 const regionsAdminRoutes       = require('./modules/regions/regions.admin.routes');
@@ -107,6 +108,7 @@ app.use(`${API}/notifications`,  notificationsRoutes);
 app.use(`${API}/support`,        supportRoutes);
 app.use(`${API}/admin/support`,  supportAdminRoutes);
 app.use(`${API}/admin/complaints`, complaintsRoutes);
+app.use(`${API}/admin/reports`, analyticsRoutes);
 app.use(`${API}/sos`,            sosRoutes);
 app.use(`${API}/faqs`,           faqsRoutes);
 app.use(`${API}/services`,       servicesPublicRoutes);

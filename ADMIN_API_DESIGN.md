@@ -176,7 +176,7 @@ This is the current replacement for the old `/api/v1/admin/commissions` rules en
 | `GET` | `/api/v1/admin/commission-rules/:id` | Get rule detail |
 | `POST` | `/api/v1/admin/commission-rules` | Create rule |
 | `PATCH` | `/api/v1/admin/commission-rules/:id` | Update rule |
-| `PATCH` | `/api/v1/admin/commission-rules/:id/activate` | Activate rule and atomically deactivate the previous active rule for the same `serviceId` |
+| `PATCH` | `/api/v1/admin/commission-rules/:id/activate` | Activate rule and atomically deactivate the previous active rule |
 | `DELETE` | `/api/v1/admin/commission-rules/:id` | Delete rule |
 
 Supported rule types:
@@ -245,10 +245,10 @@ Mounted at `/api/v1/dashboard` via `src/modules/dashboard/dashboard.routes.js`.
 
 | Method | Path | Notes |
 |---|---|---|
-| `GET` | `/api/v1/dashboard/admin-dashboard` | Admin dashboard summary. Protected by `authenticate + authorize('admin')` |
+| `GET` | `/api/v1/dashboard/statistics` | Admin dashboard summary. Protected by `authenticate + authorize('admin')` |
 
 Implementation note:
-- `GET /api/v1/dashboard/ride-requests/riderequest-list`
+- `GET /api/v1/dashboard/ride-requests`
 - `GET /api/v1/dashboard/rides/upcoming`
 
 These dashboard routes also exist, but they are not currently admin-protected in the route file.
@@ -261,6 +261,16 @@ Mounted at `/api/v1/notifications` via `src/modules/notifications/notifications.
 |---|---|---|
 | `POST` | `/api/v1/notifications/send-to-user` | Manual push notification to a user. Admin-only |
 | `POST` | `/api/v1/notifications/send-to-driver` | Manual push notification to a driver. Admin-only |
+
+### Reports
+
+Mounted at `/api/v1/admin/reports` via `src/modules/analytics/analytics.routes.js`.
+
+| Method | Path | Notes |
+|---|---|---|
+| `GET` | `/api/v1/admin/reports/rides` | Ride statistics report. Protected by `authenticate + authorize('admin')` |
+| `GET` | `/api/v1/admin/reports/drivers` | Driver performance report. Protected by `authenticate + authorize('admin')` |
+| `GET` | `/api/v1/admin/reports/users` | User activity report. Protected by `authenticate + authorize('admin')` |
 
 ## Current Admin Surface Summary
 
@@ -281,6 +291,7 @@ Mounted at `/api/v1/notifications` via `src/modules/notifications/notifications.
 - Wallets listing/detail/adjustment
 - Vehicles CRUD
 - Admin dashboard summary
+- Reports endpoints
 - Admin notification send actions
 
 ### Not currently mounted as admin endpoints
@@ -288,7 +299,6 @@ These files or concepts exist in the repo/history but are not mounted in `src/ap
 - `src/modules/admin/admin.routes`
 - `src/modules/faqs/faqs.admin.routes.js`
 - `src/modules/sos/sos.admin.routes.js`
-- `src/modules/analytics/analytics.routes.js`
 
 ### Renamed from older docs
 - Old: `/api/v1/admin/commissions`
@@ -296,6 +306,9 @@ These files or concepts exist in the repo/history but are not mounted in `src/ap
 
 - Old: `/api/v1/admin/commissions/earnings`
 - New: `/api/v1/admin/earnings`
+
+- Old tag: `Analytics`
+- New tag: `Reports`
 
 ## Notes For Future Updates
 - Treat `src/app.js` as the source of truth for what is actually exposed
@@ -305,5 +318,5 @@ These files or concepts exist in the repo/history but are not mounted in `src/ap
 
 ---
 
-**Last Updated:** 2026-03-24
+**Last Updated:** 2026-03-25
 **Source of Truth Used:** `PROJECT_DOCUMENTATION.md`, `src/app.js`, and the currently mounted route files under `src/modules/`

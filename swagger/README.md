@@ -34,7 +34,7 @@ swagger/
 │   └── schemas.yaml          ← Promotion
 │
 ├── dashboard/
-│   ├── paths.yaml            ← /dashboard/admin-dashboard
+│   ├── paths.yaml            ← /dashboard/statistics, /dashboard/ride-requests, /dashboard/rides/upcoming
 │   └── schemas.yaml          ← (inline responses)
 │
 ├── faqs/
@@ -62,7 +62,7 @@ swagger/
 │   └── schemas.yaml          ← Region
 │
 ├── rides/
-│   ├── paths.yaml            ← /admin/rides CRUD, refund, reassign, riderequest-list, upcoming
+│   ├── paths.yaml            ← /admin/rides CRUD, refund, reassign
 │   └── schemas.yaml          ← RefundRequest, RideStats
 │
 ├── services/

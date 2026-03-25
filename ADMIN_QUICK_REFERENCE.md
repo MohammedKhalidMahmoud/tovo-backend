@@ -134,9 +134,9 @@ curl http://localhost:3000/api/v1/admin/health \
 - `GET /api/v1/admin/rides/:rideId` - Get ride details
 - `POST /api/v1/admin/rides/:rideId/cancel` - Cancel ride
 - `GET /api/v1/admin/rides/search/advanced` - Advanced search
-- `GET /api/v1/dashboard/admin-dashboard` - Dashboard summary (admin-only)
-- `GET /api/v1/ride-requests/riderequest-list` - Ride request listing
-- `GET /api/v1/rides/upcoming` - Upcoming rides list
+- `GET /api/v1/dashboard/statistics` - Dashboard summary (admin-only)
+- `GET /api/v1/dashboard/ride-requests` - Ride request listing
+- `GET /api/v1/dashboard/rides/upcoming` - Upcoming rides list
 - `GET /api/v1/admin/rides/export` - Export data
 
 ### Pricing Management (9 endpoints)
@@ -155,13 +155,13 @@ curl http://localhost:3000/api/v1/admin/health \
 - Resolution: Resolve, close tickets
 - Export tickets
 
-### Analytics & Reports (6 endpoints)
+### Reports (6 endpoints)
 - Dashboard summary
-- User analytics
-- Driver analytics
-- Ride analytics
+- User reports
+- Driver reports
+- Ride reports
 - Financial reports
-- Complaint analytics
+- Complaint reports
 
 ### System Settings (10 endpoints)
 - Settings: Get, update
@@ -218,7 +218,7 @@ curl http://localhost:3000/api/v1/admin/health \
 ✅ Resolution Tracking  
 ✅ Priority Management  
 
-### Analytics
+### Reports
 ✅ Dashboard Summaries  
 ✅ User Metrics  
 ✅ Driver Metrics  
@@ -290,7 +290,7 @@ See: ADMIN_IMPLEMENTATION_GUIDE.md for complete schema
 
 ### Phase 3: Advanced Features (Week 4)
 - [ ] Support ticket management
-- [ ] Analytics & reports
+- [ ] Reports
 - [ ] System settings
 - [ ] Audit logging
 

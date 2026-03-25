@@ -477,24 +477,24 @@ Base URL: `/api/v1`
 - Success: `200` with deletion confirmation.
 - Fail: `401`, `403`, `404`.
 
-## Analytics / Reports
+## Reports
 
 ### `GET /admin/reports/rides`
 - Purpose: Ride reports.
 - Request body: None.
-- Success: `200` with ride analytics/report data.
+- Success: `200` with ride report data.
 - Fail: `400`, `401`, `403`.
 
 ### `GET /admin/reports/drivers`
 - Purpose: Driver reports.
 - Request body: None.
-- Success: `200` with driver analytics/report data.
+- Success: `200` with driver report data.
 - Fail: `400`, `401`, `403`.
 
 ### `GET /admin/reports/users`
 - Purpose: User reports.
 - Request body: None.
-- Success: `200` with user analytics/report data.
+- Success: `200` with user report data.
 - Fail: `400`, `401`, `403`.
 
 ## Rides
@@ -597,7 +597,7 @@ Base URL: `/api/v1`
 
 These are admin-only but do not use the `/admin/...` prefix.
 
-### `GET /dashboard/admin-dashboard`
+### `GET /dashboard/statistics`
 - Purpose: Admin dashboard summary.
 - Request body: None.
 - Success: `200` with platform summary metrics.

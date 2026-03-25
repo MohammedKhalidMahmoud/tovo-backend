@@ -79,11 +79,14 @@ tags:
   - name: Dashboard
     description: Public & admin dashboard metrics
 
-  - name: Analytics
-    description: Reports & analytics
+  - name: Reports
+    description: Reporting and analytics endpoints
 
   - name: Settings
     description: System settings
 
-  - name: Commissions
+  - name: Commission Rules
     description: Admin commission rule management
+
+  - name: Earnings
+    description: Platform commission earnings

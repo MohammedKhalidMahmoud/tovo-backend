@@ -36,7 +36,7 @@ const estimateFare = async ({ pickupLat, pickupLng, dropoffLat, dropoffLng }) =>
   const estimates = await Promise.all(
     services.map(async (service) => {
       const driverEarnings = +(distanceKm * FARE_PER_KM).toFixed(2);
-      const { commission } = await commissionService.calculateCommission(driverEarnings, service.id);
+      const { commission } = await commissionService.calculateCommission(driverEarnings);
       const fare = +(driverEarnings + commission).toFixed(2);
 
       return {
@@ -95,7 +95,7 @@ const createTrip = async (userId, body) => {
 
   const distanceKm     = haversineKm(pickup_lat, pickup_lng, dropoff_lat, dropoff_lng);
   const driverEarnings = +(distanceKm * FARE_PER_KM).toFixed(2);
-  const { commission } = await commissionService.calculateCommission(driverEarnings, service_id);
+  const { commission } = await commissionService.calculateCommission(driverEarnings);
   const fare           = +(driverEarnings + commission).toFixed(2);
 
   const trip = await repo.createTrip({

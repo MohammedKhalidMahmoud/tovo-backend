@@ -6,7 +6,7 @@ import { fileURLToPath } from "url";
 
 const ADMIN_PATH_SEGMENT = "/admin/";
 const ADMIN_ONLY_PATHS = new Set([
-  "/dashboard/admin-dashboard",
+  "/dashboard/statistics",
   "/notifications/send-to-user",
   "/notifications/send-to-captain",
 ]);

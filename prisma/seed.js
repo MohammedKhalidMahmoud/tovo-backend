@@ -254,7 +254,7 @@ async function main() {
     prisma.adminUser.create({
       data: {
         name: 'Super Admin',
-        email: 'admin@example.com',
+        email: 'admin@tovo.com',
         role: 'superadmin',
         passwordHash,
         isActive: true,
@@ -325,17 +325,15 @@ async function main() {
       data: {
         name: 'Global 15 Percent',
         type: 'percentage',
-        serviceId: null,
         status: true,
         config: { pct: 15 },
       },
     }),
     prisma.commissionRule.create({
       data: {
-        name: 'Comfort Tiered Percentage',
+        name: 'Tiered Percentage Draft',
         type: 'tiered_percentage',
-        serviceId: svcComfort.id,
-        status: true,
+        status: false,
         config: [
           { minFare: 0, maxFare: 100, pct: 18 },
           { minFare: 100, maxFare: null, pct: 20 },
@@ -344,10 +342,9 @@ async function main() {
     }),
     prisma.commissionRule.create({
       data: {
-        name: 'Package Fixed Amount',
+        name: 'Fixed Amount Draft',
         type: 'fixed_amount',
-        serviceId: svcPackage.id,
-        status: true,
+        status: false,
         config: [
           { minFare: 0, maxFare: 99.99, amount: 8 },
           { minFare: 100, maxFare: null, amount: 15 },
@@ -356,9 +353,8 @@ async function main() {
     }),
     prisma.commissionRule.create({
       data: {
-        name: 'Moto Tiered Fixed Draft',
+        name: 'Tiered Fixed Draft',
         type: 'tiered_fixed',
-        serviceId: svcMoto.id,
         status: false,
         config: [
           { minFare: 0, maxFare: 60, amount: 4 },

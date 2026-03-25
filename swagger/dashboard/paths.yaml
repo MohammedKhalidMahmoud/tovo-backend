@@ -1,7 +1,7 @@
-/dashboard/admin-dashboard:
+/dashboard/statistics:
   get:
     tags: [Dashboard]
-    summary: Admin dashboard summary
+    summary: Dashboard statistics
     security: [{ BearerAuth: [] }]
     responses:
       '200':
@@ -30,3 +30,63 @@
                     activeRiders:    { type: integer }
                     totalCommission: { type: number, description: All-time platform commission from commission_logs }
                     todayCommission: { type: number, description: Platform commission earned today }
+
+/dashboard/ride-requests:
+  get:
+    tags: [Dashboard]
+    summary: List ride requests for dashboard
+    parameters:
+      - name: page
+        in: query
+        schema: { type: integer, default: 1 }
+      - name: per_page
+        in: query
+        schema: { type: integer, default: 20 }
+      - name: limit
+        in: query
+        schema: { type: integer }
+      - name: status
+        in: query
+        schema: { type: string }
+      - name: isSchedule
+        in: query
+        schema: { type: boolean }
+    responses:
+      '200':
+        description: Ride request listing
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success: { type: boolean }
+                message: { type: string }
+                data:
+                  type: array
+                  items: { $ref: '#/components/schemas/Trip' }
+                pagination: { $ref: '#/components/schemas/Pagination' }
+
+/dashboard/rides/upcoming:
+  get:
+    tags: [Dashboard]
+    summary: Upcoming rides
+    parameters:
+      - name: limit
+        in: query
+        schema: { type: integer, default: 10 }
+      - name: all
+        in: query
+        schema: { type: boolean }
+    responses:
+      '200':
+        description: Upcoming rides
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success: { type: boolean }
+                message: { type: string }
+                data:
+                  type: array
+                  items: { $ref: '#/components/schemas/Trip' }
