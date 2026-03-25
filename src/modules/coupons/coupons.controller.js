@@ -38,6 +38,16 @@ const validateCoupon = async (req, res, next) => {
   }
 };
 
+const applyCouponToTrip = async (req, res, next) => {
+  try {
+    const data = await service.applyCouponToTrip(req.actor.id, req.body.trip_id, req.body.code);
+    return success(res, data, 'Coupon applied to trip');
+  } catch (err) {
+    if (err.status) return error(res, err.message, err.status);
+    next(err);
+  }
+};
+
 const listCoupons = async (req, res, next) => {
   try {
     const { page = 1, limit = 20, status, search } = req.query;
@@ -75,6 +85,13 @@ const deleteCoupon = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-module.exports = { listCoupons, createCoupon, getCoupon, updateCoupon, deleteCoupon ,getPromotions,
-  validateCoupon, };
-
+module.exports = {
+  listCoupons,
+  createCoupon,
+  getCoupon,
+  updateCoupon,
+  deleteCoupon,
+  getPromotions,
+  validateCoupon,
+  applyCouponToTrip,
+};

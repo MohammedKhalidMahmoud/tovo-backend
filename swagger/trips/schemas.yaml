@@ -12,6 +12,9 @@ Trip:
     dropoffLat:       { type: number }
     dropoffLng:       { type: number }
     fare:             { type: number, example: 300.00 }
+    fareBeforeDiscount: { type: number, example: 300.00, nullable: true }
+    discountAmount:   { type: number, example: 25.00 }
+    couponCode:       { type: string, nullable: true }
     currency:         { type: string, example: EGP }
     distanceKm:       { type: number }
     durationMinutes:  { type: integer }

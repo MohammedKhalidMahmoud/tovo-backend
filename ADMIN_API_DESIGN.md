@@ -1,7 +1,7 @@
 # Tovo Backend Admin API Design
 
 ## Purpose
-This document is the current-state reference for admin-facing endpoints that are actually mounted in the backend as of 2026-03-24.
+This document is the current-state reference for admin-facing endpoints that are actually mounted in the backend as of 2026-03-25.
 
 It replaces the older future-state admin panel spec with the endpoints that exist today in `src/app.js` and the route files mounted from there.
 
@@ -164,6 +164,12 @@ Mounted at `/api/v1/admin/promotions/coupons` via `src/modules/coupons/coupons.a
 | `PUT` | `/api/v1/admin/promotions/coupons/:id` | Update coupon |
 | `DELETE` | `/api/v1/admin/promotions/coupons/:id` | Delete coupon |
 
+Related public coupon flow:
+- `POST /api/v1/promotions/coupons/apply` attaches a coupon to a customer trip
+- Applied coupons reduce rider fare only; `driverEarnings` and `commission` stay unchanged
+- `used_count` is incremented when the discounted trip completes
+- Once a coupon is attached to a trip it cannot be replaced; a second apply attempt returns `422`
+
 ### 11. Commission Rules
 
 Mounted at `/api/v1/admin/commission-rules` via `src/modules/commission-rules/commission-rules.routes.js`.
@@ -277,7 +283,7 @@ Mounted at `/api/v1/admin/reports` via `src/modules/analytics/analytics.routes.j
 ### Mounted and usable now
 - Auth admin login
 - Users admin CRUD and actions
-- Driver admin detail/actions, but no list endpoint
+- Driver admin CRUD and actions
 - Support admin ticket management
 - Complaints admin management
 - Regions admin CRUD

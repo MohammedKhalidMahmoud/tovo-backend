@@ -179,6 +179,8 @@ model Trip {
   userId          String
   driverId        String?
   serviceId       String?
+  couponId        String?
+  couponCode      String?
   paymentMethodId String?
   status          TripStatus  @default(searching)
   pickupLat       Float
@@ -189,6 +191,8 @@ model Trip {
   dropoffAddress  String
   paymentType     String?
   fare            Decimal?    @db.Decimal(10, 2)
+  fareBeforeDiscount Decimal? @db.Decimal(10, 2)
+  discountAmount  Decimal     @default(0) @db.Decimal(10, 2)
   commission      Decimal?    @db.Decimal(10, 2)
   driverEarnings  Decimal?    @db.Decimal(10, 2)
   currency        String      @default("EGP")
@@ -204,6 +208,7 @@ model Trip {
   user            User           @relation("CustomerTrips", fields: [userId], references: [id])
   driver          User?          @relation("DriverTrips", fields: [driverId], references: [id])
   service         Service?       @relation(fields: [serviceId], references: [id])
+  coupon          Coupon?        @relation(fields: [couponId], references: [id])
   paymentMethod   PaymentMethod? @relation(fields: [paymentMethodId], references: [id])
   rating              Rating?
   declines            TripDecline[]
@@ -212,6 +217,7 @@ model Trip {
 
   @@index([userId])
   @@index([driverId])
+  @@index([couponId])
   @@index([status])
   @@map("trips")
 }
@@ -304,6 +310,7 @@ model Coupon {
   status                    Int          @default(1)
   used_count                Int          @default(0)
   createdAt                 DateTime     @default(now())
+  trips                     Trip[]
 
   @@map("coupons")
 }

@@ -110,6 +110,8 @@ const createTrip = async (userId, body) => {
     dropoffAddress: dropoff_address,
     distanceKm:     +distanceKm.toFixed(2),
     fare,
+    fareBeforeDiscount: fare,
+    discountAmount: 0,
     commission,
     driverEarnings,
     paymentType:    payment_type,
@@ -228,6 +230,13 @@ const endTrip = async (tripId, driverId) => {
   await prisma.user.update({ where: { id: driverId }, data: { totalTrips: { increment: 1 } } });
 
   const completed = await repo.updateTrip(tripId, { status: 'completed', endedAt: new Date() });
+
+  if (trip.couponId) {
+    await prisma.coupon.update({
+      where: { id: trip.couponId },
+      data: { used_count: { increment: 1 } },
+    });
+  }
 
   // Wallet settlement based on payment type
   if (trip.commission !== null && trip.driverEarnings !== null) {

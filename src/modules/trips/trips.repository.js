@@ -5,6 +5,7 @@ const TRIP_INCLUDE = {
   user:    { select: { id: true, name: true, avatarUrl: true } },
   paymentMethod: { select: { id: true, brand: true, maskedNumber: true } },
   service: { select: { id: true, name: true, baseFare: true } },
+  coupon:  { select: { id: true, code: true, discount_type: true, discount: true, max_discount: true } },
   rating:  true,
 };
 
@@ -61,6 +62,7 @@ const findDriverRatings = (driverId, skip, take) =>
   ]);
 
 module.exports = {
+  TRIP_INCLUDE,
   createTrip, findTripById, findTripsByUser,
   findTripsByDriver, findNewRequests, updateTrip, recordDecline,
   createRating, findRatingsByTrip, findDriverRatings,
