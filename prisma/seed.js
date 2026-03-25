@@ -10,6 +10,60 @@ const OTP_YOUSSEF = '654321';
 const daysFromNow = (days) => new Date(Date.now() + days * 24 * 60 * 60 * 1000);
 const daysAgo = (days) => new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
+async function ensureTripCouponSchema() {
+  const expectedColumns = [
+    ['couponId', 'ALTER TABLE `trips` ADD COLUMN `couponId` VARCHAR(191) NULL'],
+    ['couponCode', 'ALTER TABLE `trips` ADD COLUMN `couponCode` VARCHAR(191) NULL'],
+    ['fareBeforeDiscount', 'ALTER TABLE `trips` ADD COLUMN `fareBeforeDiscount` DECIMAL(10, 2) NULL'],
+    ['discountAmount', 'ALTER TABLE `trips` ADD COLUMN `discountAmount` DECIMAL(10, 2) NOT NULL DEFAULT 0.00'],
+  ];
+
+  const existingColumns = await prisma.$queryRawUnsafe(`
+    SELECT COLUMN_NAME
+    FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'trips'
+      AND COLUMN_NAME IN ('couponId', 'couponCode', 'fareBeforeDiscount', 'discountAmount')
+  `);
+
+  const existingColumnNames = new Set(existingColumns.map((row) => row.COLUMN_NAME));
+
+  for (const [columnName, statement] of expectedColumns) {
+    if (!existingColumnNames.has(columnName)) {
+      await prisma.$executeRawUnsafe(statement);
+      console.log(`Added missing trips.${columnName} column for seed compatibility`);
+    }
+  }
+
+  const couponIndex = await prisma.$queryRawUnsafe(
+    "SHOW INDEX FROM `trips` WHERE Key_name = 'trips_couponId_idx'"
+  );
+  if (couponIndex.length === 0) {
+    await prisma.$executeRawUnsafe('CREATE INDEX `trips_couponId_idx` ON `trips`(`couponId`)');
+    console.log('Added missing trips_couponId_idx index for seed compatibility');
+  }
+
+  const couponForeignKey = await prisma.$queryRawUnsafe(`
+    SELECT CONSTRAINT_NAME
+    FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'trips'
+      AND CONSTRAINT_NAME = 'trips_couponId_fkey'
+      AND CONSTRAINT_TYPE = 'FOREIGN KEY'
+  `);
+
+  if (couponForeignKey.length === 0) {
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE \`trips\`
+      ADD CONSTRAINT \`trips_couponId_fkey\`
+      FOREIGN KEY (\`couponId\`) REFERENCES \`coupons\`(\`id\`)
+      ON DELETE SET NULL
+      ON UPDATE CASCADE
+    `);
+    console.log('Added missing trips_couponId_fkey foreign key for seed compatibility');
+  }
+}
+
 async function cleanup() {
   await prisma.rating.deleteMany();
   await prisma.tripDecline.deleteMany();
@@ -45,6 +99,7 @@ async function cleanup() {
 async function main() {
   console.log('Seeding Tovo database...\n');
 
+  await ensureTripCouponSchema();
   await cleanup();
   console.log('Cleaned existing data');
 
