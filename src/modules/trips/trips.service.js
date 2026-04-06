@@ -29,6 +29,7 @@ const haversineKm = (lat1, lng1, lat2, lng2) => {
 // ─────────────────────────────────────────────────────────────────────────────
 const FARE_PER_KM = Number(process.env.FARE_PER_KM) || 5.0;
 const roundMoney = (value) => +Number(value).toFixed(2);
+const getFixedSurchargeAmount = (service) => roundMoney(service?.fixedSurcharge ?? 0);
 
 const estimateFare = async ({ pickupLat, pickupLng, dropoffLat, dropoffLng }) => {
   const distanceKm = haversineKm(pickupLat, pickupLng, dropoffLat, dropoffLng);
@@ -38,13 +39,15 @@ const estimateFare = async ({ pickupLat, pickupLng, dropoffLat, dropoffLng }) =>
     services.map(async (service) => {
       const driverEarnings = roundMoney(distanceKm * FARE_PER_KM);
       const { commission } = await commissionService.calculateCommission(driverEarnings);
-      const originalFare = roundMoney(driverEarnings + commission);
+      const fixedSurcharge = getFixedSurchargeAmount(service);
+      const originalFare = roundMoney(driverEarnings + commission + fixedSurcharge);
 
       return {
         serviceId:     service.id,
         serviceName:   service.name,
         distanceKm:    +distanceKm.toFixed(2),
         farePerKm:     FARE_PER_KM,
+        fixedSurcharge,
         originalFare,
         finalFare:     originalFare,
         discountAmount: 0,
@@ -99,7 +102,8 @@ const createTrip = async (userId, body) => {
   const distanceKm     = haversineKm(pickup_lat, pickup_lng, dropoff_lat, dropoff_lng);
   const driverEarnings = roundMoney(distanceKm * FARE_PER_KM);
   const { commission } = await commissionService.calculateCommission(driverEarnings);
-  const originalFare   = roundMoney(driverEarnings + commission);
+  const fixedSurcharge = getFixedSurchargeAmount(svc);
+  const originalFare   = roundMoney(driverEarnings + commission + fixedSurcharge);
 
   const trip = await repo.createTrip({
     user:          { connect: { id: userId } },
@@ -119,14 +123,6 @@ const createTrip = async (userId, body) => {
     driverEarnings,
     paymentType:    payment_type,
     status:         'searching',
-  });
-
-  const nearby = locationStore.getNearby(pickup_lat, pickup_lng, 10, service_id);
-  nearby.forEach((c) => {
-    notificationsService.sendToDriver(c.id, 'New Trip Request', 'A new ride is available near you', {
-      type: 'trip_request',
-      tripId: trip.id,
-    }).catch(() => {});
   });
 
   return trip;
@@ -159,13 +155,6 @@ const cancelTrip = async (tripId, userId) => {
 
   const updated = await repo.updateTrip(tripId, { status: 'cancelled', cancelledAt: new Date(), cancelledBy: userId });
 
-  if (trip.driverId) {
-    notificationsService.sendToDriver(trip.driverId, 'Trip Cancelled', 'The passenger cancelled the trip', {
-      type: 'trip_cancelled',
-      tripId,
-    }).catch(() => {});
-  }
-
   return updated;
 };
 
@@ -187,14 +176,6 @@ const acceptTrip = async (tripId, driverId) => {
 
   const updated = await repo.updateTrip(tripId, { driverId, status: 'matched' });
 
-  const driverName = updated.driver?.name ?? 'Your driver';
-  notificationsService.createAndSend(
-    trip.userId,
-    'Driver On The Way',
-    `Your driver ${driverName} accepted your trip`,
-    { type: 'trip_accepted', tripId }
-  ).catch(() => {});
-
   return updated;
 };
 
@@ -213,13 +194,6 @@ const startTrip = async (tripId, driverId) => {
   if (trip.status !== 'matched' && trip.status !== 'on_way') throw { status: 422, message: 'Trip cannot be started' };
 
   const updated = await repo.updateTrip(tripId, { status: 'in_progress', startedAt: new Date() });
-
-  notificationsService.createAndSend(
-    trip.userId,
-    'Trip Started',
-    'Your trip has started. Enjoy the ride!',
-    { type: 'trip_started', tripId }
-  ).catch(() => {});
 
   return updated;
 };
@@ -277,14 +251,6 @@ const endTrip = async (tripId, driverId) => {
       serviceId: trip.serviceId ?? null,
     });
   }
-
-  const finalFareDisplay = Number(completed.finalFare ?? 0).toFixed(2);
-  notificationsService.createAndSend(
-    completed.userId,
-    'Trip Completed',
-    `You've arrived! Total fare: ${finalFareDisplay} EGP`,
-    { type: 'trip_completed', tripId: completed.id, finalFare: finalFareDisplay }
-  ).catch(() => {});
 
   return completed;
 };

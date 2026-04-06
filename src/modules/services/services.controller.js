@@ -51,9 +51,25 @@ exports.getService = async (req, res, next) => {
 
 exports.createService = async (req, res, next) => {
   try {
-    const { name, baseFare, isActive } = req.body;
+    const {
+      name,
+      baseFare,
+      fixedSurcharge,
+      isActive,
+      requiresSenderCode,
+      requiresReceiverCode,
+      maxWeightKg,
+    } = req.body;
     if (!name) return res.status(400).json({ success: false, message: 'Service name is required' });
-    const svc = await service.createService({ name, baseFare, isActive });
+    const svc = await service.createService({
+      name,
+      baseFare,
+      fixedSurcharge,
+      isActive,
+      requiresSenderCode,
+      requiresReceiverCode,
+      maxWeightKg,
+    });
     return success(res, svc, 'Service created successfully', 201);
   } catch (err) { next(err); }
 };

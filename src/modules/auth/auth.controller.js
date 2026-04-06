@@ -31,8 +31,7 @@ const login = async (req, res, next) => {
     const data = await authService.login(req.body);
     return success(res, data, 'Login successful');
   } catch (err) {
-    const statusCode = err.status === 401 ? 402 : err.status;
-    if (err.status) return error(res, err.message, statusCode);
+    if (err.status) return error(res, err.message, err.status);
     next(err);
   }
 };
@@ -50,9 +49,10 @@ const adminLogin = async (req, res, next) => {
 const logout = async (req, res, next) => {
   try {
     const { refreshToken, fcm_token } = req.body;
-    await authService.logout(refreshToken, fcm_token);
+    await authService.logout(req.actor, refreshToken, fcm_token);
     return success(res, {}, 'Logged out successfully');
   } catch (err) {
+    if (err.status) return error(res, err.message, err.status);
     next(err);
   }
 };
@@ -71,8 +71,9 @@ const refreshToken = async (req, res, next) => {
 const sendOtp = async (req, res, next) => {
   try {
     const data = await authService.sendOtp(req.body.phone);
-    return success(res, {otp: 123456}, 'OTP sent');
+    return success(res, data, 'OTP sent');
   } catch (err) {
+    if (err.status) return error(res, err.message, err.status);
     next(err);
   }
 };

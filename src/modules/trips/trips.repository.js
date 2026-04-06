@@ -4,7 +4,17 @@ const TRIP_INCLUDE = {
   driver:  { select: { id: true, name: true, avatarUrl: true, rating: true, totalTrips: true } },
   user:    { select: { id: true, name: true, avatarUrl: true } },
   paymentMethod: { select: { id: true, brand: true, maskedNumber: true } },
-  service: { select: { id: true, name: true, baseFare: true } },
+  service: {
+    select: {
+      id: true,
+      name: true,
+      baseFare: true,
+      fixedSurcharge: true,
+      requiresSenderCode: true,
+      requiresReceiverCode: true,
+      maxWeightKg: true,
+    },
+  },
   coupon:  { select: { id: true, code: true, discount_type: true, discount: true, max_discount: true } },
   rating:  true,
 };

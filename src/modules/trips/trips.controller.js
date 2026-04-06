@@ -6,6 +6,8 @@ const {
   emitTripStatusChanged,
   emitTripCancelled,
   emitTripRequest,
+  emitTripTaken,
+  emitTripRemoved,
 } = require('../../realtime/socket');
 
 const estimateFare = async (req, res, next) => {
@@ -114,7 +116,7 @@ const acceptTrip = async (req, res, next) => {
     io.in(`user:${trip.userId}`).socketsJoin(`trip:${trip.id}`);
 
     emitCaptainMatched(io, trip.userId, trip);
-    io.to('captains:available').emit('trip.taken', { tripId: trip.id });
+    emitTripTaken(io, trip);
     return success(res, trip, 'Trip accepted');
   } catch (err) {
     if (err.status) return error(res, err.message, err.status);
@@ -126,7 +128,7 @@ const declineTrip = async (req, res, next) => {
   try {
     await service.declineTrip(req.params.id, req.actor.id);
     const io = req.app.get('io');
-    io.to(`driver:${req.actor.id}`).emit('trip.removed', { tripId: req.params.id });
+    emitTripRemoved(io, req.actor.id, req.params.id);
     return success(res, null, 'Trip declined');
   } catch (err) {
     if (err.status) return error(res, err.message, err.status);

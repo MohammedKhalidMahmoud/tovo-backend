@@ -198,6 +198,8 @@ model Trip {
   currency        String      @default("EGP")
   distanceKm      Float?
   durationMinutes Int?
+  senderConfirmationCode   String?
+  receiverConfirmationCode String?
   startedAt       DateTime?
   endedAt         DateTime?
   cancelledAt     DateTime?
@@ -549,13 +551,17 @@ model Region {
 // ─────────────────────────────────────────────
 
 model Service {
-  id        String   @id @default(uuid())
-  name      String   @unique
-  baseFare  Decimal  @default(0) @db.Decimal(10, 2)
-  imageUrl  String?  @db.Text
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                   String   @id @default(uuid())
+  name                 String   @unique
+  baseFare             Decimal  @default(0) @db.Decimal(10, 2)
+  fixedSurcharge       Decimal  @default(0) @db.Decimal(10, 2)
+  imageUrl             String?  @db.Text
+  isActive             Boolean  @default(true)
+  requiresSenderCode   Boolean? @default(false)
+  requiresReceiverCode Boolean? @default(false)
+  maxWeightKg          Float?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 
   trips           Trip[]
   vehicleModels   VehicleModel[]

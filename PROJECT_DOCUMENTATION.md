@@ -1,11 +1,26 @@
 # Tovo Backend — Project Documentation
 
-> Last updated: 2026-03-25 (rev 4)
+> Last updated: 2026-03-25 (rev 5)
 > Purpose: Persistent technical reference for developers and AI assistants continuing development across sessions.
 
 ---
 
 ## Changelog
+### 2026-03-25 (rev 5) â€” Fare Field Rename + Centralized Socket/Push Dispatch
+
+#### Problem
+Trip pricing docs and realtime behavior had drifted from the current backend. The API contract still referred to `fare` / `fareBeforeDiscount`, while the implementation had moved toward explicit pre-discount and post-discount pricing semantics. Socket events were also handled inconsistently across services, controllers, and the realtime layer.
+
+#### Solution
+- Renamed the trip pricing API fields to `originalFare` and `finalFare`
+- Kept `discountAmount` as the dedicated coupon-discount field
+- Clarified that driver settlement uses pre-discount pricing and adds `trip_coupon_reimbursement` when a coupon discount exists
+- Centralized non-location socket events in `emitRealtimeEvent()` inside `src/realtime/socket.js`
+- Every existing non-location socket event now emits over Socket.io and sends an unconditional FCM push with the same event name in the payload
+- `trip.captain_location` remains socket-only by design
+- Standardized private customer socket rooms as `user:{id}`
+
+---
 
 ### 2026-03-25 (rev 4) — Trip Coupon Application + Public Endpoint Docs
 
@@ -14,7 +29,7 @@ The coupons module could validate coupon codes, but it had no endpoint to attach
 
 #### Solution
 - Added `POST /api/v1/promotions/coupons/apply` for customers
-- Trips now persist coupon snapshot fields: `couponId`, `couponCode`, `fareBeforeDiscount`, `discountAmount`
+- Trips now persist coupon snapshot fields: `couponId`, `couponCode`, `originalFare`, `discountAmount`, and `finalFare`
 - Coupon application is allowed only for the trip owner while the trip is still `searching`
 - Once a coupon is applied to a trip, it cannot be swapped; a second apply request returns `422`
 - Discount reduces the rider fare only; `driverEarnings` and `commission` are unchanged
@@ -190,7 +205,7 @@ Commission per trip was stored only in the `trips.commission` field. For cash tr
 - **Previously:** `trips.controller.js` `createTrip` contained an inline `nearbyCaptains.forEach(...)` loop that emitted `trip.new_request` directly. `trips.service.js` `createTrip` returned `{ trip, nearbyCaptains }` so the controller could reuse the already-computed nearby list.
 - **Now:**
   - New exported function `emitTripRequest(io, trip, radiusKm = 10)` added to `src/realtime/socket.js`. It calls `locationStore.getNearby(trip.pickupLat, trip.pickupLng, radiusKm, trip.serviceId ?? null)`, logs if no drivers found, and emits `trip.new_request` to each `driver:{driverId}` room.
-  - `trips.service.js` `createTrip` now returns just `trip` (the `nearbyCaptains` return value was removed). The `locationStore.getNearby()` call inside the service is kept for FCM push notifications (fire-and-forget).
+  - `trips.service.js` `createTrip` now returns just `trip` (the `nearbyCaptains` return value was removed).
   - `trips.controller.js` `createTrip` now calls `emitTripRequest(io, trip, 10)` instead of the inline forEach.
 - **Files changed:** `src/realtime/socket.js`, `src/modules/trips/trips.service.js`, `src/modules/trips/trips.controller.js`
 
@@ -267,6 +282,7 @@ Server was consuming excessive CPU and memory after deployment due to several is
 - **Files:** `src/modules/trips/trips.service.js`, `src/modules/trips/trips.controller.js`
 - **Previously:** `locationStore.getNearby()` was called twice per trip — once in `createTrip()` (service) for FCM push, and again in the controller for Socket.io emission
 - **Now:** `createTrip()` returns `{ trip, nearbyCaptains }` instead of just `trip`; controller destructures and reuses the already-computed list for socket emission — one call per trip instead of two
+- **Current-state note (rev 5):** trip realtime dispatch is now centralized in `src/realtime/socket.js` via shared helpers, and non-location trip events send both socket emissions and push notifications together
 
 #### Fix 4 — TTL in-memory cache for active regions
 - **File:** `src/modules/regions/regions.service.js`
@@ -553,7 +569,7 @@ Prisma v5 with MySQL. Schema at `prisma/schema.prisma`.
 | `Vehicle` | `vehicles` | One vehicle per driver. Links to VehicleModel. FK: `userId` |
 | `VehicleModel` | `vehicle_models` | Make/model catalogue, linked to a Service |
 | `Service` | `services` | Ride categories (e.g. Economy, Comfort). Has `baseFare` |
-| `Trip` | `trips` | Core trip record with full lifecycle. References `userId` (customer) and `driverId` (driver from same User table). Also stores coupon snapshot fields `couponId?`, `couponCode?`, `fareBeforeDiscount?`, and `discountAmount` |
+| `Trip` | `trips` | Core trip record with full lifecycle. References `userId` (customer) and `driverId` (driver from same User table). Also stores coupon snapshot fields `couponId?`, `couponCode?`, `originalFare?`, `discountAmount`, and `finalFare?` |
 | `TripDecline` | `trip_declines` | Composite key `(tripId, driverId)` — tracks which drivers declined |
 | `Rating` | `ratings` | One per trip, customer rates driver (1–5 stars) |
 | `PaymentMethod` | `payment_methods` | Saved cards per user (visa, mastercard, apple_pay) |
@@ -606,9 +622,11 @@ SupportTicket ──< TicketMessage
 ### Trip Model — Key Fields
 | Field | Type | Description |
 |---|---|---|
-| `fare` | Decimal | Total amount charged to the passenger |
-| `commission` | Decimal? | Platform cut (deducted from fare) |
-| `driverEarnings` | Decimal? | What the captain receives (fare − commission) |
+| `finalFare` | Decimal | Final amount charged to the passenger after discount |
+| `originalFare` | Decimal? | Raw trip price before coupon discount |
+| `discountAmount` | Decimal | Discount applied by coupon; defaults to `0` |
+| `commission` | Decimal? | Platform cut calculated from the pre-discount trip price |
+| `driverEarnings` | Decimal? | Driver payout basis calculated from the pre-discount trip price |
 | `paymentType` | String? | `'cash'` or `'card'` |
 
 ### WalletTransaction Model
@@ -798,7 +816,7 @@ Both paths served by the same router (`payments.routes.js`). Auth enforced per r
 | GET | `/payments/me` | user | Own payment history (completed trips only) |
 | GET | `/payments/:id` | user / admin | Single payment detail — users can only access their own |
 | GET | `/admin/payments` | admin | All payments, filterable by `userId`, `driverId`, `paymentType`, `dateFrom`, `dateTo` |
-| POST | `/admin/payments/:id/refund` | admin | Issue wallet refund for a card payment — guards: trip must be `completed`, type must be `card`, amount ≤ fare, no duplicate refund. Creates a `WalletTransaction` atomically |
+| POST | `/admin/payments/:id/refund` | admin | Issue wallet refund for a card payment — guards: trip must be `completed`, type must be `card`, amount ≤ `finalFare`, no duplicate refund. Creates a `WalletTransaction` atomically |
 
 #### Support — `/api/v1/support` and `/api/v1/admin/support`
 User/driver routes are served by `support.routes.js`. Admin routes are served by `support.admin.routes.js`.
@@ -920,6 +938,17 @@ This is a **backend-only repository**. No frontend code exists in this project.
 6. Driver chooses a service category (`serviceId` on driver record via vehicle model)
 7. Driver calls `POST /drivers/me/duty/start` to go online
 
+### Current-State Update (rev 5)
+- The current Trip pricing fields are `originalFare`, `discountAmount`, and `finalFare`
+- `originalFare` is the raw calculated rider price before coupon discount
+- `finalFare = originalFare - discountAmount`
+- `driverEarnings` and `commission` are based on pre-discount pricing, not on `finalFare`
+- Discounted trip completion credits a separate driver wallet transaction with reason `trip_coupon_reimbursement`
+- Non-location realtime events are centralized in `emitRealtimeEvent()` inside `src/realtime/socket.js`
+- Those events always emit Socket.io and send a matching FCM push with the same event name in the push payload
+- `trip.captain_location` is the only socket event intentionally excluded from push notifications
+- Private rider rooms are `user:{id}`; private driver rooms are `driver:{id}`; the availability broadcast room is `captains:available`
+
 ### Ride Request Flow
 ```
 1. Customer calls GET /trips/estimate  →  receives fare + commission + driverEarnings breakdown
@@ -972,6 +1001,8 @@ Cancellation: Customer calls PATCH /trips/:id/cancel → status: cancelled
 - If no active regions exist → trips are allowed (backward compatibility)
 
 ### Fare Calculation
+Current implementation note: the live Trip fields are `originalFare`, `discountAmount`, and `finalFare`, where `finalFare = originalFare - discountAmount`.
+
 ```
 distanceKm     = haversine(pickupLat, pickupLng, dropoffLat, dropoffLng)
 driverEarnings = distanceKm × FARE_PER_KM                 ← what captain earns
@@ -986,12 +1017,18 @@ fare           = baseFare - discountAmount                 ← final passenger t
 - Commission is DB-driven (see Commission System below)
 
 ### Coupon Application Flow
+- Current field names: `originalFare`, `discountAmount`, `finalFare`
+- Discount is calculated from `originalFare`, capped by `max_discount`, and stored on the trip
+- Final trip fare becomes `finalFare = originalFare - discountAmount`
+- `driverEarnings` and `commission` are unchanged by coupon application
+- Once a coupon is applied to a trip, it cannot be changed; the rider must cancel and start over if they need a different coupon
+
 - Customer calls `POST /promotions/coupons/apply` with `trip_id` and `code`
 - Backend verifies the trip exists, belongs to the authenticated customer, and is still `searching`
 - Backend rejects the request with `422` if a coupon is already attached to the trip
 - Coupon validation checks: active, unexpired, global usage limit, per-rider limit, optional `min_amount`, and `coupon_type = new_users`
-- Discount is calculated from `fareBeforeDiscount`, capped by `max_discount`, and stored on the trip
-- Final trip fare becomes `fareBeforeDiscount - discountAmount`
+- Discount is calculated from `originalFare`, capped by `max_discount`, and stored on the trip
+- Final trip fare becomes `finalFare = originalFare - discountAmount`
 - `driverEarnings` and `commission` are unchanged by coupon application
 - Coupon usage is recorded when the trip completes; canceled trips do not consume `used_count`
 
@@ -1021,6 +1058,11 @@ Commission rules are stored in the `CommissionRule` table and managed by admins.
 ### Wallet Settlement on Trip Completion
 When `PATCH /trips/:id/end` is called:
 
+Current implementation note:
+- `commission` and `driverEarnings` are based on `originalFare`, not `finalFare`
+- Discounted trips add a separate wallet credit with reason `trip_coupon_reimbursement`
+- The driver therefore keeps their normal payout basis even when the rider receives a coupon discount
+
 | Payment type | Action | WalletTransaction reason |
 |---|---|---|
 | `cash` | Customer paid driver directly — **deduct `commission`** from driver wallet | `trip_commission_deduction` |
@@ -1028,7 +1070,10 @@ When `PATCH /trips/:id/end` is called:
 
 Settlement is skipped if `commission` or `driverEarnings` is null on the trip record. Every settlement is recorded atomically as a `WalletTransaction` (balance update + log entry in a single Prisma `$transaction`).
 
+Current settlement note: when a coupon is applied, the backend also writes `trip_coupon_reimbursement` so the driver receives the discount value back separately from the normal trip settlement.
+
 ### Wallet Transaction Log
+Current additional reason: `trip_coupon_reimbursement` for driver reimbursement on discounted trips.
 Every balance change — whether from trip settlement, admin manual adjustment, or a refund — creates an immutable `WalletTransaction` record atomically with the balance update. This provides a full audit trail. The `reason` field distinguishes the source:
 - `trip_earnings_credit` — card trip settled, captain credited
 - `trip_commission_deduction` — cash trip settled, commission deducted from captain
@@ -1040,7 +1085,7 @@ Admin calls `POST /admin/payments/:id/refund` with `{ amount, reason }`. Guards 
 1. Trip must exist
 2. Trip status must be `completed`
 3. `paymentType` must be `card` (cash payments were not collected by the platform)
-4. `amount` must not exceed the original `fare`
+4. `amount` must not exceed the trip `finalFare`
 5. No existing refund `WalletTransaction` for this `tripId` (prevents duplicates — returns `409`)
 
 On success: customer wallet balance incremented + `WalletTransaction { type: credit, reason: refund }` created atomically.
@@ -1065,10 +1110,17 @@ On success: customer wallet balance incremented + `WalletTransaction { type: cre
 
 ### Real-Time Location Tracking
 - Driver GPS is stored in `locationStore` — a Node.js `Map` in process memory
-- Updated via `driver.location_update` Socket.io event
+- Updated via `captain.location_update` Socket.io event
 - Entries older than `STALE_MS` (default 2 minutes) are lazily evicted on read and periodically cleaned every 30s
 - `locationStore.getNearby(lat, lng, radiusKm, serviceId)` uses a bounding-box pre-filter for performance
 - Used by `POST /trips` to find drivers to notify, and by `GET /trips/nearby-drivers`
+
+### Real-Time Notifications
+- Existing non-location socket events are centralized in `emitRealtimeEvent()` in `src/realtime/socket.js`
+- The helper always emits the socket event first, then sends a matching FCM push notification without checking whether the recipient is connected
+- The push payload carries the same event name in both `event` and `type`, plus a serialized `payload`, so the Flutter client can suppress foreground notifications client-side
+- Current non-location events handled this way: `trip.new_request`, `trip.captain_matched`, `trip.status_changed`, `trip.cancelled`, `trip.taken`, `trip.removed`
+- `trip.captain_location` remains socket-only by design to avoid notification spam
 
 ---
 
@@ -1177,13 +1229,24 @@ Example stored filename: `avatar-1741427600000-482910372.jpg`. Avatar URLs retur
 ### Designed for Scalability
 - **locationStore** can be replaced with Redis (same interface) for multi-instance deployments without code changes to the service layer
 - **Repository pattern** makes it straightforward to swap Prisma for another ORM or add caching
-- **Socket.io rooms** are already structured (`user:{id}`, `captain:{id}`, `trip:{id}`) for easy migration to Redis adapter
+- **Socket.io rooms** are already structured (`user:{id}`, `driver:{id}`, `trip:{id}`, `captains:available`) for easy migration to Redis adapter
 - **Module-per-feature** structure makes adding new domains (e.g., scheduled rides, surge pricing) isolated
 - **Commission rules** are fully DB-driven — new rule types can be added without code changes by extending the `config` JSON shape
 
 ---
 
 ## Context Summary for AI Assistants
+Current-state overrides for rev 5:
+- Trip pricing field names are `originalFare`, `discountAmount`, and `finalFare`
+- Driver settlement is based on pre-discount pricing and may include `trip_coupon_reimbursement`
+- Socket rooms are `user:{id}`, `driver:{id}`, `trip:{id}`, and `captains:available`
+- Existing non-location socket events now emit over Socket.io and send matching FCM pushes via `emitRealtimeEvent()`
+- `trip.captain_location` remains socket-only
+- Refund validation is capped by `finalFare`, not the legacy `fare` field
 
-Tovo is a Node.js/Express ride-hailing and package delivery backend. Stack: Express 4, Prisma ORM v5, MySQL, Socket.io, JWT auth, Firebase push notifications, Nodemailer (SMTP email), Swagger/OpenAPI docs at `/api/docs`. The project is backend-only with no frontend. Architecture is strictly layered: **Controller → Service → Repository** — only repositories access Prisma. Auth middleware sets `req.actor = { id, role }` (not `req.user`). Three roles: `customer` (riders), `driver` (drivers), `admin`. User and Driver models are merged into a single `User` table with `role` field and driver-only fields (`drivingLicense`, `licenseExpiryDate`, `isOnline`, `rating`, `totalTrips`, `serviceId`). AdminUser is a separate table for admin accounts. Login endpoint accepts `identifier` field (auto-detects email vs phone). Separate admin login endpoint: `POST /auth/admin/login` with email and password. Most modules live under `src/modules/<name>/` with the standard `routes/controller/service/repository` layout, but some modules now have extra route files for public/admin separation (for example services, regions, vehicle-models, and support). Swagger docs are loaded from YAML files in `swagger/<module>/paths.yaml` and merged in `swagger/swagger.config.js`. Swagger server URLs: local = `http://localhost:3000/api/v1`, production = `https://tovo-b.developteam.site/api/v1`. Real-time driver GPS is stored in an in-memory `locationStore` (never written to DB); Socket.io rooms are `user:{id}`, `driver:{id}`, `trip:{id}`, `drivers:available`. Trip lifecycle states: `searching → matched → on_way → in_progress → completed | cancelled`. Base fare = `driverEarnings + commission`; final rider fare may be reduced by `discountAmount` when a coupon is applied. `driverEarnings = distanceKm × FARE_PER_KM`. Commission is **added on top** of driverEarnings via DB-driven global `CommissionRule` records — NOT deducted from fare. `Service.baseFare` exists on the model but is not used in the current calculation. Trips now store coupon snapshot fields `couponId`, `couponCode`, `fareBeforeDiscount`, and `discountAmount`; coupons are applied through `POST /api/v1/promotions/coupons/apply`, only while the trip is still `searching`, and once applied they cannot be swapped. Driver wallet is automatically settled on `endTrip`: cash trips deduct commission (`reason: trip_commission_deduction`), card trips credit driverEarnings (`reason: trip_earnings_credit`). Every wallet balance change (trip settlement, admin adjust, refund) creates a `WalletTransaction` record atomically via Prisma `$transaction`. Commission rules are managed at `/api/v1/admin/commission-rules`; activate endpoint atomically swaps the one globally active rule. Fallback when no active rule: `COMMISSION_PCT` env var as percentage. Trips store `paymentType` (`cash`/`card`), `commission`, and `driverEarnings` as explicit columns. Wallets module is at `src/modules/wallets/` — routes mounted at both `/api/v1/wallets` (user/driver) and `/api/v1/admin/wallets` (admin); auth is enforced inline per route. Payments module is at `src/modules/payments/` — has a `payments.repository.js`. Support module is at `src/modules/support/` — user/driver endpoints are mounted at `/api/v1/support`, while admin management endpoints are mounted separately at `/api/v1/admin/support` via `support.admin.routes.js`; admin support routes use `authenticate + authorize('admin')`. Refund endpoint guards: trip completed, card payment only, amount ≤ fare, no duplicate (checked via `WalletTransaction` with `reason: refund` for same `tripId`). Helmet is bypassed for `/api/docs` to allow Swagger UI cross-origin requests; all other routes use `crossOriginResourcePolicy: cross-origin`. Response utility is at `src/utils/response.js` and exports `success, created, error, notFound, paginate`. Middleware paths are always `../../middleware/` from inside a module. Settings module is fully implemented: `settings.routes.js` (single file for public + admin routes), `settings.controller.js`, `settings.service.js`, `settings.repository.js`. Public `GET /settings` returns a flat `{ key: value }` map; admin routes are protected by inline `authenticate + authorize('admin')` and mounted at `/api/v1/admin/settings`. The `SystemSetting` model uses a UUID `id` primary key with `key` as a unique field — value is always stored as a plain string (client parses type). Avatar uploads use `multer.diskStorage` with a custom `filename` function that preserves the original file extension (`path.extname(file.originalname)`) — produces filenames like `avatar-1741427600000-482910372.jpg`. The `uploads/` directory is served as static files. Avatar URLs are always full backend URLs built with `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`. Always run `npx prisma generate` + `npx prisma migrate deploy` after any schema change on the server, or Prisma model accessors will be undefined at runtime; on Windows, stop running Node processes first if Prisma's query engine DLL is locked. Firebase push notifications are fully integrated into the trip lifecycle inside `trips.service.js` — `notificationsService` (from `src/modules/notifications/notifications.service.js`) is called fire-and-forget at every lifecycle hook. The notifications module has `sendToUser(userId, title, body, data)`, `sendToDriver(driverId, title, body, data)`, `createAndSend(userId, title, body, data)` (persists + sends), and `sendBulk(tokens, ...)`. Device tokens stored in `DeviceToken` table; invalid tokens are auto-cleaned after FCM send failures. FCM provider at `src/providers/fcm.js` calls `messaging().sendEachForMulticast()`. Firebase config at `src/config/firebase.js` (lazy init, reads `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`). Notifications admin endpoints (`send-to-user`, `send-to-driver`) use standard JWT `authenticate + authorize('admin')` — NOT `X-Admin-Key`. Forgot password is fully implemented: `POST /auth/forgot-password` (body: `{ email }`) generates a 6-digit OTP, stores it in `PasswordResetToken` table (10-min expiry), and sends an HTML email via nodemailer. `POST /auth/reset-password` (body: `{ email, otp, new_password }`) verifies the OTP and updates the password. `src/config/mailer.js` is the lazy nodemailer transporter using `SMTP_*` env vars. `PasswordResetToken` model: `email`, `code`, `expiresAt`, `isUsed`, no FK to User. `locationStore.set()` does NOT log to console — the debug `console.log(store)` was removed (it was blocking the event loop on every GPS update). `trips.service.js` `createTrip()` returns just `trip` (not `{ trip, nearbyCaptains }`). Socket emission is handled by `emitTripRequest(io, trip, radiusKm)` exported from `src/realtime/socket.js` — it queries `locationStore.getNearby()` internally. The service still calls `getNearby()` independently for FCM push notifications (fire-and-forget). Services module uses two route files: `services.public.routes.js` (public, active-only GET endpoints, no auth) mounted at `/api/v1/services`, and `services.routes.js` (admin CRUD, requires admin JWT) mounted at `/api/v1/admin/services`. Public `GET /services/:id` returns 404 for inactive services. Admin `DELETE /admin/services/:id` calls `service.deleteService()` which validates existence, deletes, and invalidates the cache. `regions.service.js` `listActiveRegions()` uses the same 60-second TTL cache pattern; cache is invalidated immediately on create/update/delete. DB indexes added to `Trip` (`userId`, `driverId`, `status`, `couponId`), `Rating` (`driverId`), `Notification` (`userId`), `DeviceToken` (`userId`) — relevant migrations must be deployed to the server. Swagger `$ref` values in all `paths.yaml` files must use `'#/components/schemas/<Name>'` — never relative file paths like `'../module/schemas.yaml#/Name'`. All schemas are merged into a single flat namespace by `swagger/swagger.config.js`. `SuccessResponse` schema is defined in `swagger/auth/schemas.yaml` (loaded first) and is available globally as `#/components/schemas/SuccessResponse`. `PUBLIC_ENDPOINTS_DOCUMENTATION.md` is the current high-level reference for mounted non-admin endpoints, grouped by auth mode and current route exposure.
+Tovo is a Node.js/Express ride-hailing and package delivery backend using Prisma v5, MySQL, Socket.io, JWT auth, Firebase push notifications, Nodemailer, and Swagger at `/api/docs`. The codebase follows a Controller → Service → Repository structure, most features live in `src/modules/<name>/`, and auth sets `req.actor = { id, role }` for `customer`, `driver`, or `admin`.
+
+Current trip pricing uses `originalFare`, `discountAmount`, and `finalFare`, where `finalFare = originalFare - discountAmount`. Commission rules are DB-driven, `driverEarnings` and `commission` are calculated from the pre-discount fare, coupon application is handled through `POST /api/v1/promotions/coupons/apply`, and discounted trip completion may write an extra wallet transaction with reason `trip_coupon_reimbursement`. Refunds are capped by `finalFare`.
+
+Realtime behavior uses `locationStore` for in-memory driver GPS and Socket.io rooms `user:{id}`, `driver:{id}`, `trip:{id}`, and `captains:available`. Non-location trip events are centralized in `src/realtime/socket.js` and now emit both Socket.io events and matching FCM pushes, while `trip.captain_location` remains socket-only. `PUBLIC_ENDPOINTS_DOCUMENTATION.md` is the best current quick reference for mounted non-admin routes.
 

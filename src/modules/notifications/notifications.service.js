@@ -33,6 +33,11 @@ const sendToDriver = async (driverId, title, body, data = {}) => {
   return _sendAndClean(tokens, title, body, data);
 };
 
+const sendToActor = (actorId, role, title, body, data = {}) =>
+  role === 'driver'
+    ? sendToDriver(actorId, title, body, data)
+    : sendToUser(actorId, title, body, data);
+
 const sendBulk = async (tokens, title, body, data = {}) => {
   if (!tokens.length) return { sent: 0, failed: 0 };
   return _sendAndClean(tokens, title, body, data);
@@ -45,5 +50,5 @@ const createAndSend = async (userId, title, body, data = {}) => {
 
 module.exports = {
   getNotifications, markRead, markAllRead, registerDeviceToken,
-  sendToUser, sendToDriver, sendBulk, createAndSend,
+  sendToUser, sendToDriver, sendToActor, sendBulk, createAndSend,
 };

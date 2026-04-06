@@ -11,6 +11,32 @@ const SALT_ROUNDS = 12;
 const OTP_EXPIRY_MINUTES = 5;
 const RESET_OTP_EXPIRY_MINUTES = 10;
 
+const assertActiveActor = async ({ id, role }) => {
+  if (role === 'admin') {
+    const admin = await prisma.adminUser.findUnique({
+      where: { id },
+      select: { id: true, role: true, isActive: true },
+    });
+
+    if (!admin || !admin.isActive) {
+      throw { status: 401, message: 'Refresh token is invalid or expired' };
+    }
+
+    return { id: admin.id, role: 'admin' };
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id },
+    select: { id: true, role: true },
+  });
+
+  if (!user || user.role !== role) {
+    throw { status: 401, message: 'Refresh token is invalid or expired' };
+  }
+
+  return { id: user.id, role: user.role };
+};
+
 // ─────────────────────────────────────────────────────────────────────────────
 //  REGISTER CUSTOMER
 // ─────────────────────────────────────────────────────────────────────────────
@@ -141,12 +167,28 @@ const adminLogin = async ({ email, password }) => {
 // ─────────────────────────────────────────────────────────────────────────────
 //  LOGOUT
 // ─────────────────────────────────────────────────────────────────────────────
-const logout = async (refreshToken, fcmToken) => {
+const logout = async (actor, refreshToken, fcmToken) => {
   if (refreshToken) {
-    await repo.deleteRefreshToken(refreshToken).catch(() => {});
+    let decoded;
+    try {
+      decoded = verifyRefreshToken(refreshToken);
+    } catch (err) {
+      throw { status: 401, message: 'Refresh token is invalid or expired' };
+    }
+
+    if (decoded.id !== actor.id || decoded.role !== actor.role) {
+      throw { status: 403, message: 'Refresh token does not belong to the authenticated actor' };
+    }
+
+    const stored = await repo.findRefreshToken(refreshToken);
+    if (stored && stored.userId && stored.userId !== actor.id) {
+      throw { status: 403, message: 'Refresh token does not belong to the authenticated actor' };
+    }
+
+    await repo.deleteRefreshToken(refreshToken);
   }
   if (fcmToken) {
-    await prisma.deviceToken.deleteMany({ where: { token: fcmToken } }).catch(() => {});
+    await prisma.deviceToken.deleteMany({ where: { token: fcmToken, userId: actor.id } });
   }
   return true;
 };
@@ -160,8 +202,19 @@ const refreshToken = async (token) => {
     throw { status: 401, message: 'Refresh token is invalid or expired' };
   }
 
-  const decoded = verifyRefreshToken(token);
-  const payload = { id: decoded.id, role: decoded.role };
+  let decoded;
+  try {
+    decoded = verifyRefreshToken(token);
+  } catch (err) {
+    throw { status: 401, message: 'Refresh token is invalid or expired' };
+  }
+
+  if (stored.userId && stored.userId !== decoded.id) {
+    throw { status: 401, message: 'Refresh token is invalid or expired' };
+  }
+
+  const actor = await assertActiveActor({ id: decoded.id, role: decoded.role });
+  const payload = { id: actor.id, role: actor.role };
   const newAccessToken = generateAccessToken(payload);
 
   return { accessToken: newAccessToken };
@@ -171,15 +224,14 @@ const refreshToken = async (token) => {
 //  OTP
 // ─────────────────────────────────────────────────────────────────────────────
 const sendOtp = async (phone) => {
-  // const code = Math.floor(100000 + Math.random() * 900000).toString();
-  const code = '123456';
+  const code = Math.floor(100000 + Math.random() * 900000).toString();
   const expiresAt = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
 
   await repo.createOtp({ phone, code, expiresAt });
 
   // TODO: integrate SMS provider (Twilio, Vonage, etc.) here
 
-  return { message: `OTP sent to ${phone}` };
+  return { message: 'OTP generated successfully. Delivery is handled out-of-band.' };
 };
 
 const verifyOtp = async (phone, code) => {

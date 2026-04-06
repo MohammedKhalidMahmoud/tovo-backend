@@ -47,6 +47,7 @@ router.post('/admin/login', [
 
 // ── POST /auth/logout ─────────────────────────────────────────────────────────
 router.post('/logout', authenticate, [
+  body('refreshToken').optional().notEmpty().withMessage('refreshToken must not be empty if provided'),
   body('fcm_token').optional().notEmpty().withMessage('fcm_token must not be empty if provided'),
 ], validate, controller.logout);
 
@@ -63,7 +64,7 @@ router.post('/otp/send', [
 // ── POST /auth/otp/verify ─────────────────────────────────────────────────────
 router.post('/otp/verify', [
   body('phone').notEmpty().trim(),
-  body('otp_code').isLength({ min: 6, max: 6 }),
+  body('otp_code').isLength({ min: 6, max: 6 }).isNumeric(),
 ], validate, controller.verifyOtp);
 
 // ── POST /auth/forgot-password ────────────────────────────────────────────────

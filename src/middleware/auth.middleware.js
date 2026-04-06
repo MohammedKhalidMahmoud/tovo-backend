@@ -15,8 +15,29 @@ const authenticate = async (req, res, next) => {
     const token = authHeader.split(' ')[1];
     const decoded = verifyAccessToken(token);
 
-    // Attach actor info to request
-    req.actor = decoded; // { id, role }
+    let actor = null;
+
+    if (decoded.role === 'admin') {
+      actor = await prisma.adminUser.findUnique({
+        where: { id: decoded.id },
+        select: { id: true, role: true, isActive: true },
+      });
+
+      if (!actor || !actor.isActive) {
+        return unauthorized(res, 'Invalid or expired token');
+      }
+    } else {
+      actor = await prisma.user.findUnique({
+        where: { id: decoded.id },
+        select: { id: true, role: true },
+      });
+
+      if (!actor || actor.role !== decoded.role) {
+        return unauthorized(res, 'Invalid or expired token');
+      }
+    }
+
+    req.actor = { id: actor.id, role: actor.role };
     next();
   } catch (err) {
     return unauthorized(res, 'Invalid or expired token');

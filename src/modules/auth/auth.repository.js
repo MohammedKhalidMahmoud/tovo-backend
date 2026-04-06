@@ -40,7 +40,7 @@ const findRefreshToken = (token) =>
   prisma.refreshToken.findFirst({ where: { token } });
 
 const deleteRefreshToken = (token) =>
-  prisma.refreshToken.delete({ where: { token } });
+  prisma.refreshToken.deleteMany({ where: { token } });
 
 const deleteAllRefreshTokens = (userId) =>
   prisma.refreshToken.deleteMany({ where: { userId } });

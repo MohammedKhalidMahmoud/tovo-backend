@@ -131,8 +131,11 @@
 /auth/logout:
   post:
     tags: [Auth]
-    summary: Logout and invalidate refresh token
-    description: Invalidates the refresh token. Optionally pass `fcm_token` to deregister the device from push notifications.
+    summary: Logout the authenticated actor
+    description: >
+      Requires a bearer access token. If `refreshToken` is provided, it must belong to the same
+      authenticated actor and will be revoked. If `fcm_token` is provided, only a device token
+      owned by the authenticated actor will be deregistered.
     security: [{ BearerAuth: [] }]
     requestBody:
       content:
@@ -143,6 +146,8 @@
               fcm_token: { type: string, description: FCM device token to deregister }
     responses:
       '200': { description: Logged out }
+      '401': { description: Invalid or expired access/refresh token }
+      '403': { description: Refresh token does not belong to the authenticated actor }
 
 /auth/token/refresh:
   post:
@@ -165,12 +170,14 @@
               properties:
                 data:
                   properties:
-                    access_token: { type: string }
+                    accessToken: { type: string }
+      '401': { description: Refresh token is invalid or expired }
 
 /auth/otp/send:
   post:
     tags: [Auth]
     summary: Send OTP to phone
+    description: Generates a 6-digit OTP for the supplied phone number. The OTP is not returned in the API response.
     requestBody:
       required: true
       content:
@@ -180,7 +187,7 @@
             properties:
               phone: { type: string }
     responses:
-      '200': { description: OTP sent }
+      '200': { description: OTP generated successfully }
 
 /auth/otp/verify:
   post:
@@ -194,7 +201,7 @@
             required: [phone, otp_code]
             properties:
               phone: { type: string }
-              otp_code: { type: string, minLength: 6, maxLength: 6 }
+              otp_code: { type: string, minLength: 6, maxLength: 6, pattern: '^[0-9]{6}$' }
     responses:
       '200': { description: OTP verified }
       '400': { description: Invalid or expired OTP }
