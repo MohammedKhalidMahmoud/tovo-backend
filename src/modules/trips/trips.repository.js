@@ -10,11 +10,13 @@ const TRIP_INCLUDE = {
       name: true,
       baseFare: true,
       fixedSurcharge: true,
+      perStopSurcharge: true,
       requiresSenderCode: true,
       requiresReceiverCode: true,
       maxWeightKg: true,
     },
   },
+  stops: { orderBy: { order: 'asc' } },
   coupon:  { select: { id: true, code: true, discount_type: true, discount: true, max_discount: true } },
   rating:  true,
 };
@@ -51,6 +53,9 @@ const findNewRequests = (driverId) =>
 const updateTrip = (id, data) =>
   prisma.trip.update({ where: { id }, data, include: TRIP_INCLUDE });
 
+const updateTripStop = (tripId, stopId, data) =>
+  prisma.tripStop.updateMany({ where: { id: stopId, tripId }, data });
+
 // Upsert so double-declining is harmless
 const recordDecline = (tripId, driverId) =>
   prisma.tripDecline.upsert({
@@ -75,5 +80,5 @@ module.exports = {
   TRIP_INCLUDE,
   createTrip, findTripById, findTripsByUser,
   findTripsByDriver, findNewRequests, updateTrip, recordDecline,
-  createRating, findRatingsByTrip, findDriverRatings,
+  updateTripStop, createRating, findRatingsByTrip, findDriverRatings,
 };

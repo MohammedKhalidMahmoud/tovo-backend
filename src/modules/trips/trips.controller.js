@@ -12,12 +12,13 @@ const {
 
 const estimateFare = async (req, res, next) => {
   try {
-    const { lat_pick, lng_pick, lat_drop, lng_drop } = req.query;
+    const { lat_pick, lng_pick, lat_drop, lng_drop, stops } = req.query;
     const data = await service.estimateFare({
       pickupLat:  parseFloat(lat_pick),
       pickupLng:  parseFloat(lng_pick),
       dropoffLat: parseFloat(lat_drop),
       dropoffLng: parseFloat(lng_drop),
+      stops: stops ? JSON.parse(stops) : [],
     });
     return success(res, data);
   } catch (err) {
@@ -57,6 +58,17 @@ const getUserTrips = async (req, res, next) => {
     const result = await service.getUserTrips(req.actor.id, +page, +per_page);
     return success(res, result.trips, 'Success', 200, paginate(page, per_page, result.total));
   } catch (err) {
+    next(err);
+  }
+};
+
+const addTripStops = async (req, res, next) => {
+  try {
+    const trip = await service.addTripStops(req.params.id, req.actor.id, req.body.stops);
+    return success(res, trip, 'Stops added successfully');
+  } catch (err) {
+    if (err.statusCode) return error(res, err.message, err.statusCode);
+    if (err.status) return error(res, err.message, err.status);
     next(err);
   }
 };
@@ -161,6 +173,17 @@ const endTrip = async (req, res, next) => {
   }
 };
 
+const markStopArrived = async (req, res, next) => {
+  try {
+    const trip = await service.markStopArrived(req.params.id, req.params.stopId, req.actor.id);
+    return success(res, trip, 'Stop marked as arrived');
+  } catch (err) {
+    if (err.statusCode) return error(res, err.message, err.statusCode);
+    if (err.status) return error(res, err.message, err.status);
+    next(err);
+  }
+};
+
 const rateTrip = async (req, res, next) => {
   try {
     const { rating, comment } = req.body;
@@ -193,7 +216,7 @@ const getNearbyCaptains = (req, res, next) => {
 };
 
 module.exports = {
-  estimateFare, getActiveRegions, createTrip, getUserTrips, getTripById, cancelTrip,
-  getCaptainTrips, getNewRequests, acceptTrip, declineTrip, startTrip, endTrip,
+  estimateFare, getActiveRegions, createTrip, getUserTrips, addTripStops, getTripById, cancelTrip,
+  getCaptainTrips, getNewRequests, acceptTrip, declineTrip, startTrip, endTrip, markStopArrived,
   rateTrip, getCaptainRatings, getNearbyCaptains,
 };

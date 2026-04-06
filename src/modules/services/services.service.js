@@ -27,6 +27,7 @@ exports.createService = async ({
   name,
   baseFare = 0,
   fixedSurcharge = 0,
+  perStopSurcharge = 0,
   isActive = true,
   requiresSenderCode,
   requiresReceiverCode,
@@ -38,6 +39,7 @@ exports.createService = async ({
         name,
         baseFare: Number(baseFare) || 0,
         fixedSurcharge: Number(fixedSurcharge) || 0,
+        perStopSurcharge: Number(perStopSurcharge) || 0,
         isActive: normalizeBoolean(isActive) ?? true,
         ...(requiresSenderCode !== undefined && { requiresSenderCode: normalizeBoolean(requiresSenderCode) }),
         ...(requiresReceiverCode !== undefined && { requiresReceiverCode: normalizeBoolean(requiresReceiverCode) }),
@@ -52,12 +54,13 @@ exports.createService = async ({
   }
 };
 
-exports.updateService = async (id, { name, baseFare, fixedSurcharge, isActive, requiresSenderCode, requiresReceiverCode, maxWeightKg }) => {
+exports.updateService = async (id, { name, baseFare, fixedSurcharge, perStopSurcharge, isActive, requiresSenderCode, requiresReceiverCode, maxWeightKg }) => {
   await exports.getService(id);
   const data = {};
   if (name     !== undefined) data.name     = name;
   if (baseFare !== undefined) data.baseFare = parseFloat(baseFare);
   if (fixedSurcharge !== undefined) data.fixedSurcharge = parseFloat(fixedSurcharge);
+  if (perStopSurcharge !== undefined) data.perStopSurcharge = parseFloat(perStopSurcharge);
   if (isActive !== undefined && isActive !== null) data.isActive = normalizeBoolean(isActive);
   if (requiresSenderCode !== undefined) data.requiresSenderCode = normalizeBoolean(requiresSenderCode);
   if (requiresReceiverCode !== undefined) data.requiresReceiverCode = normalizeBoolean(requiresReceiverCode);

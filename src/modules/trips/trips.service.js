@@ -30,29 +30,141 @@ const haversineKm = (lat1, lng1, lat2, lng2) => {
 const FARE_PER_KM = Number(process.env.FARE_PER_KM) || 5.0;
 const roundMoney = (value) => +Number(value).toFixed(2);
 const getFixedSurchargeAmount = (service) => roundMoney(service?.fixedSurcharge ?? 0);
+const getPerStopSurchargeAmount = (service) => roundMoney(service?.perStopSurcharge ?? 0);
+const ACTIVE_PRE_START_STATUSES = ['searching', 'matched', 'on_way'];
 
-const estimateFare = async ({ pickupLat, pickupLng, dropoffLat, dropoffLng }) => {
-  const distanceKm = haversineKm(pickupLat, pickupLng, dropoffLat, dropoffLng);
+const normalizeStops = (stops = [], startOrder = 1) =>
+  stops.map((stop, index) => ({
+    order: startOrder + index,
+    lat: Number(stop.lat),
+    lng: Number(stop.lng),
+    address: String(stop.address).trim(),
+  }));
 
+const calculateRouteDistanceKm = ({ pickupLat, pickupLng, dropoffLat, dropoffLng, stops = [] }) => {
+  const routePoints = [
+    { lat: pickupLat, lng: pickupLng },
+    ...stops.map((stop) => ({ lat: Number(stop.lat), lng: Number(stop.lng) })),
+    { lat: dropoffLat, lng: dropoffLng },
+  ];
+
+  let totalDistanceKm = 0;
+  for (let i = 0; i < routePoints.length - 1; i += 1) {
+    totalDistanceKm += haversineKm(
+      routePoints[i].lat,
+      routePoints[i].lng,
+      routePoints[i + 1].lat,
+      routePoints[i + 1].lng,
+    );
+  }
+
+  return totalDistanceKm;
+};
+
+const calculateTripPricing = async ({
+  service,
+  pickupLat,
+  pickupLng,
+  dropoffLat,
+  dropoffLng,
+  stops = [],
+}) => {
+  const distanceKm = calculateRouteDistanceKm({
+    pickupLat,
+    pickupLng,
+    dropoffLat,
+    dropoffLng,
+    stops,
+  });
+
+  const driverEarnings = roundMoney(distanceKm * FARE_PER_KM);
+  const { commission } = await commissionService.calculateCommission(driverEarnings);
+  const fixedSurcharge = getFixedSurchargeAmount(service);
+  const perStopSurcharge = getPerStopSurchargeAmount(service);
+  const stopsSurcharge = roundMoney(stops.length * perStopSurcharge);
+  const originalFare = roundMoney(driverEarnings + commission + fixedSurcharge + stopsSurcharge);
+
+  return {
+    distanceKm,
+    driverEarnings,
+    commission,
+    fixedSurcharge,
+    perStopSurcharge,
+    stopsSurcharge,
+    originalFare,
+    finalFare: originalFare,
+    discountAmount: 0,
+  };
+};
+
+const recalculateCouponFare = async (trip, originalFare) => {
+  if (!trip.couponId) {
+    return {
+      originalFare,
+      finalFare: originalFare,
+      discountAmount: 0,
+    };
+  }
+
+  const coupon = await prisma.coupon.findUnique({ where: { id: trip.couponId } });
+  if (!coupon) {
+    throw { status: 422, message: 'Applied coupon is no longer available' };
+  }
+
+  let discountAmount =
+    coupon.discount_type === 'percentage'
+      ? (originalFare * Number(coupon.discount ?? 0)) / 100
+      : Number(coupon.discount ?? 0);
+
+  if (coupon.max_discount != null) {
+    discountAmount = Math.min(discountAmount, Number(coupon.max_discount));
+  }
+
+  discountAmount = roundMoney(Math.max(0, Math.min(discountAmount, originalFare)));
+  const finalFare = roundMoney(originalFare - discountAmount);
+
+  return {
+    originalFare,
+    finalFare,
+    discountAmount,
+  };
+};
+
+const assertStopsCanBeModified = (trip, userId) => {
+  if (!trip) throw { status: 404, message: 'Trip not found' };
+  if (trip.userId !== userId) throw { status: 403, message: 'Access denied' };
+  if (trip.startedAt || !ACTIVE_PRE_START_STATUSES.includes(trip.status)) {
+    throw { status: 422, message: 'Stops can only be added before the trip starts' };
+  }
+};
+
+const estimateFare = async ({ pickupLat, pickupLng, dropoffLat, dropoffLng, stops = [] }) => {
   const services = await serviceRepo.findAll();
   const estimates = await Promise.all(
     services.map(async (service) => {
-      const driverEarnings = roundMoney(distanceKm * FARE_PER_KM);
-      const { commission } = await commissionService.calculateCommission(driverEarnings);
-      const fixedSurcharge = getFixedSurchargeAmount(service);
-      const originalFare = roundMoney(driverEarnings + commission + fixedSurcharge);
+      const pricing = await calculateTripPricing({
+        service,
+        pickupLat,
+        pickupLng,
+        dropoffLat,
+        dropoffLng,
+        stops,
+      });
 
       return {
         serviceId:     service.id,
         serviceName:   service.name,
-        distanceKm:    +distanceKm.toFixed(2),
+        distanceKm:    +pricing.distanceKm.toFixed(2),
         farePerKm:     FARE_PER_KM,
-        fixedSurcharge,
-        originalFare,
-        finalFare:     originalFare,
-        discountAmount: 0,
-        commission,
-        driverEarnings,
+        fixedSurcharge: pricing.fixedSurcharge,
+        perStopSurcharge: pricing.perStopSurcharge,
+        stopsCount: stops.length,
+        stopsSurcharge: pricing.stopsSurcharge,
+        originalFare: pricing.originalFare,
+        finalFare: pricing.finalFare,
+        discountAmount: pricing.discountAmount,
+        commission: pricing.commission,
+        driverEarnings: pricing.driverEarnings,
         currency:      'EGP',
       };
     })
@@ -90,7 +202,18 @@ const getNearbyCaptains = (pickupLat, pickupLng, radiusKm = 10, serviceId = null
 //  CREATE TRIP
 // ─────────────────────────────────────────────────────────────────────────────
 const createTrip = async (userId, body) => {
-  const { pickup_lat, pickup_lng, pickup_address, dropoff_lat, dropoff_lng, dropoff_address, payment_type, payment_method_id, service_id } = body;
+  const {
+    pickup_lat,
+    pickup_lng,
+    pickup_address,
+    dropoff_lat,
+    dropoff_lng,
+    dropoff_address,
+    payment_type,
+    payment_method_id,
+    service_id,
+    stops = [],
+  } = body;
 
   const svc = await serviceRepo.findById(service_id);
   if (!svc || !svc.isActive) throw Object.assign(new Error('Service not found or inactive'), { statusCode: 404 });
@@ -99,11 +222,15 @@ const createTrip = async (userId, body) => {
 
   await validatePickupInRegion(pickup_lat, pickup_lng);
 
-  const distanceKm     = haversineKm(pickup_lat, pickup_lng, dropoff_lat, dropoff_lng);
-  const driverEarnings = roundMoney(distanceKm * FARE_PER_KM);
-  const { commission } = await commissionService.calculateCommission(driverEarnings);
-  const fixedSurcharge = getFixedSurchargeAmount(svc);
-  const originalFare   = roundMoney(driverEarnings + commission + fixedSurcharge);
+  const normalizedStops = normalizeStops(stops);
+  const pricing = await calculateTripPricing({
+    service: svc,
+    pickupLat: pickup_lat,
+    pickupLng: pickup_lng,
+    dropoffLat: dropoff_lat,
+    dropoffLng: dropoff_lng,
+    stops: normalizedStops,
+  });
 
   const trip = await repo.createTrip({
     user:          { connect: { id: userId } },
@@ -115,14 +242,24 @@ const createTrip = async (userId, body) => {
     dropoffLat:     dropoff_lat,
     dropoffLng:     dropoff_lng,
     dropoffAddress: dropoff_address,
-    distanceKm:     +distanceKm.toFixed(2),
-    finalFare:      originalFare,
-    originalFare,
+    distanceKm:     +pricing.distanceKm.toFixed(2),
+    finalFare:      pricing.finalFare,
+    originalFare:   pricing.originalFare,
     discountAmount: 0,
-    commission,
-    driverEarnings,
+    commission:     pricing.commission,
+    driverEarnings: pricing.driverEarnings,
     paymentType:    payment_type,
     status:         'searching',
+    stops: normalizedStops.length
+      ? {
+          create: normalizedStops.map((stop) => ({
+            order: stop.order,
+            lat: stop.lat,
+            lng: stop.lng,
+            address: stop.address,
+          })),
+        }
+      : undefined,
   });
 
   return trip;
@@ -142,6 +279,40 @@ const getUserTrips = async (userId, page = 1, perPage = 20) => {
   const skip = (page - 1) * perPage;
   const [trips, total] = await repo.findTripsByUser(userId, skip, perPage);
   return { trips, total, page, perPage };
+};
+
+const addTripStops = async (tripId, userId, stops) => {
+  const trip = await repo.findTripById(tripId);
+  assertStopsCanBeModified(trip, userId);
+
+  const newStops = normalizeStops(stops, trip.stops.length + 1);
+  const allStops = [...trip.stops, ...newStops];
+  const pricing = await calculateTripPricing({
+    service: trip.service,
+    pickupLat: trip.pickupLat,
+    pickupLng: trip.pickupLng,
+    dropoffLat: trip.dropoffLat,
+    dropoffLng: trip.dropoffLng,
+    stops: allStops,
+  });
+  const fareData = await recalculateCouponFare(trip, pricing.originalFare);
+
+  return repo.updateTrip(tripId, {
+    distanceKm: +pricing.distanceKm.toFixed(2),
+    originalFare: fareData.originalFare,
+    finalFare: fareData.finalFare,
+    discountAmount: fareData.discountAmount,
+    commission: pricing.commission,
+    driverEarnings: pricing.driverEarnings,
+    stops: {
+      create: newStops.map((stop) => ({
+        order: stop.order,
+        lat: stop.lat,
+        lng: stop.lng,
+        address: stop.address,
+      })),
+    },
+  });
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -196,6 +367,25 @@ const startTrip = async (tripId, driverId) => {
   const updated = await repo.updateTrip(tripId, { status: 'in_progress', startedAt: new Date() });
 
   return updated;
+};
+
+const markStopArrived = async (tripId, stopId, driverId) => {
+  const trip = await repo.findTripById(tripId);
+  if (!trip) throw { status: 404, message: 'Trip not found' };
+  if (trip.driverId !== driverId) throw { status: 403, message: 'Access denied' };
+  if (trip.status !== 'in_progress') throw { status: 422, message: 'Trip is not in progress' };
+
+  const stop = trip.stops.find((item) => item.id === stopId);
+  if (!stop) throw { status: 404, message: 'Stop not found' };
+  if (stop.arrivedAt) return trip;
+
+  const nextPendingStop = trip.stops.find((item) => !item.arrivedAt);
+  if (nextPendingStop && nextPendingStop.id !== stopId) {
+    throw { status: 422, message: 'Stops must be marked in order' };
+  }
+
+  await repo.updateTripStop(tripId, stopId, { arrivedAt: new Date() });
+  return repo.findTripById(tripId);
 };
 
 const endTrip = async (tripId, driverId) => {
@@ -289,7 +479,7 @@ const getCaptainRatings = async (driverId, page = 1, perPage = 20) => {
 };
 
 module.exports = {
-  estimateFare, getNearbyCaptains, createTrip, getTripById, getUserTrips, cancelTrip,
-  getCaptainTrips, getNewRequests, acceptTrip, declineTrip, startTrip, endTrip,
+  estimateFare, getNearbyCaptains, createTrip, getTripById, getUserTrips, addTripStops, cancelTrip,
+  getCaptainTrips, getNewRequests, acceptTrip, declineTrip, startTrip, markStopArrived, endTrip,
   rateTrip, getCaptainRatings,
 };

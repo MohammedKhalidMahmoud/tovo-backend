@@ -41,6 +41,10 @@ router.patch('/me/trips/:id/accept',       ...captainOnly, [param('id').isUUID()
 router.patch('/me/trips/:id/decline',      ...captainOnly, [param('id').isUUID()], validate, tripsController.declineTrip);
 router.patch('/me/trips/:id/start',        ...captainOnly, [param('id').isUUID()], validate, tripsController.startTrip);
 router.patch('/me/trips/:id/end',          ...captainOnly, [param('id').isUUID()], validate, tripsController.endTrip);
+router.patch('/me/trips/:id/stops/:stopId/arrive', ...captainOnly, [
+  param('id').isUUID(),
+  param('stopId').isUUID(),
+], validate, tripsController.markStopArrived);
 router.post('/me/trips/:tripId/credit-customer', ...captainOnly, [
   param('tripId').isUUID().withMessage('tripId must be a valid UUID'),
   body('amount').isFloat({ gt: 0 }).withMessage('amount must be a positive number'),

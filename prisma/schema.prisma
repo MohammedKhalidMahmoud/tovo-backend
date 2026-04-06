@@ -213,6 +213,7 @@ model Trip {
   coupon          Coupon?        @relation(fields: [couponId], references: [id])
   paymentMethod   PaymentMethod? @relation(fields: [paymentMethodId], references: [id])
   rating              Rating?
+  stops               TripStop[]
   declines            TripDecline[]
   walletTransactions  WalletTransaction[]
   commissionLog       CommissionLog?
@@ -222,6 +223,22 @@ model Trip {
   @@index([couponId])
   @@index([status])
   @@map("trips")
+}
+
+model TripStop {
+  id        String    @id @default(uuid())
+  tripId    String
+  order     Int
+  lat       Float
+  lng       Float
+  address   String
+  arrivedAt DateTime?
+
+  trip      Trip      @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  @@unique([tripId, order])
+  @@index([tripId])
+  @@map("trip_stops")
 }
 
 model TripDecline {
@@ -555,6 +572,7 @@ model Service {
   name                 String   @unique
   baseFare             Decimal  @default(0) @db.Decimal(10, 2)
   fixedSurcharge       Decimal  @default(0) @db.Decimal(10, 2)
+  perStopSurcharge     Decimal  @default(0) @db.Decimal(10, 2)
   imageUrl             String?  @db.Text
   isActive             Boolean  @default(true)
   requiresSenderCode   Boolean? @default(false)

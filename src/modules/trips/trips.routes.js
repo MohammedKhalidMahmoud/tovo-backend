@@ -17,6 +17,22 @@ router.get('/estimate', [
   query('lng_pick').isFloat().withMessage('lng_pick must be a valid float'),
   query('lat_drop').isFloat().withMessage('lat_drop must be a valid float'),
   query('lng_drop').isFloat().withMessage('lng_drop must be a valid float'),
+  query('stops').optional().custom((value) => {
+    let parsed;
+    try {
+      parsed = JSON.parse(value);
+    } catch (err) {
+      throw new Error('stops must be valid JSON');
+    }
+    if (!Array.isArray(parsed)) throw new Error('stops must be a JSON array');
+    parsed.forEach((stop) => {
+      if (typeof stop !== 'object' || stop == null) throw new Error('Each stop must be an object');
+      if (!Number.isFinite(Number(stop.lat))) throw new Error('Each stop.lat must be a number');
+      if (!Number.isFinite(Number(stop.lng))) throw new Error('Each stop.lng must be a number');
+      if (typeof stop.address !== 'string' || !stop.address.trim()) throw new Error('Each stop.address is required');
+    });
+    return true;
+  }),
 ], validate, controller.estimateFare);
 
 // ── User: Create & List Trips ─────────────────────────────────────────────────
@@ -29,9 +45,26 @@ router.post('/', ...userOnly, [
   body('dropoff_address').notEmpty(),
   body('service_id').notEmpty().isUUID().withMessage('service_id is required and must be a valid UUID'),
   body('payment_type').isIn(['cash', 'instapay']).withMessage('payment_type must be cash or instapay'),
+  body('stops').optional().custom((value) => {
+    if (!Array.isArray(value)) throw new Error('stops must be an array');
+    value.forEach((stop) => {
+      if (typeof stop !== 'object' || stop == null) throw new Error('Each stop must be an object');
+      if (!Number.isFinite(Number(stop.lat))) throw new Error('Each stop.lat must be a number');
+      if (!Number.isFinite(Number(stop.lng))) throw new Error('Each stop.lng must be a number');
+      if (typeof stop.address !== 'string' || !stop.address.trim()) throw new Error('Each stop.address is required');
+    });
+    return true;
+  }),
 ], validate, controller.createTrip);
 
 router.get('/', ...userOnly, controller.getUserTrips);
+router.post('/:id/stops', ...userOnly, [
+  param('id').isUUID(),
+  body('stops').isArray({ min: 1 }).withMessage('stops must be a non-empty array'),
+  body('stops.*.lat').isFloat(),
+  body('stops.*.lng').isFloat(),
+  body('stops.*.address').notEmpty(),
+], validate, controller.addTripStops);
 
 // ── Nearby Captains (must be before /:id) ────────────────────────────────────
 router.get('/nearby-captains', authenticate, [
