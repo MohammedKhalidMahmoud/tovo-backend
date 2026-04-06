@@ -140,7 +140,10 @@ const login = async ({ identifier, email: emailField, password, role }) => {
   await repo.createRefreshToken(tokenData);
 
   const { passwordHash: _, ...safeActor } = actor;
-  return { accessToken, refreshToken, user: safeActor, role };
+  const normalizedActor = role === 'admin'
+    ? { ...safeActor, adminRole: safeActor.role, role: 'admin' }
+    : safeActor;
+  return { accessToken, refreshToken, user: normalizedActor, role };
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -161,7 +164,12 @@ const adminLogin = async ({ email, password }) => {
   await repo.createRefreshToken({ token: refreshToken, expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) });
 
   const { passwordHash: _, ...safeActor } = actor;
-  return { accessToken, refreshToken, user: safeActor, role: 'admin' };
+  return {
+    accessToken,
+    refreshToken,
+    user: { ...safeActor, adminRole: safeActor.role, role: 'admin' },
+    role: 'admin',
+  };
 };
 
 // ─────────────────────────────────────────────────────────────────────────────

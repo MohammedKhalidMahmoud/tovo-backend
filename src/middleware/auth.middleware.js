@@ -37,7 +37,11 @@ const authenticate = async (req, res, next) => {
       }
     }
 
-    req.actor = { id: actor.id, role: actor.role };
+    if (decoded.role === 'admin') {
+      req.actor = { id: actor.id, role: 'admin', adminRole: actor.role };
+    } else {
+      req.actor = { id: actor.id, role: actor.role };
+    }
     next();
   } catch (err) {
     return unauthorized(res, 'Invalid or expired token');
