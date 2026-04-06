@@ -19,10 +19,35 @@ const upsertDeviceToken = (data) =>
 const createNotification = (data) =>
   prisma.notification.create({ data });
 
+const createNotificationsBulk = (userIds, title, body) => {
+  if (!userIds.length) return Promise.resolve({ count: 0 });
+  return prisma.notification.createMany({
+    data: userIds.map((userId) => ({ userId, title, body })),
+  });
+};
+
 // ── Device token helpers for FCM ──────────────────────────────────────────────
 
 const getTokensByUserId = (userId) =>
   prisma.deviceToken.findMany({ where: { userId }, select: { token: true } });
+
+const findRecipientsByAudience = (audience) => {
+  const where = {
+    notificationsEnabled: true,
+  };
+
+  if (audience === 'drivers') where.role = 'driver';
+  if (audience === 'riders') where.role = 'customer';
+
+  return prisma.user.findMany({
+    where,
+    select: {
+      id: true,
+      role: true,
+      deviceTokens: { select: { token: true } },
+    },
+  });
+};
 
 /** Remove invalid/expired tokens returned by FCM as failures */
 const deleteTokensByList = (tokens) =>
@@ -34,6 +59,6 @@ const deleteToken = (token) =>
 
 module.exports = {
   findByUser, markRead, markAllRead, upsertDeviceToken,
-  createNotification,
-  getTokensByUserId, deleteTokensByList, deleteToken,
+  createNotification, createNotificationsBulk,
+  getTokensByUserId, findRecipientsByAudience, deleteTokensByList, deleteToken,
 };

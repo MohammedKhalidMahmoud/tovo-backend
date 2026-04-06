@@ -30,4 +30,11 @@ router.post('/send-to-driver', authenticate, authorize('admin'), [
   body('data').optional().isObject(),
 ], validate, controller.sendToDriver);
 
+router.post('/send-to-audience', authenticate, authorize('admin'), [
+  body('audience').isIn(['drivers', 'riders', 'all']),
+  body('title').notEmpty(),
+  body('body').notEmpty(),
+  body('data').optional().isObject(),
+], validate, controller.sendToAudience);
+
 module.exports = router;

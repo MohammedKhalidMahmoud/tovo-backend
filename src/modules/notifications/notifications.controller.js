@@ -49,4 +49,20 @@ const sendToDriver = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-module.exports = { getNotifications, markRead, markAllRead, registerDeviceToken, sendToUser, sendToDriver };
+const sendToAudience = async (req, res, next) => {
+  try {
+    const { audience, title, body, data } = req.body;
+    const result = await service.sendToAudience(audience, title, body, data);
+    return success(res, result, 'Notifications sent');
+  } catch (err) { next(err); }
+};
+
+module.exports = {
+  getNotifications,
+  markRead,
+  markAllRead,
+  registerDeviceToken,
+  sendToUser,
+  sendToDriver,
+  sendToAudience,
+};

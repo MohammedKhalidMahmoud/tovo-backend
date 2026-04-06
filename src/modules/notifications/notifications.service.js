@@ -43,6 +43,21 @@ const sendBulk = async (tokens, title, body, data = {}) => {
   return _sendAndClean(tokens, title, body, data);
 };
 
+const sendToAudience = async (audience, title, body, data = {}) => {
+  const recipients = await repo.findRecipientsByAudience(audience);
+  const userIds = recipients.map((recipient) => recipient.id);
+  const tokens = recipients.flatMap((recipient) => recipient.deviceTokens.map((record) => record.token));
+
+  await repo.createNotificationsBulk(userIds, title, body);
+  const pushResult = await sendBulk(tokens, title, body, data);
+
+  return {
+    audience,
+    recipients: userIds.length,
+    ...pushResult,
+  };
+};
+
 const createAndSend = async (userId, title, body, data = {}) => {
   await repo.createNotification({ userId, title, body });
   return sendToUser(userId, title, body, data);
@@ -50,5 +65,5 @@ const createAndSend = async (userId, title, body, data = {}) => {
 
 module.exports = {
   getNotifications, markRead, markAllRead, registerDeviceToken,
-  sendToUser, sendToDriver, sendToActor, sendBulk, createAndSend,
+  sendToUser, sendToDriver, sendToActor, sendBulk, sendToAudience, createAndSend,
 };
