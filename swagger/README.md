@@ -27,10 +27,6 @@ swagger/
 │   ├── paths.yaml            ← /captains/me, duty, wallet, insurance, trips
 │   └── schemas.yaml          ← Captain, DriverCreate, DriverUpdate
 │
-├── complaints/
-│   ├── paths.yaml            ← /admin/complaints CRUD + respond/resolve
-│   └── schemas.yaml          ← Complaint
-│
 ├── coupons/
 │   ├── paths.yaml            ← /promotions, /promotions/coupons/validate, /admin/promotions/coupons
 │   └── schemas.yaml          ← Promotion

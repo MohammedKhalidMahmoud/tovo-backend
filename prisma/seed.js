@@ -1040,28 +1040,6 @@ async function main() {
   });
   console.log('Seeded FAQs');
 
-  await prisma.sosAlert.createMany({
-    data: [
-      {
-        userId: ahmed.id,
-        lat: 30.0444,
-        lng: 31.2357,
-        message: 'Passenger reported feeling unsafe during an in-progress trip.',
-        status: 'resolved',
-        resolvedAt: daysAgo(2),
-      },
-      {
-        userId: sara.id,
-        lat: 30.0626,
-        lng: 31.2197,
-        message: 'Emergency assistance requested from the trip screen.',
-        status: 'pending',
-        resolvedAt: null,
-      },
-    ],
-  });
-  console.log('Seeded SOS alerts');
-
   console.log('\nSeed complete.\n');
   console.log('Test credentials (passwords: password123)');
   console.log('Admin: admin@example.com');

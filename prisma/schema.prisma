@@ -82,7 +82,6 @@ model User {
   deviceTokens    DeviceToken[]
   otps            Otp[]
   refreshTokens   RefreshToken[]
-  sosAlerts       SosAlert[]
 
   @@map("users")
 }
@@ -497,25 +496,6 @@ model Faq {
   updatedAt DateTime @updatedAt
 
   @@map("faqs")
-}
-
-// ─────────────────────────────────────────────
-//  SOS ALERT
-// ─────────────────────────────────────────────
-
-model SosAlert {
-  id         String    @id @default(uuid())
-  userId     String?
-  lat        Float?
-  lng        Float?
-  message    String?
-  status     String    @default("pending")
-  resolvedAt DateTime?
-  createdAt  DateTime  @default(now())
-
-  user       User?     @relation(fields: [userId], references: [id])
-
-  @@map("sos_alerts")
 }
 
 // ─────────────────────────────────────────────

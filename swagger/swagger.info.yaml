@@ -64,17 +64,11 @@ tags:
   - name: Notifications
     description: Push notifications
 
-  - name: Complaints
-    description: Complaints management
-
   - name: Support
     description: Support tickets
 
   - name: FAQs
     description: Frequently asked questions
-
-  - name: SOS
-    description: Emergency alerts
 
   - name: Dashboard
     description: Public & admin dashboard metrics

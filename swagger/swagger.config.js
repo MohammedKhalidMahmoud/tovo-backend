@@ -66,10 +66,8 @@ export function configureSwagger(app) {
   const paymentsSchemas = YAML.load(path.resolve(__dirname, "./payments/schemas.yaml"));
   const couponsSchemas = YAML.load(path.resolve(__dirname, "./coupons/schemas.yaml"));
   const notificationsSchemas = YAML.load(path.resolve(__dirname, "./notifications/schemas.yaml"));
-  const complaintsSchemas = YAML.load(path.resolve(__dirname, "./complaints/schemas.yaml"));
   const supportSchemas = YAML.load(path.resolve(__dirname, "./support/schemas.yaml"));
   const faqsSchemas = YAML.load(path.resolve(__dirname, "./faqs/schemas.yaml"));
-  const sosSchemas = YAML.load(path.resolve(__dirname, "./sos/schemas.yaml"));
   const dashboardSchemas = YAML.load(path.resolve(__dirname, "./dashboard/schemas.yaml"));
   const analyticsSchemas = YAML.load(path.resolve(__dirname, "./analytics/schemas.yaml"));
   
@@ -93,10 +91,8 @@ export function configureSwagger(app) {
   
   const couponsPaths = YAML.load(path.resolve(__dirname, "./coupons/paths.yaml"));
   const notificationsPaths = YAML.load(path.resolve(__dirname, "./notifications/paths.yaml"));
-  const complaintsPaths = YAML.load(path.resolve(__dirname, "./complaints/paths.yaml"));
   const supportPaths = YAML.load(path.resolve(__dirname, "./support/paths.yaml"));
   const faqsPaths = YAML.load(path.resolve(__dirname, "./faqs/paths.yaml"));
-  const sosPaths = YAML.load(path.resolve(__dirname, "./sos/paths.yaml"));
   const dashboardPaths = YAML.load(path.resolve(__dirname, "./dashboard/paths.yaml"));
   const analyticsPaths = YAML.load(path.resolve(__dirname, "./analytics/paths.yaml"));
   
@@ -119,10 +115,8 @@ export function configureSwagger(app) {
     ...paymentsSchemas,
     ...couponsSchemas,
     ...notificationsSchemas,
-    ...complaintsSchemas,
     ...supportSchemas,
     ...faqsSchemas,
-    ...sosSchemas,
     ...dashboardSchemas,
     ...analyticsSchemas,
     ...settingsSchemas,
@@ -145,10 +139,8 @@ export function configureSwagger(app) {
     ...paymentsPaths,
     ...couponsPaths,
     ...notificationsPaths,
-    ...complaintsPaths,
     ...supportPaths,
     ...faqsPaths,
-    ...sosPaths,
     ...dashboardPaths,
     ...analyticsPaths,
     ...settingsPaths,

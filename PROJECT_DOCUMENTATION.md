@@ -524,7 +524,6 @@ tovo-backend/
 │       ├── support/
 │       ├── faqs/
 │       ├── sos/
-│       ├── complaints/
 │       ├── analytics/
 │       ├── settings/
 │       └── dashboard/
@@ -1265,7 +1264,7 @@ Example stored filename: `avatar-1741427600000-482910372.jpg`. Avatar URLs retur
 ## 10. Future Extensions
 
 ### Known Pending Work
-- **Admin routes not fully mounted**: `admin.routes.js` is commented out in `app.js`. Complaints and some other admin sub-routes have controller/service code written but not wired up.
+- **Legacy admin route aggregator remains commented**: `admin.routes.js` is still commented out in `app.js` while admin endpoints are mounted per-feature. Consider removing the unused aggregator file or fully adopting it to avoid confusion.
 - **`regions.service.js` fix**: The `status` field must be cast to `Boolean` when creating a region — currently causes a Prisma type error when client sends `1` instead of `true`.
 - **Admin authentication**: The admin module uses `authorize('admin')` but the JWT payload role needs to match. Admin login flow should be verified end-to-end.
 - **Wallet top-up / driver withdrawal**: No endpoint exists for users to top up their wallet or drivers to request a payout. Requires payment gateway integration.
