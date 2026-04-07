@@ -1,11 +1,26 @@
 # Tovo Backend — Project Documentation
 
-> Last updated: 2026-03-25 (rev 5)
+> Last updated: 2026-04-07 (rev 6)
 > Purpose: Persistent technical reference for developers and AI assistants continuing development across sessions.
 
 ---
 
 ## Changelog
+### 2026-04-07 (rev 6) - Documentation Sync With Current Backend Surface
+
+#### Problem
+`PROJECT_DOCUMENTATION.md` had drifted from the current codebase in several critical areas: route mounts (`/drivers` vs `/captains`), payment capabilities (cash-only), database models (driver profile split), and newer modules/features (trip sharing + toll gates).
+
+#### Solution
+- Updated API module sections to match mounted routes in `src/app.js`
+- Replaced legacy captain-centric endpoint docs with current driver-facing paths under `/api/v1/drivers`
+- Removed stale `PaymentMethod`/card-payment assumptions and documented cash-only payment behavior
+- Added missing trip-share endpoints (`POST /trips/:id/share-link`, `GET /trips/share/:token`) and share-token behavior
+- Added toll gates module coverage (`/api/v1/admin/toll-gates`)
+- Updated schema documentation to include `DriverProfile` as the driver-only data model linked 1:1 with `User`
+- Corrected business-flow descriptions to match current service/controller logic
+
+---
 ### 2026-03-25 (rev 5) â€” Fare Field Rename + Centralized Socket/Push Dispatch
 
 #### Problem
@@ -367,27 +382,28 @@ Server was consuming excessive CPU and memory after deployment due to several is
 ## 1. Project Overview
 
 ### Purpose
-Tovo is a **ride-hailing and package delivery** REST API backend. It connects riders (users) with drivers (captains) in real time, handles the full trip lifecycle, processes payments, and provides an admin interface for operations management.
+Tovo is a **ride-hailing and package delivery** REST API backend. It connects riders (customers) with drivers in real time, handles the full trip lifecycle, processes cash-trip settlement, and provides an admin interface for operations management.
 
 ### Main Features
-- User and Captain registration, authentication (JWT + OTP)
+- Customer and driver registration, authentication (JWT + OTP)
 - **Email OTP-based forgot password / reset password** via nodemailer
 - Real-time trip matching via Socket.io
 - Fare estimation using haversine distance formula
 - Service-area region validation (pickup must be inside a defined region)
-- In-memory captain location tracking (zero DB writes for GPS)
+- In-memory driver location tracking (zero DB writes for GPS)
 - Wallet system for balance management, automatic trip settlement, and full transaction history log
-- Payment methods (saved cards) + cash payment support
-- Wallet refund system for card payments (admin-issued, with duplicate guard and transaction log)
+- Cash-only trip payments
 - DB-driven commission rules with admin management panel
-- Automatic captain wallet settlement on trip completion (cash vs card logic)
+- Automatic driver wallet settlement on trip completion (commission deduction + coupon reimbursement when applicable)
 - **Firebase push notifications integrated into all trip lifecycle events** (new trip, accepted, started, completed, cancelled, rated)
 - In-app notification history with read/unread tracking
-- SOS alerts from users or captains
+- Trip share links with expiring tokens for public tracking
+- SOS alerts from users or drivers
 - Support ticket system with threaded messages
 - FAQ management
 - Coupon/promotion system
 - Admin analytics and dashboard
+- Toll-gates admin management module
 - Swagger/OpenAPI 3 documentation at `/api/docs`
 
 ### Target Users
@@ -415,7 +431,7 @@ Mobile App / Web Client
    Data Layer          (Repositories → Prisma ORM → MySQL)
         │
    Firebase Admin      (Push Notifications)
-   locationStore       (In-memory captain GPS cache)
+   locationStore       (In-memory driver GPS cache)
 ```
 
 ### Backend Technologies
@@ -451,7 +467,7 @@ HTTP Request
 
 Socket.io Events
   → socket.js auth middleware (JWT verification)
-  → locationStore (in-memory Map — captain GPS)
+  → locationStore (in-memory Map — driver GPS)
   → Emitters called from controllers to push events to rooms:
       emitTripRequest(io, trip, radiusKm)   — queries locationStore, emits trip.new_request to nearby drivers
       emitCaptainMatched(io, userId, trip)  — notifies passenger of driver match
@@ -482,7 +498,7 @@ tovo-backend/
 │   │   └── error.middleware.js    # Global error handler
 │   ├── realtime/
 │   │   ├── socket.js          # Socket.io setup, event handlers, server emitters
-│   │   └── locationStore.js   # In-memory Map for captain GPS (non-persistent)
+│   │   └── locationStore.js   # In-memory Map for driver GPS (non-persistent)
 │   ├── providers/
 │   │   └── fcm.js             # FCM sendMulticast wrapper — handles invalid token cleanup
 │   ├── utils/
@@ -492,10 +508,11 @@ tovo-backend/
 │   └── modules/
 │       ├── auth/
 │       ├── users/
-│       ├── captains/
+│       ├── drivers/
 │       ├── trips/
 │       ├── services/
 │       ├── regions/
+│       ├── toll-gates/
 │       ├── vehicles/
 │       ├── vehicle-models/
 │       ├── wallets/
@@ -529,13 +546,13 @@ Most modules under `src/modules/<name>/` follow this pattern:
 | `<name>.service.js` | Business logic, orchestration, cross-module calls |
 | `<name>.repository.js` | All Prisma queries — only file that touches the DB |
 
-**Rule:** Prisma is only ever accessed inside a repository file. Services never import `prisma` directly (except `trips.service.js` which has two legacy direct queries for rating aggregation and captain totalTrips increment — a known area for cleanup).
+**Rule of thumb:** Prisma should live in repository files. The codebase mostly follows this pattern, but there are still legacy service/controller Prisma calls in some modules.
 
 Some modules now have extra route files for public/admin separation, for example `services.public.routes.js`, `regions.public.routes.js` + `regions.admin.routes.js`, `vehicleModels.public.routes.js` + `vehicleModels.admin.routes.js`, and `support.admin.routes.js`.
 
 ### Key Middleware
 - **`authenticate`** — Verifies `Authorization: Bearer <token>`, attaches `req.actor = { id, role }` to every request.
-- **`authorize(...roles)`** — Role guard, e.g. `authorize('user')`, `authorize('captain')`, `authorize('user', 'captain')`.
+- **`authorize(...roles)`** — Role guard, e.g. `authorize('customer')`, `authorize('driver')`, `authorize('customer', 'driver')`.
 - **`validate`** — Runs after express-validator chains, returns `400 Validation failed` with error array if any field fails.
 - **`errorHandler`** — Global catch-all error middleware, formats unhandled errors as JSON.
 
@@ -564,19 +581,21 @@ Prisma v5 with MySQL. Schema at `prisma/schema.prisma`.
 
 | Model | Table | Description |
 |-------|-------|-------------|
-| `User` | `users` | Both customers and drivers in a single table. Customers ignore driver-only fields (`drivingLicense`, `licenseExpiryDate`, `isOnline`, `rating`, `totalTrips`, `serviceId`). Has wallet, saved addresses, payment methods, trips |
+| `User` | `users` | Shared identity/account model for both customers and drivers (auth fields, profile basics, role, verification, language, notification preferences) |
+| `DriverProfile` | `driver_profiles` | Driver-only fields in a dedicated 1:1 table linked by `userId` (`drivingLicense`, `licenseExpiryDate`, `isOnline`, `rating`, `totalTrips`, `serviceId`) |
 | `AdminUser` | `admin_users` | Separate admin accounts table (not merged into User) with email, passwordHash, isActive, role |
 | `Vehicle` | `vehicles` | One vehicle per driver. Links to VehicleModel. FK: `userId` |
 | `VehicleModel` | `vehicle_models` | Make/model catalogue, linked to a Service |
-| `Service` | `services` | Ride categories (e.g. Economy, Comfort). Has `baseFare` |
-| `Trip` | `trips` | Core trip record with full lifecycle. References `userId` (customer) and `driverId` (driver from same User table). Also stores coupon snapshot fields `couponId?`, `couponCode?`, `originalFare?`, `discountAmount`, and `finalFare?` |
+| `Service` | `services` | Ride categories (e.g. Normal, Comfort, Motorcycle, Packages) and surcharge config |
+| `TollGate` | `toll_gates` | Configurable toll gates with coordinates, fee, and active flag (admin-managed) |
+| `Trip` | `trips` | Core trip record with lifecycle state, pricing fields, optional coupon snapshot, and share-link token fields (`shareToken`, `shareTokenExpiresAt`) |
+| `TripStop` | `trip_stops` | Ordered multi-stop waypoints per trip (`order`, `lat`, `lng`, `address`, `arrivedAt`) |
 | `TripDecline` | `trip_declines` | Composite key `(tripId, driverId)` — tracks which drivers declined |
 | `Rating` | `ratings` | One per trip, customer rates driver (1–5 stars) |
-| `PaymentMethod` | `payment_methods` | Saved cards per user (visa, mastercard, apple_pay) |
 | `Wallet` | `wallets` | Balance for customer or driver. Credited/debited automatically on trip completion |
 | `WalletTransaction` | `wallet_transactions` | Immutable log of every credit/debit on a wallet. Created atomically with every balance change |
 | `CommissionRule` | `commission_rules` | DB-driven global commission rules with type and config JSON |
-| `CommissionLog` | `commission_logs` | Immutable log of platform commission earned per completed trip. One record per trip (`tripId @unique`). Fields: `amount`, `paymentType` (`cash`\|`card`), `serviceId?`, `createdAt` |
+| `CommissionLog` | `commission_logs` | Immutable log of platform commission earned per completed trip. One record per trip (`tripId @unique`). Current trip flow writes `paymentType: "cash"` |
 | `Promotion` | `promotions` | Marketing banners/promotions |
 | `Coupon` | `coupons` | Discount codes with usage limits and expiry. Can be attached to trips; `used_count` increments when discounted trips complete |
 | `SupportTicket` | `support_tickets` | Ticket raised by user or driver |
@@ -595,7 +614,6 @@ Prisma v5 with MySQL. Schema at `prisma/schema.prisma`.
 ### Key Enums
 - `Role`: `customer | driver | admin`
 - `TripStatus`: `searching | matched | on_way | in_progress | completed | cancelled`
-- `PaymentBrand`: `visa | mastercard | apple_pay`
 - `SupportTicketStatus`: `open | in_progress | resolved | closed`
 - `DiscountType`: `percentage | amount`
 - `CommissionType`: `fixed_amount | percentage | tiered_fixed | tiered_percentage`
@@ -603,20 +621,18 @@ Prisma v5 with MySQL. Schema at `prisma/schema.prisma`.
 
 ### Key Relationships
 ```
-User          ──< Trip (as rider)
-Captain       ──< Trip (as driver)
-Service       ──< Trip
-Service       ──< Captain
-Service       ──< VehicleModel
-VehicleModel  ──< Vehicle
-Captain       ──1 Vehicle
-User/Captain  ──1 Wallet
-Trip          ──1 Rating
-Trip          ──< TripDecline
-User          ──< PaymentMethod
-PaymentMethod ──< Trip
-User/Captain  ──1 SupportTicket (many)
-SupportTicket ──< TicketMessage
+User           ──< Trip (as customer)
+User           ──< Trip (as driver)
+User           ──1 DriverProfile
+User           ──1 Vehicle (driver only)
+User           ──1 Wallet
+Service        ──< VehicleModel
+Service        ──< DriverProfile
+Service        ──< Trip
+Trip           ──< TripStop
+Trip           ──< TripDecline
+Trip           ──1 Rating
+SupportTicket  ──< TicketMessage
 ```
 
 ### Trip Model — Key Fields
@@ -627,7 +643,9 @@ SupportTicket ──< TicketMessage
 | `discountAmount` | Decimal | Discount applied by coupon; defaults to `0` |
 | `commission` | Decimal? | Platform cut calculated from the pre-discount trip price |
 | `driverEarnings` | Decimal? | Driver payout basis calculated from the pre-discount trip price |
-| `paymentType` | String? | `'cash'` or `'card'` |
+| `paymentType` | String? | Currently `cash` in active trip flows |
+| `shareToken` | String? | 48-hex token used for public trip sharing |
+| `shareTokenExpiresAt` | DateTime? | Expiration timestamp for the share token |
 
 ### WalletTransaction Model
 | Field | Type | Description |
@@ -688,41 +706,61 @@ https://tovo-b.developteam.site/api/v1  (production)
 #### Users — `/api/v1/users`
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| GET | `/me` | user | Get own profile |
-| PATCH | `/me` | user | Update profile |
-| GET | `/me/addresses` | user | Saved addresses |
-| POST | `/me/addresses` | user | Add address |
-| GET | `/me/payment-methods` | user | Saved payment methods |
-| POST | `/me/payment-methods` | user | Add payment method |
+| GET | `/me` | customer | Get own profile |
+| PUT | `/me` | customer | Update profile |
+| PATCH | `/me/avatar` | customer | Update avatar |
+| GET | `/me/wallet` | customer | Get own wallet |
+| GET | `/me/addresses` | customer | List saved addresses |
+| POST | `/me/addresses` | customer | Add saved address |
+| PUT | `/me/addresses/:id` | customer | Update saved address |
+| DELETE | `/me/addresses/:id` | customer | Delete saved address |
+| GET | `/` | admin | List customers |
+| POST | `/` | admin | Create customer |
+| GET | `/:userId` | admin | Get customer details |
+| PUT | `/:userId` | admin | Update customer |
+| POST | `/:userId/suspend` | admin | Suspend/unsuspend customer |
+| POST | `/:userId/refund` | admin | Credit customer wallet refund |
+| POST | `/:userId/reset-password` | admin | Reset customer password |
+| DELETE | `/:userId` | admin | Delete customer (`?confirm=true`) |
 
-#### Captains — `/api/v1/captains`
+#### Drivers — `/api/v1/drivers`
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| GET | `/me` | captain | Own profile |
-| PATCH | `/me` | captain | Update profile |
-| POST | `/me/duty/start` | captain | Go online (sets `isOnline = true`) |
-| POST | `/me/duty/end` | captain | Go offline |
-| GET | `/me/vehicle` | captain | Own vehicle |
-| POST | `/me/vehicle` | captain | Register vehicle |
-| GET | `/me/trips` | captain | Captain trip history |
-| PATCH | `/me/trips/:id/accept` | captain | Accept trip request |
-| PATCH | `/me/trips/:id/decline` | captain | Decline trip request |
-| PATCH | `/me/trips/:id/start` | captain | Start trip (pickup customer) |
-| PATCH | `/me/trips/:id/end` | captain | End trip + settle captain wallet |
+| GET | `/me` | driver | Own profile |
+| PUT | `/me` | driver | Update profile |
+| PATCH | `/me/avatar` | driver | Update avatar |
+| POST | `/me/duty/start` | driver | Set driver online |
+| POST | `/me/duty/end` | driver | Set driver offline |
+| GET | `/me/wallet` | driver | Get own wallet |
+| GET | `/me/insurance` | driver | Driver insurance cards |
+| GET | `/me/trips` | driver | Driver trip history |
+| PATCH | `/me/trips/:id/accept` | driver | Accept trip request |
+| PATCH | `/me/trips/:id/decline` | driver | Decline trip request |
+| PATCH | `/me/trips/:id/start` | driver | Start trip |
+| PATCH | `/me/trips/:id/end` | driver | End trip + settle wallet |
+| PATCH | `/me/trips/:id/stops/:stopId/arrive` | driver | Mark stop as arrived |
+| POST | `/me/trips/:tripId/credit-customer` | driver | Credit customer wallet from driver wallet |
+| GET | `/` | public | List drivers (filterable) |
+
+Admin driver management is mounted under `/api/v1/admin/drivers` (list/get/create/update/approve/reject/suspend/refund/reset-password/delete).
 
 #### Trips — `/api/v1/trips`
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| GET | `/estimate` | user | Fare estimate |
-| POST | `/` | user | Create trip request |
-| GET | `/` | user | User trip history |
-| GET | `/nearby-captains` | any | Nearby online captains from locationStore |
-| GET | `/captain/requests` | captain | Open trip requests not yet declined |
-| GET | `/captain/trips` | captain | Captain trip history |
-| GET | `/captains/:captainId/ratings` | any | Captain ratings |
-| GET | `/:id` | user/captain | Trip details |
-| PATCH | `/:id/cancel` | user | Cancel trip |
-| POST | `/:id/rating` | user | Rate captain (1–5 stars) |
+| GET | `/regions/active` | public | List active service regions |
+| GET | `/estimate` | public | Fare estimate (supports optional multi-stop JSON) |
+| POST | `/` | customer | Create trip request |
+| GET | `/` | customer | Customer trip history |
+| POST | `/:id/stops` | customer | Append trip stops before start |
+| POST | `/:id/share-link` | customer | Generate expiring share link token |
+| GET | `/share/:token` | public | Read shared trip live payload |
+| GET | `/nearby-captains` | authenticated | Nearby online drivers from `locationStore` |
+| GET | `/captain/requests` | driver | Open trip requests not yet declined |
+| GET | `/captain/trips` | driver | Driver trip history |
+| GET | `/captains/:captainId/ratings` | authenticated | Driver ratings |
+| GET | `/:id` | customer/driver | Trip details |
+| PATCH | `/:id/cancel` | customer | Cancel trip |
+| POST | `/:id/rating` | customer | Rate driver (1–5 stars) |
 
 **Trip Creation Body:**
 ```json
@@ -734,21 +772,29 @@ https://tovo-b.developteam.site/api/v1  (production)
   "dropoff_lng": 31.3100,
   "dropoff_address": "456 Side St",
   "service_id": "<uuid>",
-  "payment_type": "cash | card",
-  "payment_method_id": "<uuid>  (required only when payment_type = card)"
+  "payment_type": "cash",
+  "stops": [
+    { "lat": 30.08, "lng": 31.27, "address": "Optional waypoint" }
+  ]
 }
 ```
 
 **Fare Estimate Response Shape:**
 ```json
 {
+  "serviceId": "uuid",
+  "serviceName": "Normal",
   "distanceKm": 12.5,
-  "farePerKm": 5.0,
-  "baseFare": 10.0,
-  "serviceName": "Economy",
-  "fare": 72.5,
-  "commission": 5.0,
-  "driverEarnings": 67.5,
+  "farePerKm": 5,
+  "fixedSurcharge": 0,
+  "perStopSurcharge": 0,
+  "stopsCount": 0,
+  "stopsSurcharge": 0,
+  "originalFare": 72.5,
+  "finalFare": 72.5,
+  "discountAmount": 0,
+  "commission": 10.5,
+  "driverEarnings": 62,
   "currency": "EGP"
 }
 ```
@@ -766,7 +812,7 @@ https://tovo-b.developteam.site/api/v1  (production)
 #### Earnings — `/api/v1/admin/earnings`
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| GET | `/` | admin | List platform commission logs. Query params: `dateFrom`, `dateTo`, `paymentType` (`cash`\|`card`), `serviceId`, `page`, `perPage`. Returns paginated `logs` + `totalEarned` |
+| GET | `/` | admin | List platform commission logs. Query params: `dateFrom`, `dateTo`, `paymentType` (currently `cash`), `serviceId`, `page`, `perPage`. Returns paginated `logs` + `totalEarned` |
 
 #### Vehicle Models — `/api/v1/vehicle-models` and `/api/v1/admin/vehicle-models`
 Public routes served by `vehicleModels.public.routes.js`; admin routes by `vehicleModels.admin.routes.js`.
@@ -808,15 +854,27 @@ Public routes served by `regions.public.routes.js`; admin routes by `regions.adm
 | PUT | `/admin/regions/:id` | admin | Update a region |
 | DELETE | `/admin/regions/:id` | admin | Delete a region |
 
+#### Toll Gates — `/api/v1/admin/toll-gates`
+Admin routes served by `tollGates.admin.routes.js`.
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/admin/toll-gates` | admin | List toll gates (paginated) |
+| GET | `/admin/toll-gates/:id` | admin | Get toll gate by ID |
+| POST | `/admin/toll-gates` | admin | Create toll gate |
+| PUT | `/admin/toll-gates/:id` | admin | Update toll gate |
+| DELETE | `/admin/toll-gates/:id` | admin | Delete toll gate (`?confirm=true`) |
+
 #### Payments — `/api/v1/payments` and `/api/v1/admin/payments`
 Both paths served by the same router (`payments.routes.js`). Auth enforced per route inline.
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| GET | `/payments/me` | user | Own payment history (completed trips only) |
-| GET | `/payments/:id` | user / admin | Single payment detail — users can only access their own |
-| GET | `/admin/payments` | admin | All payments, filterable by `userId`, `driverId`, `paymentType`, `dateFrom`, `dateTo` |
-| POST | `/admin/payments/:id/refund` | admin | Issue wallet refund for a card payment — guards: trip must be `completed`, type must be `card`, amount ≤ `finalFare`, no duplicate refund. Creates a `WalletTransaction` atomically |
+| GET | `/payments/me` | customer | Own payment history (completed cash trips) |
+| GET | `/payments/:id` | customer / admin | Single payment detail — customers can only access their own |
+| GET | `/admin/payments` | admin | All payments, filterable by `userId`, `driverId`, `paymentType` (cash), `dateFrom`, `dateTo` |
+
+Current implementation note: payments are derived from completed trips with `paymentType = cash`.
 
 #### Support — `/api/v1/support` and `/api/v1/admin/support`
 User/driver routes are served by `support.routes.js`. Admin routes are served by `support.admin.routes.js`.
@@ -833,12 +891,12 @@ User/driver routes are served by `support.routes.js`. Admin routes are served by
 | PATCH | `/admin/support/:id/resolve` | admin | Mark a support ticket as resolved |
 
 #### Wallets — `/api/v1/wallets` and `/api/v1/admin/wallets`
-Both paths are served by the same router (`wallets.routes.js`). Auth is enforced per route inline.
+Wallet endpoints are split between `wallets.public.routes.js` and `wallets.admin.routes.js`, mounted at both `/wallets` and `/admin/wallets`.
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| GET | `/wallets/me` | user / captain | Own wallet balance and details |
-| GET | `/wallets/me/transactions` | user / captain | Own paginated wallet transaction history |
+| GET | `/wallets/me` | customer / driver | Own wallet balance and details |
+| GET | `/wallets/me/transactions` | customer / driver | Own paginated wallet transaction history |
 | GET | `/admin/wallets` | admin | List all wallets (filterable by ownerType, search) |
 | GET | `/admin/wallets/:id` | admin | Single wallet detail |
 | GET | `/admin/wallets/:id/transactions` | admin | Transaction history for any wallet |
@@ -848,10 +906,10 @@ Both paths are served by the same router (`wallets.routes.js`). Auth is enforced
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| GET | `/` | user/captain | List own notifications (paginated) |
-| PATCH | `/read-all` | user/captain | Mark all as read |
-| PATCH | `/:id/read` | user/captain | Mark single notification as read |
-| POST | `/device-token` | user/captain | Register FCM device token. Body: `{ token, platform: ios\|android\|web }` |
+| GET | `/` | customer/driver | List own notifications (paginated) |
+| PATCH | `/read-all` | customer/driver | Mark all as read |
+| PATCH | `/:id/read` | customer/driver | Mark single notification as read |
+| POST | `/device-token` | customer/driver | Register FCM device token. Body: `{ token, platform: ios\|android\|web }` |
 | POST | `/send-to-user` | admin | Manually push to a user. Body: `{ user_id, title, body, data? }` |
 | POST | `/send-to-driver` | admin | Manually push to a driver. Body: `{ driver_id, title, body, data? }` |
 
@@ -873,7 +931,7 @@ Both paths are served by the same router (`wallets.routes.js`). Auth is enforced
 
 #### SOS — `/api/v1/sos`
 - `POST /` — Submit SOS alert
-- Admin at `/api/v1/admin/sos`
+- Admin SOS routes exist in `src/modules/sos/sos.admin.routes.js` but are not mounted in `src/app.js` currently.
 
 #### Dashboard — `/api/v1/dashboard`
 - `GET /statistics`: Admin-only dashboard summary
@@ -923,20 +981,21 @@ This is a **backend-only repository**. No frontend code exists in this project.
 ## 7. Business Logic
 
 ### User Registration Flow
-1. `POST /auth/register` with `name, email, phone, password, role`
+1. `POST /auth/register/user` with `name, email, phone, password, confirm_password`
 2. Password hashed with bcrypt
-3. User/Captain record created in DB
-4. Access + refresh tokens returned
-5. OTP phone verification can be triggered separately
+3. `User` record created with `role: customer`
+4. Wallet auto-created for the customer
+5. OTP phone verification can be triggered separately via `/auth/otp/send` and `/auth/otp/verify`
 
 ### Driver Registration Flow
 1. Register via `POST /auth/register/captain` with `name, email, phone, password, driving_license, vehicle_model, vin`
-2. Driver (role: `driver`) created in `users` table with `isVerified: false`, `isOnline: false`
-3. Vehicle record created linked to the driver
-4. Wallet created for the driver
-5. Admin must verify driver (sets `isVerified: true`)
-6. Driver chooses a service category (`serviceId` on driver record via vehicle model)
-7. Driver calls `POST /drivers/me/duty/start` to go online
+2. Driver account created as `User { role: driver, isVerified: false }`
+3. Driver-specific fields are stored in `DriverProfile` (`drivingLicense`, `isOnline`, `rating`, `totalTrips`, `serviceId`)
+4. Vehicle record created linked to the driver
+5. Wallet created for the driver
+6. Admin must verify driver (sets `isVerified: true`)
+7. Driver service category is derived from selected vehicle model (`serviceId`)
+8. Driver calls `POST /drivers/me/duty/start` to go online
 
 ### Current-State Update (rev 5)
 - The current Trip pricing fields are `originalFare`, `discountAmount`, and `finalFare`
@@ -951,47 +1010,35 @@ This is a **backend-only repository**. No frontend code exists in this project.
 
 ### Ride Request Flow
 ```
-1. Customer calls GET /trips/estimate  →  receives fare + commission + driverEarnings breakdown
-2. Customer calls POST /trips          →  trip created with status: searching
-   - Service validated (active)
-   - Pickup validated inside an active Region (haversine check)
-   - fare = baseFare + distanceKm × FARE_PER_KM
-   - commission + driverEarnings calculated via commission rules (see below)
-   - trips.service.js calls locationStore.getNearby() → sends FCM push to each nearby driver (fire-and-forget)
-   - trips.service.js returns just `trip`
-   - Controller calls emitTripRequest(io, trip, 10) → socket.js queries locationStore again and emits 'trip.new_request' to each nearby driver's private room
-
-3. Driver receives 'trip.new_request' event / push notification
-4. Driver calls PATCH /trips/:id/accept → status: matched
-   - Customer receives 'trip.captain_matched' via Socket.io
-   - Other drivers receive 'trip.taken' (removed from their list)
-   - Customer receives FCM push "Driver On The Way" (persisted in notification history)
-
-5. Driver calls PATCH /trips/:id/start  → status: in_progress
-   - Both customer and driver receive 'trip.status_changed'
-   - Customer receives FCM push "Trip Started" (persisted in notification history)
-
-6. During trip: Driver emits 'driver.location_update' via Socket.io
-   - Stored in locationStore (no DB write)
-   - Forwarded to trip room: customer sees live driver position
-
-7. Driver calls PATCH /trips/:id/end   → status: completed
-   - Driver's totalTrips incremented
-   - Driver wallet settled (see Wallet Settlement below)
-   - Customer receives FCM push "Trip Completed" with fare amount (persisted in notification history)
-
-8. Customer calls POST /trips/:id/rating    → Rating created
-   - Driver's average rating recalculated
-   - Driver receives FCM push "New Rating" (fire-and-forget)
+1. Customer calls GET /trips/estimate → receives per-service pricing breakdown
+2. Customer calls POST /trips → trip created with status `searching`
+   - Service validated (must be active)
+   - Pickup validated inside active region(s)
+   - Pricing calculated (`originalFare`, `discountAmount`, `finalFare`, `commission`, `driverEarnings`)
+   - Controller emits `emitTripRequest(io, trip, 10)` to nearby available drivers
+3. Driver receives `trip.new_request`
+4. Driver calls PATCH /drivers/me/trips/:id/accept → status `matched`
+   - Customer receives `trip.captain_matched`
+   - Other nearby drivers receive `trip.taken`
+5. Driver calls PATCH /drivers/me/trips/:id/start → status `in_progress`
+   - Both customer and driver receive `trip.status_changed`
+6. During trip driver emits `captain.location_update`
+   - Stored in `locationStore` (no DB write)
+   - Forwarded as `trip.captain_location` to trip room subscribers
+7. Driver calls PATCH /drivers/me/trips/:id/end → status `completed`
+   - Driver stats/wallet settlement logic runs
+   - Customer receives completion notification
+8. Customer optionally rates trip via POST /trips/:id/rating
+   - Driver average rating recalculated from `ratings`
 
 Cancellation: Customer calls PATCH /trips/:id/cancel → status: cancelled
-   - If a driver was matched, driver receives FCM push "Trip Cancelled" (fire-and-forget)
+   - If a driver was matched, trip participants receive cancellation events/notifications
 ```
 
 ### Driver Decline Flow
 - Driver calls `PATCH /trips/:id/decline`
 - A `TripDecline` record is created for `(tripId, driverId)`
-- `GET /trips/driver/requests` filters out trips with this driver's decline
+- `GET /trips/captain/requests` filters out trips with this driver's decline
 - Other drivers still see the trip (upsert prevents duplicate declines)
 
 ### Region Management Flow
@@ -1005,14 +1052,16 @@ Current implementation note: the live Trip fields are `originalFare`, `discountA
 
 ```
 distanceKm     = haversine(pickupLat, pickupLng, dropoffLat, dropoffLng)
-driverEarnings = distanceKm × FARE_PER_KM                 ← what captain earns
-commission     = calculateCommission(driverEarnings)             ← platform cut (added on top)
-baseFare       = driverEarnings + commission               ← pre-discount passenger total
-fare           = baseFare - discountAmount                 ← final passenger total after coupon, if any
+driverEarnings = distanceKm × FARE_PER_KM
+commission     = calculateCommission(driverEarnings)
+fixedSurcharge = service.fixedSurcharge
+stopsSurcharge = stops.length × service.perStopSurcharge
+originalFare   = driverEarnings + commission + fixedSurcharge + stopsSurcharge
+finalFare      = originalFare - discountAmount
 ```
 - `FARE_PER_KM` defaults to `5.0` (override via env var)
-- `Service.baseFare` exists on the model but is **not used** in the current fare calculation
-- Commission is **added on top** of driverEarnings to produce the fare — it is NOT deducted from fare
+- `Service.baseFare` exists on the model but is currently not used in `calculateTripPricing()`
+- Commission is added on top of driver earnings to produce `originalFare`
 - Coupons reduce rider fare only; they do not reduce `driverEarnings` or `commission`
 - Commission is DB-driven (see Commission System below)
 
@@ -1066,7 +1115,6 @@ Current implementation note:
 | Payment type | Action | WalletTransaction reason |
 |---|---|---|
 | `cash` | Customer paid driver directly — **deduct `commission`** from driver wallet | `trip_commission_deduction` |
-| `card` | Platform received payment — **credit `driverEarnings`** to driver wallet | `trip_earnings_credit` |
 
 Settlement is skipped if `commission` or `driverEarnings` is null on the trip record. Every settlement is recorded atomically as a `WalletTransaction` (balance update + log entry in a single Prisma `$transaction`).
 
@@ -1075,20 +1123,18 @@ Current settlement note: when a coupon is applied, the backend also writes `trip
 ### Wallet Transaction Log
 Current additional reason: `trip_coupon_reimbursement` for driver reimbursement on discounted trips.
 Every balance change — whether from trip settlement, admin manual adjustment, or a refund — creates an immutable `WalletTransaction` record atomically with the balance update. This provides a full audit trail. The `reason` field distinguishes the source:
-- `trip_earnings_credit` — card trip settled, captain credited
-- `trip_commission_deduction` — cash trip settled, commission deducted from captain
+- `trip_commission_deduction` — cash trip settled, commission deducted from driver
+- `trip_coupon_reimbursement` — coupon value reimbursed to driver on discounted completed trips
 - `refund` — admin issued a refund to a user's wallet
 - Any free-text string — admin manual adjustment via `POST /admin/wallets/:id/adjust`
 
 ### Refund Flow
-Admin calls `POST /admin/payments/:id/refund` with `{ amount, reason }`. Guards checked in order:
-1. Trip must exist
-2. Trip status must be `completed`
-3. `paymentType` must be `card` (cash payments were not collected by the platform)
-4. `amount` must not exceed the trip `finalFare`
-5. No existing refund `WalletTransaction` for this `tripId` (prevents duplicates — returns `409`)
+Refund-like wallet credits currently happen through:
+1. `POST /api/v1/users/:userId/refund` (admin) — credit a customer wallet
+2. `POST /api/v1/admin/drivers/:driverId/refund` (admin) — credit a driver wallet
+3. `POST /api/v1/drivers/me/trips/:tripId/credit-customer` (driver) — transfer from driver wallet to trip customer wallet
 
-On success: customer wallet balance incremented + `WalletTransaction { type: credit, reason: refund }` created atomically.
+All flows create immutable `WalletTransaction` entries and update balances atomically.
 
 ### Forgot Password Flow
 1. `POST /auth/forgot-password` — body: `{ email }`
@@ -1113,7 +1159,7 @@ On success: customer wallet balance incremented + `WalletTransaction { type: cre
 - Updated via `captain.location_update` Socket.io event
 - Entries older than `STALE_MS` (default 2 minutes) are lazily evicted on read and periodically cleaned every 30s
 - `locationStore.getNearby(lat, lng, radiusKm, serviceId)` uses a bounding-box pre-filter for performance
-- Used by `POST /trips` to find drivers to notify, and by `GET /trips/nearby-drivers`
+- Used by realtime dispatch (`emitTripRequest`) and `GET /trips/nearby-captains`
 
 ### Real-Time Notifications
 - Existing non-location socket events are centralized in `emitRealtimeEvent()` in `src/realtime/socket.js`
@@ -1206,13 +1252,13 @@ filename: (req, file, cb) => {
   cb(null, `avatar-${unique}${path.extname(file.originalname)}`);
 }
 ```
-Example stored filename: `avatar-1741427600000-482910372.jpg`. Avatar URLs returned by the API are always full URLs in the form `http(s)://<host>/uploads/<filename>`, constructed using `req.protocol` and `req.get('host')` in the controller — not relative paths. This applies to both `PATCH /captains/me/avatar` and `PATCH /users/me/avatar`.
+Example stored filename: `avatar-1741427600000-482910372.jpg`. Avatar URLs returned by the API are always full URLs in the form `http(s)://<host>/uploads/<filename>`, constructed using `req.protocol` and `req.get('host')` in the controller — not relative paths. This applies to both `PATCH /drivers/me/avatar` and `PATCH /users/me/avatar`.
 
 ### Critical: Prisma Client Regeneration
 **`npx prisma generate` must be re-run on the server after every schema change.** Skipping this causes `Cannot read properties of undefined (reading 'findFirst'|'findUnique'|...)` errors at runtime because the generated client is out of sync with `schema.prisma`. Always run `prisma generate` + `prisma migrate deploy` when deploying schema changes. On Windows, stop running Node processes first if Prisma's query engine DLL is locked during regeneration.
 
 ### Debug Endpoint
-`GET /debug/locations` — Returns current in-memory captain location store (remove in production).
+`GET /debug/locations` — Returns current in-memory driver location store (remove in production).
 
 ---
 
@@ -1222,9 +1268,9 @@ Example stored filename: `avatar-1741427600000-482910372.jpg`. Avatar URLs retur
 - **Admin routes not fully mounted**: `admin.routes.js` is commented out in `app.js`. Complaints and some other admin sub-routes have controller/service code written but not wired up.
 - **`regions.service.js` fix**: The `status` field must be cast to `Boolean` when creating a region — currently causes a Prisma type error when client sends `1` instead of `true`.
 - **Admin authentication**: The admin module uses `authorize('admin')` but the JWT payload role needs to match. Admin login flow should be verified end-to-end.
-- **Wallet top-up / captain withdrawal**: No endpoint exists for users to top up their wallet or captains to request a payout. Requires payment gateway integration.
+- **Wallet top-up / driver withdrawal**: No endpoint exists for users to top up their wallet or drivers to request a payout. Requires payment gateway integration.
 - **Prisma client regeneration required**: After the `PasswordResetToken` migration (`20260310171943_add_password_reset_tokens`) and previous `WalletTransaction` migration, run `npx prisma generate` with the server stopped to sync the generated client. Skipping this causes runtime errors on `prisma.passwordResetToken.*` / `prisma.walletTransaction.*` calls.
-- **Phone OTP SMS not integrated**: `sendOtp()` still uses a hardcoded `'123456'` code. SMS provider (Twilio, Vonage, etc.) not yet wired up.
+- **Phone OTP SMS not integrated**: `sendOtp()` now generates random 6-digit codes, but SMS delivery provider integration (Twilio, Vonage, etc.) is still not wired up.
 
 ### Designed for Scalability
 - **locationStore** can be replaced with Redis (same interface) for multi-instance deployments without code changes to the service layer
@@ -1236,17 +1282,19 @@ Example stored filename: `avatar-1741427600000-482910372.jpg`. Avatar URLs retur
 ---
 
 ## Context Summary for AI Assistants
-Current-state overrides for rev 5:
+Current-state overrides for rev 6:
 - Trip pricing field names are `originalFare`, `discountAmount`, and `finalFare`
 - Driver settlement is based on pre-discount pricing and may include `trip_coupon_reimbursement`
+- Driver-only schema fields live in `DriverProfile` (1:1 with `User`)
+- Public/driver route surface is centered on `/api/v1/drivers` (admin at `/api/v1/admin/drivers`)
 - Socket rooms are `user:{id}`, `driver:{id}`, `trip:{id}`, and `captains:available`
 - Existing non-location socket events now emit over Socket.io and send matching FCM pushes via `emitRealtimeEvent()`
 - `trip.captain_location` remains socket-only
-- Refund validation is capped by `finalFare`, not the legacy `fare` field
+- Trip sharing is available through `POST /trips/:id/share-link` + `GET /trips/share/:token`
 
 Tovo is a Node.js/Express ride-hailing and package delivery backend using Prisma v5, MySQL, Socket.io, JWT auth, Firebase push notifications, Nodemailer, and Swagger at `/api/docs`. The codebase follows a Controller → Service → Repository structure, most features live in `src/modules/<name>/`, and auth sets `req.actor = { id, role }` for `customer`, `driver`, or `admin`.
 
-Current trip pricing uses `originalFare`, `discountAmount`, and `finalFare`, where `finalFare = originalFare - discountAmount`. Commission rules are DB-driven, `driverEarnings` and `commission` are calculated from the pre-discount fare, coupon application is handled through `POST /api/v1/promotions/coupons/apply`, and discounted trip completion may write an extra wallet transaction with reason `trip_coupon_reimbursement`. Refunds are capped by `finalFare`.
+Current trip pricing uses `originalFare`, `discountAmount`, and `finalFare`, where `finalFare = originalFare - discountAmount`. Commission rules are DB-driven, `driverEarnings` and `commission` are calculated from the pre-discount fare, coupon application is handled through `POST /api/v1/promotions/coupons/apply`, and discounted trip completion may write an extra wallet transaction with reason `trip_coupon_reimbursement`.
 
 Realtime behavior uses `locationStore` for in-memory driver GPS and Socket.io rooms `user:{id}`, `driver:{id}`, `trip:{id}`, and `captains:available`. Non-location trip events are centralized in `src/realtime/socket.js` and now emit both Socket.io events and matching FCM pushes, while `trip.captain_location` remains socket-only. `PUBLIC_ENDPOINTS_DOCUMENTATION.md` is the best current quick reference for mounted non-admin routes.
 
