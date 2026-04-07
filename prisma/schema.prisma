@@ -83,7 +83,6 @@ model User {
   otps            Otp[]
   refreshTokens   RefreshToken[]
   sosAlerts       SosAlert[]
-  wishlist        WishlistItem[]
 
   @@map("users")
 }
@@ -339,19 +338,7 @@ model SavedAddress {
 }
 
 // ─────────────────────────────────────────────
-//  WISHLIST
 // ─────────────────────────────────────────────
-
-model WishlistItem {
-  id        String    @id @default(uuid())
-  userId    String
-  itemRef   String
-  createdAt DateTime  @default(now())
-
-  user      User      @relation(fields: [userId], references: [id])
-
-  @@map("wishlist_items")
-}
 
 // ─────────────────────────────────────────────
 //  NOTIFICATIONS

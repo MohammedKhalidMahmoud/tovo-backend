@@ -504,15 +504,6 @@ async function main() {
   });
   console.log('Seeded saved addresses');
 
-  await prisma.wishlistItem.createMany({
-    data: [
-      { userId: ahmed.id, itemRef: `service:${svcComfort.id}` },
-      { userId: ahmed.id, itemRef: `coupon:${'TOVO2025'}` },
-      { userId: sara.id, itemRef: `service:${svcPackage.id}` },
-    ],
-  });
-  console.log('Seeded wishlist items');
-
   await prisma.promotion.createMany({
     data: [
       {
