@@ -7,8 +7,10 @@ import { fileURLToPath } from "url";
 const ADMIN_PATH_SEGMENT = "/admin/";
 const ADMIN_ONLY_PATHS = new Set([
   "/dashboard/statistics",
+  "/dashboard/admin-dashboard",
   "/notifications/send-to-user",
   "/notifications/send-to-driver",
+  "/notifications/send-to-audience",
 ]);
 
 function buildSwaggerSpec(info, schemas, paths) {
@@ -56,7 +58,6 @@ export function configureSwagger(app) {
   const usersSchemas = YAML.load(path.resolve(__dirname, "./users/schemas.yaml"));
   const driversSchemas = YAML.load(path.resolve(__dirname, "./drivers/schemas.yaml"));
   const tripsSchemas = YAML.load(path.resolve(__dirname, "./trips/schemas.yaml"));
-  const ridesSchemas = YAML.load(path.resolve(__dirname, "./rides/schemas.yaml"));
   const servicesSchemas = YAML.load(path.resolve(__dirname, "./services/schemas.yaml"));
   const regionsSchemas = YAML.load(path.resolve(__dirname, "./regions/schemas.yaml"));
   const tollGatesSchemas = YAML.load(path.resolve(__dirname, "./toll-gates/schemas.yaml"));
@@ -80,7 +81,6 @@ export function configureSwagger(app) {
   const usersPaths = YAML.load(path.resolve(__dirname, "./users/paths.yaml"));
   const driversPaths = YAML.load(path.resolve(__dirname, "./drivers/paths.yaml"));
   const tripsPaths = YAML.load(path.resolve(__dirname, "./trips/paths.yaml"));
-  const ridesPaths = YAML.load(path.resolve(__dirname, "./rides/paths.yaml"));
   const servicesPaths = YAML.load(path.resolve(__dirname, "./services/paths.yaml"));
   const regionsPaths = YAML.load(path.resolve(__dirname, "./regions/paths.yaml"));
   const tollGatesPaths = YAML.load(path.resolve(__dirname, "./toll-gates/paths.yaml"));
@@ -105,7 +105,6 @@ export function configureSwagger(app) {
     ...usersSchemas,
     ...driversSchemas,
     ...tripsSchemas,
-    ...ridesSchemas,
     ...servicesSchemas,
     ...regionsSchemas,
     ...tollGatesSchemas,
@@ -129,7 +128,6 @@ export function configureSwagger(app) {
     ...usersPaths,
     ...driversPaths,
     ...tripsPaths,
-    ...ridesPaths,
     ...servicesPaths,
     ...regionsPaths,
     ...tollGatesPaths,

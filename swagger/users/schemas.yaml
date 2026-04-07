@@ -4,12 +4,14 @@ User:
     id: { type: string, format: uuid }
     name: { type: string }
     email: { type: string, format: email }
-    phone: { type: string }
+    phone: { type: string, nullable: true }
     avatarUrl: { type: string, nullable: true }
-    role: { type: string, enum: [user] }
+    role: { type: string, enum: [customer, driver, admin] }
     isVerified: { type: boolean }
-    language: { type: string, example: en }
+    language: { type: string, enum: [en, ar] }
+    notificationsEnabled: { type: boolean }
     createdAt: { type: string, format: date-time }
+    updatedAt: { type: string, format: date-time }
 
 UserCreate:
   type: object
@@ -18,33 +20,25 @@ UserCreate:
     name: { type: string }
     email: { type: string, format: email }
     phone: { type: string }
-    password: { type: string }
-    language: { type: string, example: en }
+    password: { type: string, minLength: 8 }
+    language: { type: string, enum: [en, ar] }
 
 UserUpdate:
   type: object
   properties:
-    name: { type: string }
+    name: { type: string, minLength: 2, maxLength: 100 }
     email: { type: string, format: email }
     phone: { type: string }
-    language: { type: string }
+    language: { type: string, enum: [en, ar] }
     notificationsEnabled: { type: boolean }
 
 SavedAddress:
   type: object
   properties:
     id: { type: string, format: uuid }
-    label: { type: string, example: Home }
+    label: { type: string }
     address: { type: string }
     lat: { type: number }
     lng: { type: number }
-
-PaymentMethod:
-  type: object
-  properties:
-    id: { type: string, format: uuid }
-    brand: { type: string, enum: [visa, mastercard, apple_pay] }
-    lastFour: { type: string, example: '1234' }
-    maskedNumber: { type: string, example: '482 *** ****** ****' }
-    isDefault: { type: boolean }
-    expiry: { type: string, example: '12/26' }
+    createdAt: { type: string, format: date-time }
+    updatedAt: { type: string, format: date-time }

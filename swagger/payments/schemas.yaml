@@ -1,57 +1,40 @@
 Payment:
   type: object
-  description: >
-    A completed trip record representing a payment transaction.
-    `originalFare` is the raw priced amount before discounts, `discountAmount` is the rider coupon value,
-    and `finalFare` is what the rider actually pays.
-    On trip completion, cash trips deduct commission from the driver wallet and add any coupon reimbursement,
-    while card trips credit `driverEarnings` and separately credit the coupon reimbursement so the driver is not penalized by the rider discount.
   properties:
-    id:             { type: string, format: uuid }
-    finalFare:      { type: number, example: 62.50 }
-    originalFare:   { type: number, example: 72.50, nullable: true }
-    discountAmount: { type: number, example: 10.00 }
-    commission:     { type: number, example: 5.00, nullable: true }
-    driverEarnings: { type: number, example: 67.50, nullable: true }
-    paymentType:    { type: string, enum: [cash, card], nullable: true }
-    currency:       { type: string, example: EGP }
-    distanceKm:     { type: number, example: 12.5, nullable: true }
-    status:         { type: string, example: completed }
-    createdAt:      { type: string, format: date-time }
-    endedAt:        { type: string, format: date-time, nullable: true }
+    id: { type: string, format: uuid }
+    userId: { type: string, format: uuid }
+    driverId: { type: string, format: uuid, nullable: true }
+    serviceId: { type: string, format: uuid, nullable: true }
+    status: { type: string, example: completed }
+    paymentType: { type: string, enum: [cash], nullable: true }
+    finalFare: { type: number, nullable: true }
+    originalFare: { type: number, nullable: true }
+    discountAmount: { type: number }
+    commission: { type: number, nullable: true }
+    driverEarnings: { type: number, nullable: true }
+    currency: { type: string, example: EGP }
+    distanceKm: { type: number, nullable: true }
+    createdAt: { type: string, format: date-time }
+    endedAt: { type: string, format: date-time, nullable: true }
     user:
       nullable: true
       type: object
       properties:
-        id:    { type: string, format: uuid }
-        name:  { type: string }
+        id: { type: string, format: uuid }
+        name: { type: string }
         email: { type: string, format: email }
-        phone: { type: string }
+        phone: { type: string, nullable: true }
     driver:
       nullable: true
       type: object
       properties:
-        id:    { type: string, format: uuid }
-        name:  { type: string }
+        id: { type: string, format: uuid }
+        name: { type: string }
         email: { type: string, format: email }
-        phone: { type: string }
+        phone: { type: string, nullable: true }
     service:
       nullable: true
       type: object
       properties:
-        id:   { type: string, format: uuid }
+        id: { type: string, format: uuid }
         name: { type: string }
-    paymentMethod:
-      nullable: true
-      type: object
-      properties:
-        brand:        { type: string, enum: [visa, mastercard, apple_pay] }
-        lastFour:     { type: string, example: "4242" }
-        maskedNumber: { type: string, example: "**** **** **** 4242" }
-
-RefundResponse:
-  type: object
-  properties:
-    tripId:         { type: string, format: uuid }
-    refundedAmount: { type: number, example: 50.00 }
-    reason:         { type: string, example: Customer request }

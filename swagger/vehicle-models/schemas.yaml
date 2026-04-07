@@ -6,7 +6,7 @@ VehicleModel:
     brand:       { type: string, example: 'Toyota' }
     description: { type: string, nullable: true, example: 'Comfortable everyday rides' }
     imageUrl:    { type: string, nullable: true, example: 'https://assets.tovo.app/vehicles/camry.png' }
-    serviceId:   { type: string, format: uuid, nullable: true }
+    serviceId:   { type: string, format: uuid }
     isActive:    { type: boolean, example: true }
     createdAt:   { type: string, format: date-time }
     updatedAt:   { type: string, format: date-time }

@@ -2,11 +2,10 @@
   get:
     tags: [Wallets]
     summary: Get my wallet
-    description: Returns the authenticated user's or driver's own wallet balance and details.
     security: [{ BearerAuth: [] }]
     responses:
       '200':
-        description: Own wallet retrieved successfully
+        description: Wallet retrieved
         content:
           application/json:
             schema:
@@ -16,13 +15,13 @@
                   properties:
                     data: { $ref: '#/components/schemas/Wallet' }
       '401': { description: Unauthorized }
+      '403': { description: Forbidden }
       '404': { description: Wallet not found }
 
 /wallets/me/transactions:
   get:
     tags: [Wallets]
-    summary: Get my wallet transaction history
-    description: Returns a paginated list of all credits and debits on the authenticated user's or driver's wallet.
+    summary: Get my wallet transactions
     security: [{ BearerAuth: [] }]
     parameters:
       - name: page
@@ -33,7 +32,7 @@
         schema: { type: integer, default: 20 }
     responses:
       '200':
-        description: Paginated list of wallet transactions
+        description: Wallet transactions
         content:
           application/json:
             schema:
@@ -45,47 +44,13 @@
                       type: array
                       items: { $ref: '#/components/schemas/WalletTransaction' }
       '401': { description: Unauthorized }
-      '404': { description: Wallet not found }
-
-/admin/wallets/{id}/transactions:
-  get:
-    tags: [Wallets]
-    summary: Get transaction history for a wallet
-    description: Admin endpoint — returns the full paginated transaction log for any wallet by ID.
-    security: [{ BearerAuth: [] }]
-    parameters:
-      - name: id
-        in: path
-        required: true
-        schema: { type: string, format: uuid }
-      - name: page
-        in: query
-        schema: { type: integer, default: 1 }
-      - name: limit
-        in: query
-        schema: { type: integer, default: 20 }
-    responses:
-      '200':
-        description: Paginated list of wallet transactions
-        content:
-          application/json:
-            schema:
-              allOf:
-                - $ref: '#/components/schemas/SuccessResponse'
-                - type: object
-                  properties:
-                    data:
-                      type: array
-                      items: { $ref: '#/components/schemas/WalletTransaction' }
-      '401': { description: Unauthorized }
-      '403': { description: Forbidden — admin only }
+      '403': { description: Forbidden }
       '404': { description: Wallet not found }
 
 /admin/wallets:
   get:
     tags: [Wallets]
-    summary: List all wallets
-    description: Returns a paginated list of all user and driver wallets, optionally filtered by owner type or a name/email search term.
+    summary: List wallets (admin)
     security: [{ BearerAuth: [] }]
     parameters:
       - name: page
@@ -96,22 +61,16 @@
         schema: { type: integer, default: 20 }
       - name: ownerType
         in: query
-        description: Filter by wallet owner type
-        schema: { type: string, enum: [all, user, driver], default: all }
+        schema: { type: string, enum: [all, customer, driver], default: all }
       - name: search
         in: query
-        description: Search by owner name or email
         schema: { type: string }
     responses:
       '200':
-        description: Paginated list of wallets
+        description: Wallet list
         headers:
-          X-Total-Count:
-            description: Total number of wallets matching the filter
-            schema: { type: integer }
-          X-Total-Pages:
-            description: Total number of pages
-            schema: { type: integer }
+          X-Total-Count: { schema: { type: integer } }
+          X-Total-Pages: { schema: { type: integer } }
         content:
           application/json:
             schema:
@@ -123,13 +82,12 @@
                       type: array
                       items: { $ref: '#/components/schemas/Wallet' }
       '401': { description: Unauthorized }
-      '403': { description: Forbidden — admin only }
+      '403': { description: Forbidden }
 
 /admin/wallets/{id}:
   get:
     tags: [Wallets]
-    summary: Get a single wallet
-    description: Returns full wallet details including the linked user or driver.
+    summary: Get wallet by ID (admin)
     security: [{ BearerAuth: [] }]
     parameters:
       - name: id
@@ -147,13 +105,47 @@
                 - type: object
                   properties:
                     data: { $ref: '#/components/schemas/Wallet' }
+      '401': { description: Unauthorized }
+      '403': { description: Forbidden }
+      '404': { description: Wallet not found }
+
+/admin/wallets/{id}/transactions:
+  get:
+    tags: [Wallets]
+    summary: Get wallet transactions by wallet ID (admin)
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - name: page
+        in: query
+        schema: { type: integer, default: 1 }
+      - name: limit
+        in: query
+        schema: { type: integer, default: 20 }
+    responses:
+      '200':
+        description: Wallet transactions
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/SuccessResponse'
+                - type: object
+                  properties:
+                    data:
+                      type: array
+                      items: { $ref: '#/components/schemas/WalletTransaction' }
+      '401': { description: Unauthorized }
+      '403': { description: Forbidden }
       '404': { description: Wallet not found }
 
 /admin/wallets/{id}/adjust:
   post:
     tags: [Wallets]
-    summary: Adjust wallet balance
-    description: Manually credit or debit an internal wallet balance. A `reason` field is required for audit purposes. Debits are rejected if the balance would go negative.
+    summary: Adjust wallet balance (admin)
     security: [{ BearerAuth: [] }]
     parameters:
       - name: id
@@ -168,20 +160,12 @@
             type: object
             required: [type, amount, reason]
             properties:
-              type:
-                type: string
-                enum: [credit, debit]
-                description: Whether to add or subtract from the balance
-              amount:
-                type: number
-                example: 100.00
-                description: Positive amount to credit or debit
-              reason:
-                type: string
-                example: Manual top-up by admin
+              type: { type: string, enum: [credit, debit] }
+              amount: { type: number, minimum: 0.01 }
+              reason: { type: string }
     responses:
       '200':
-        description: Updated wallet after adjustment
+        description: Wallet adjusted
         content:
           application/json:
             schema:
@@ -190,6 +174,8 @@
                 - type: object
                   properties:
                     data: { $ref: '#/components/schemas/Wallet' }
-      '400': { description: Invalid type or amount }
-      '422': { description: Insufficient balance (debit exceeds current balance) }
+      '400': { description: Invalid request }
+      '401': { description: Unauthorized }
+      '403': { description: Forbidden }
       '404': { description: Wallet not found }
+      '422': { description: Insufficient balance for debit }

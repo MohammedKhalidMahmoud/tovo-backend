@@ -2,25 +2,26 @@
   get:
     tags: [Services]
     summary: List active services
-    description: Returns all active services. No authentication required.
+    security: []
     responses:
       '200':
-        description: Active services retrieved
+        description: Active services
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                success: { type: boolean, example: true }
-                data:
-                  type: array
-                  items: { $ref: '#/components/schemas/Service' }
+              allOf:
+                - $ref: '#/components/schemas/SuccessResponse'
+                - type: object
+                  properties:
+                    data:
+                      type: array
+                      items: { $ref: '#/components/schemas/Service' }
 
 /services/{id}:
   get:
     tags: [Services]
-    summary: Get an active service by ID
-    description: Returns the service only if it is active. Returns 404 for inactive services.
+    summary: Get active service by ID
+    security: []
     parameters:
       - name: id
         in: path
@@ -28,39 +29,42 @@
         schema: { type: string, format: uuid }
     responses:
       '200':
-        description: Service retrieved
+        description: Service details
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                success: { type: boolean }
-                data:    { $ref: '#/components/schemas/Service' }
-      '404': { description: Service not found or inactive }
+              allOf:
+                - $ref: '#/components/schemas/SuccessResponse'
+                - type: object
+                  properties:
+                    data: { $ref: '#/components/schemas/Service' }
+      '400': { description: Validation error }
+      '404': { description: Service not found }
 
 /admin/services:
   get:
     tags: [Services]
     summary: List all services (admin)
-    description: Returns all services including inactive ones.
     security: [{ BearerAuth: [] }]
     responses:
       '200':
-        description: Services retrieved
+        description: Services list
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                success: { type: boolean }
-                data:
-                  type: array
-                  items: { $ref: '#/components/schemas/Service' }
+              allOf:
+                - $ref: '#/components/schemas/SuccessResponse'
+                - type: object
+                  properties:
+                    data:
+                      type: array
+                      items: { $ref: '#/components/schemas/Service' }
       '401': { description: Unauthorized }
       '403': { description: Forbidden }
+
   post:
     tags: [Services]
-    summary: Create a new service (admin)
+    summary: Create service (admin)
     security: [{ BearerAuth: [] }]
     requestBody:
       required: true
@@ -70,28 +74,24 @@
             type: object
             required: [name]
             properties:
-              name:     { type: string, example: Comfort }
-              baseFare: { type: number, example: 25.00 }
-              isActive: { type: boolean, example: true }
+              name: { type: string }
+              baseFare: { type: number, minimum: 0 }
+              fixedSurcharge: { type: number, minimum: 0 }
+              perStopSurcharge: { type: number, minimum: 0 }
+              requiresSenderCode: { type: boolean, nullable: true }
+              requiresReceiverCode: { type: boolean, nullable: true }
+              maxWeightKg: { type: number, minimum: 0, nullable: true }
+              isActive: { type: boolean }
     responses:
-      '201':
-        description: Service created successfully
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                success: { type: boolean, example: true }
-                data:    { $ref: '#/components/schemas/Service' }
-      '400': { description: Validation error or service name already exists }
+      '201': { description: Service created }
+      '400': { description: Validation error }
       '401': { description: Unauthorized }
       '403': { description: Forbidden }
 
 /admin/services/{id}:
   get:
     tags: [Services]
-    summary: Get a service by ID (admin)
-    description: Returns any service regardless of active status.
+    summary: Get service by ID (admin)
     security: [{ BearerAuth: [] }]
     parameters:
       - name: id
@@ -99,22 +99,14 @@
         required: true
         schema: { type: string, format: uuid }
     responses:
-      '200':
-        description: Service retrieved
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                success: { type: boolean }
-                data:    { $ref: '#/components/schemas/Service' }
+      '200': { description: Service details }
       '401': { description: Unauthorized }
       '403': { description: Forbidden }
       '404': { description: Service not found }
+
   patch:
     tags: [Services]
-    summary: Update a service (admin)
-    description: Update name, baseFare, or isActive status.
+    summary: Update service (admin)
     security: [{ BearerAuth: [] }]
     parameters:
       - name: id
@@ -128,25 +120,24 @@
           schema:
             type: object
             properties:
-              name:     { type: string, example: Comfort }
-              baseFare: { type: number, example: 25.00 }
-              isActive: { type: boolean, example: true }
+              name: { type: string }
+              baseFare: { type: number, minimum: 0 }
+              fixedSurcharge: { type: number, minimum: 0 }
+              perStopSurcharge: { type: number, minimum: 0 }
+              requiresSenderCode: { type: boolean, nullable: true }
+              requiresReceiverCode: { type: boolean, nullable: true }
+              maxWeightKg: { type: number, minimum: 0, nullable: true }
+              isActive: { type: boolean }
     responses:
-      '200':
-        description: Service updated
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                success: { type: boolean }
-                data:    { $ref: '#/components/schemas/Service' }
+      '200': { description: Service updated }
+      '400': { description: Validation error }
       '401': { description: Unauthorized }
       '403': { description: Forbidden }
       '404': { description: Service not found }
+
   delete:
     tags: [Services]
-    summary: Delete a service (admin)
+    summary: Delete service (admin)
     security: [{ BearerAuth: [] }]
     parameters:
       - name: id
@@ -154,15 +145,7 @@
         required: true
         schema: { type: string, format: uuid }
     responses:
-      '200':
-        description: Service deleted successfully
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                success: { type: boolean, example: true }
-                message: { type: string, example: Service deleted successfully }
+      '200': { description: Service deleted }
       '401': { description: Unauthorized }
       '403': { description: Forbidden }
       '404': { description: Service not found }
@@ -185,23 +168,10 @@
             type: object
             required: [image]
             properties:
-              image:
-                type: string
-                format: binary
+              image: { type: string, format: binary }
     responses:
-      '200':
-        description: Image updated
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                success:  { type: boolean, example: true }
-                data:
-                  type: object
-                  properties:
-                    imageUrl: { type: string, example: 'https://example.com/uploads/service-123.jpg' }
-      '400': { description: No file uploaded }
+      '200': { description: Image updated }
+      '400': { description: Validation error or no file }
       '401': { description: Unauthorized }
       '403': { description: Forbidden }
       '404': { description: Service not found }

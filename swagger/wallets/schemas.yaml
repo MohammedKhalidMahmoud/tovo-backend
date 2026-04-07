@@ -1,44 +1,29 @@
 WalletTransaction:
   type: object
   properties:
-    id:        { type: string, format: uuid }
-    walletId:  { type: string, format: uuid }
-    type:
-      type: string
-      enum: [credit, debit]
-    amount:    { type: number, example: 50.00 }
-    reason:
-      type: string
-      example: trip_earnings_credit
-      description: >
-        Standard values: `trip_earnings_credit` (card trip settlement),
-        `trip_commission_deduction` (cash trip settlement),
-        `trip_coupon_reimbursement` (driver reimbursement for rider coupon discounts),
-        `admin_adjustment` (manual admin change).
-    tripId:    { type: string, format: uuid, nullable: true }
+    id: { type: string, format: uuid }
+    walletId: { type: string, format: uuid }
+    type: { type: string, enum: [credit, debit] }
+    amount: { type: number }
+    reason: { type: string }
+    tripId: { type: string, format: uuid, nullable: true }
     createdAt: { type: string, format: date-time }
 
 Wallet:
   type: object
   properties:
-    id:       { type: string, format: uuid }
-    balance:  { type: number, example: 350.00 }
+    id: { type: string, format: uuid }
+    userId: { type: string, format: uuid }
+    balance: { type: number }
     currency: { type: string, example: EGP }
-    userId:   { type: string, format: uuid, nullable: true }
-    driverId: { type: string, format: uuid, nullable: true }
+    createdAt: { type: string, format: date-time }
+    updatedAt: { type: string, format: date-time }
     user:
       nullable: true
       type: object
       properties:
-        name:  { type: string }
+        id: { type: string, format: uuid }
+        name: { type: string }
         email: { type: string, format: email }
-        phone: { type: string }
-    driver:
-      nullable: true
-      type: object
-      properties:
-        name:  { type: string }
-        email: { type: string, format: email }
-        phone: { type: string }
-    createdAt: { type: string, format: date-time }
-    updatedAt: { type: string, format: date-time }
+        phone: { type: string, nullable: true }
+        role: { type: string, enum: [customer, driver, admin] }

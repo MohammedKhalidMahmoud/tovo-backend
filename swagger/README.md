@@ -1,123 +1,45 @@
-# Tovo API — Modular Swagger Documentation
+# Tovo Swagger Modules
 
-This directory contains the OpenAPI 3.0.3 specification for the **Tovo** ride-hailing API,
-split into one folder per feature module for easy maintenance.
+This directory contains modular OpenAPI source files used by `swagger/swagger.config.js` to build the runtime docs served by the app:
 
-Recent addition: `swagger/toll-gates/` documents the admin CRUD endpoints for `/admin/toll-gates`.
+- `GET /api/docs` (combined spec)
+- `GET /docs/public` (public-only filtered view)
+- `GET /docs/admin` (admin-only filtered view)
 
-## Structure
+## How It Is Built
 
-```
-swagger/
-├── openapi.yaml              ← Root entry point (assembles all modules)
-│
-├── admins/
-│   ├── paths.yaml            ← /admin/login, /admin/users, /admin/drivers, /admin/admins
-│   └── schemas.yaml          ← AdminUser
-│
-├── analytics/
-│   ├── paths.yaml            ← /admin/reports/rides|drivers|users
-│   └── schemas.yaml          ← DriverReport, UserReport
-│
-├── auth/
-│   ├── paths.yaml            ← /auth/register, /auth/login, /auth/logout, OTP, social
-│   └── schemas.yaml          ← (references users/drivers schemas)
-│
-├── drivers/
-│   ├── paths.yaml            ← /drivers/me, duty, wallet, insurance, trips
-│   └── schemas.yaml          ← Driver, DriverCreate, DriverUpdate
-│
-├── coupons/
-│   ├── paths.yaml            ← /promotions, /promotions/coupons/validate, /admin/promotions/coupons
-│   └── schemas.yaml          ← Promotion
-│
-├── dashboard/
-│   ├── paths.yaml            ← /dashboard/statistics, /dashboard/ride-requests, /dashboard/rides/upcoming
-│   └── schemas.yaml          ← (inline responses)
-│
-├── faqs/
-│   ├── paths.yaml            ← /faqs, /admin/faqs CRUD
-│   └── schemas.yaml          ← Faq
-│
-├── locations/
-│   ├── paths.yaml            ← /locations/search, nearby-drivers, reverse-geocode
-│   └── schemas.yaml          ← (no standalone schemas)
-│
-├── notifications/
-│   ├── paths.yaml            ← /notifications, device-token, send-to-user/driver
-│   └── schemas.yaml          ← Notification
-│
-├── payments/
-│   ├── paths.yaml            ← /admin/payments, /admin/payments/{id}/refund
-│   └── schemas.yaml          ← (PaymentMethod lives in users/schemas.yaml)
-│
-├── pricing/
-│   ├── paths.yaml            ← /admin/pricing GET + PUT
-│   └── schemas.yaml          ← (inline responses)
-│
-├── regions/
-│   ├── paths.yaml            ← /admin/regions CRUD
-│   └── schemas.yaml          ← Region
-│
-├── rides/
-│   ├── paths.yaml            ← /admin/rides CRUD, refund, reassign
-│   └── schemas.yaml          ← RefundRequest, RideStats
-│
-├── services/
-│   ├── paths.yaml            ← /admin/services CRUD
-│   └── schemas.yaml          ← Service
-│
-├── settings/
-│   ├── paths.yaml            ← /admin/settings GET + PUT
-│   └── schemas.yaml          ← SystemSetting
-│
-├── sos/
-│   ├── paths.yaml            ← /sos, /admin/sos CRUD + handle
-│   └── schemas.yaml          ← SosAlert
-│
-├── support/
-│   ├── paths.yaml            ← /support/tickets CRUD + messages
-│   └── schemas.yaml          ← SupportTicket
-│
-├── trips/
-│   ├── paths.yaml            ← /trips estimate, create, list, details, cancel, rating
-│   └── schemas.yaml          ← Trip, RideCreate, RideUpdate, Rating
-│
-├── users/
-│   ├── paths.yaml            ← /users/me, avatar, wallet, addresses, payment-methods
-│   └── schemas.yaml          ← User, UserCreate, UserUpdate, SavedAddress, PaymentMethod
-│
-├── vehicle-models/
-│   ├── paths.yaml            ← /vehicle-models (public), /admin/vehicle-models CRUD
-│   └── schemas.yaml          ← VehicleModel
-│
-├── vehicles/
-│   ├── paths.yaml            ← /admin/vehicles CRUD
-│   └── schemas.yaml          ← Vehicle, VehicleDetail
-│
-└── wallets/
-    ├── paths.yaml            ← /admin/wallets list, get, adjust
-    └── schemas.yaml          ← Wallet
-```
+`swagger/swagger.config.js` loads:
 
-## Usage
+- `swagger/swagger.info.yaml` for base OpenAPI metadata
+- every module `schemas.yaml`
+- every module `paths.yaml`
 
-### Swagger UI / Redoc
-Point your tool at `openapi.yaml`. Most modern tools (Swagger UI ≥ 4, Redoc, Stoplight)
-support multi-file `$ref` resolution out of the box.
+Then it merges them into one `paths` object and one `components.schemas` object.
 
-### Bundling into a single file
-Use [swagger-cli](https://github.com/APIDevTools/swagger-cli) or [redocly](https://redocly.com/docs/cli/):
+## Current Modules
 
-```bash
-# swagger-cli
-npx swagger-cli bundle openapi.yaml -o dist/openapi.bundle.yaml
+- `analytics`
+- `auth`
+- `commission-rules`
+- `coupons`
+- `dashboard`
+- `drivers`
+- `earnings`
+- `faqs`
+- `notifications`
+- `payments`
+- `regions`
+- `services`
+- `settings`
+- `support`
+- `toll-gates`
+- `trips`
+- `users`
+- `vehicle-models`
+- `vehicles`
+- `wallets`
 
-# redocly
-npx @redocly/cli bundle openapi.yaml -o dist/openapi.bundle.yaml
-```
+## Notes
 
-### Validation
-```bash
-npx @redocly/cli lint openapi.yaml
-```
+- `rides/` exists in the repository for historical reference, but it is **not loaded** by `swagger.config.js`.
+- Public routes should explicitly set `security: []` in path definitions when they do not require authentication.
