@@ -44,6 +44,28 @@ const normalizeStops = (stops = [], startOrder = 1) =>
     address: String(stop.address).trim(),
   }));
 
+const getTripTollFeesTotal = (trip) =>
+  roundMoney(
+    (trip?.tollGates || []).reduce((sum, toll) => sum + Number(toll.fee || 0), 0)
+  );
+
+const resolveTollGatesWithFeeSnapshot = async (tollGateIds = []) => {
+  const normalizedIds = [...new Set((tollGateIds || []).map((id) => String(id).trim()).filter(Boolean))];
+  if (!normalizedIds.length) return [];
+
+  const tollGates = await prisma.tollGate.findMany({
+    where: { id: { in: normalizedIds }, isActive: true },
+    select: { id: true, fee: true },
+  });
+
+  if (tollGates.length !== normalizedIds.length) {
+    throw { status: 422, message: 'One or more toll gates are invalid or inactive' };
+  }
+
+  const tollGateMap = new Map(tollGates.map((gate) => [gate.id, gate]));
+  return normalizedIds.map((id) => tollGateMap.get(id));
+};
+
 const calculateRouteDistanceKm = ({ pickupLat, pickupLng, dropoffLat, dropoffLng, stops = [] }) => {
   const routePoints = [
     { lat: pickupLat, lng: pickupLng },
@@ -71,6 +93,7 @@ const calculateTripPricing = async ({
   dropoffLat,
   dropoffLng,
   stops = [],
+  tollFeesTotal = 0,
 }) => {
   const distanceKm = calculateRouteDistanceKm({
     pickupLat,
@@ -85,7 +108,10 @@ const calculateTripPricing = async ({
   const fixedSurcharge = getFixedSurchargeAmount(service);
   const perStopSurcharge = getPerStopSurchargeAmount(service);
   const stopsSurcharge = roundMoney(stops.length * perStopSurcharge);
-  const originalFare = roundMoney(driverEarnings + commission + fixedSurcharge + stopsSurcharge);
+  const normalizedTollFeesTotal = roundMoney(tollFeesTotal);
+  const originalFare = roundMoney(
+    driverEarnings + commission + fixedSurcharge + stopsSurcharge + normalizedTollFeesTotal
+  );
 
   return {
     distanceKm,
@@ -94,6 +120,7 @@ const calculateTripPricing = async ({
     fixedSurcharge,
     perStopSurcharge,
     stopsSurcharge,
+    tollFeesTotal: normalizedTollFeesTotal,
     originalFare,
     finalFare: originalFare,
     discountAmount: 0,
@@ -245,6 +272,7 @@ const estimateFare = async ({ pickupLat, pickupLng, dropoffLat, dropoffLng, stop
         perStopSurcharge: pricing.perStopSurcharge,
         stopsCount: stops.length,
         stopsSurcharge: pricing.stopsSurcharge,
+        tollFees: pricing.tollFeesTotal,
         originalFare: pricing.originalFare,
         finalFare: pricing.finalFare,
         discountAmount: pricing.discountAmount,
@@ -295,6 +323,7 @@ const createTrip = async (userId, body) => {
     dropoff_lng,
     dropoff_address,
     service_id,
+    toll_gate_ids = [],
     stops = [],
   } = body;
 
@@ -302,6 +331,11 @@ const createTrip = async (userId, body) => {
   if (!svc || !svc.isActive) throw Object.assign(new Error('Service not found or inactive'), { statusCode: 404 });
 
   await validatePickupInRegion(pickup_lat, pickup_lng);
+
+  const selectedTollGates = await resolveTollGatesWithFeeSnapshot(toll_gate_ids);
+  const tollFeesTotal = roundMoney(
+    selectedTollGates.reduce((sum, gate) => sum + Number(gate.fee || 0), 0)
+  );
 
   const normalizedStops = normalizeStops(stops);
   const pricing = await calculateTripPricing({
@@ -311,6 +345,7 @@ const createTrip = async (userId, body) => {
     dropoffLat: dropoff_lat,
     dropoffLng: dropoff_lng,
     stops: normalizedStops,
+    tollFeesTotal,
   });
 
   const trip = await repo.createTrip({
@@ -330,6 +365,14 @@ const createTrip = async (userId, body) => {
     driverEarnings: pricing.driverEarnings,
     paymentType:    'cash',
     status:         'searching',
+    tollGates: selectedTollGates.length
+      ? {
+          create: selectedTollGates.map((gate) => ({
+            tollGate: { connect: { id: gate.id } },
+            fee: Number(gate.fee),
+          })),
+        }
+      : undefined,
     stops: normalizedStops.length
       ? {
           create: normalizedStops.map((stop) => ({
@@ -367,6 +410,7 @@ const addTripStops = async (tripId, userId, stops) => {
 
   const newStops = normalizeStops(stops, trip.stops.length + 1);
   const allStops = [...trip.stops, ...newStops];
+  const tollFeesTotal = getTripTollFeesTotal(trip);
   const pricing = await calculateTripPricing({
     service: trip.service,
     pickupLat: trip.pickupLat,
@@ -374,6 +418,7 @@ const addTripStops = async (tripId, userId, stops) => {
     dropoffLat: trip.dropoffLat,
     dropoffLng: trip.dropoffLng,
     stops: allStops,
+    tollFeesTotal,
   });
   const fareData = await recalculateCouponFare(trip, pricing.originalFare);
 

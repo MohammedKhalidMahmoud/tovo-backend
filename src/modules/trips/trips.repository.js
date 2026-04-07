@@ -28,6 +28,14 @@ const TRIP_INCLUDE = {
     },
   },
   stops: { orderBy: { order: 'asc' } },
+  tollGates: {
+    orderBy: { createdAt: 'asc' },
+    include: {
+      tollGate: {
+        select: { id: true, name: true, lat: true, lng: true, isActive: true },
+      },
+    },
+  },
   coupon: { select: { id: true, code: true, discount_type: true, discount: true, max_discount: true } },
   rating: true,
 };

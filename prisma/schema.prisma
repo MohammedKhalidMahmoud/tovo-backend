@@ -218,6 +218,7 @@ model Trip {
   coupon          Coupon?        @relation(fields: [couponId], references: [id])
   rating              Rating?
   stops               TripStop[]
+  tollGates           TripTollGate[]
   declines            TripDecline[]
   walletTransactions  WalletTransaction[]
   commissionLog       CommissionLog?
@@ -548,8 +549,23 @@ model TollGate {
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  trips     TripTollGate[]
 
   @@map("toll_gates")
+}
+
+model TripTollGate {
+  tripId     String
+  tollGateId String
+  fee        Decimal  @db.Decimal(10, 2)
+  createdAt  DateTime @default(now())
+
+  trip      Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  tollGate  TollGate @relation(fields: [tollGateId], references: [id], onDelete: Cascade)
+
+  @@id([tripId, tollGateId])
+  @@index([tollGateId], map: "trip_toll_gates_tollGateId_fkey")
+  @@map("trip_toll_gates")
 }
 
 model Service {
