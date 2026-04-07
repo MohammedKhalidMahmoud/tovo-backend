@@ -158,7 +158,7 @@ const prisma = require('./config/prisma');
 
 // Clear stale isOnline flags from a previous crash or restart.
 // Drivers who are truly active will reconnect their socket and call /duty/start again.
-prisma.user.updateMany({ where: { role: 'driver', isOnline: true }, data: { isOnline: false } })
+prisma.driverProfile.updateMany({ where: { isOnline: true }, data: { isOnline: false } })
   .then(({ count }) => { if (count > 0) logger.info(`Reset ${count} stale online driver(s) to offline`); })
   .catch((e) => logger.error('Failed to reset driver online flags on startup', e));
 

@@ -194,7 +194,7 @@ const setupSocket = (io) => {
 
       try {
         const prisma = require('../config/prisma');
-        const driverData = await prisma.user.findUnique({ where: { id }, select: { serviceId: true } });
+        const driverData = await prisma.driverProfile.findUnique({ where: { userId: id }, select: { serviceId: true } });
         socket.driverServiceId = driverData?.serviceId ?? null;
       } catch (e) {
         logger.error('Failed to load driver serviceId on connect', e);
@@ -257,7 +257,7 @@ const setupSocket = (io) => {
 
         try {
           const prisma = require('../config/prisma');
-          await prisma.user.update({ where: { id }, data: { isOnline: false } });
+          await prisma.driverProfile.updateMany({ where: { userId: id }, data: { isOnline: false } });
         } catch (e) {
           logger.error('Failed to set driver offline on disconnect', e);
         }

@@ -1,19 +1,63 @@
-const repo          = require('./drivers.repository');
-const prisma        = require('../../config/prisma');
-const bcrypt        = require('bcryptjs');
+const repo = require('./drivers.repository');
+const prisma = require('../../config/prisma');
+const bcrypt = require('bcryptjs');
 const locationStore = require('../../realtime/locationStore');
 
-// ── Driver-facing ──────────────────────────────────────────────────────────────
+const DRIVER_PROFILE_FIELDS = new Set([
+  'drivingLicense',
+  'licenseExpiryDate',
+  'isOnline',
+  'rating',
+  'totalTrips',
+  'serviceId',
+]);
+
+const splitDriverUpdateData = (data = {}) => {
+  const userData = {};
+  const profileData = {};
+
+  Object.entries(data).forEach(([key, value]) => {
+    if (value === undefined) return;
+    if (DRIVER_PROFILE_FIELDS.has(key)) profileData[key] = value;
+    else userData[key] = value;
+  });
+
+  return { userData, profileData };
+};
+
+const withDriverProfileFields = (driver) => {
+  if (!driver) return driver;
+
+  const profile = driver.driverProfile || null;
+  const { driverProfile, ...safe } = driver;
+
+  return {
+    ...safe,
+    drivingLicense: profile?.drivingLicense ?? null,
+    licenseExpiryDate: profile?.licenseExpiryDate ?? null,
+    isOnline: profile?.isOnline ?? false,
+    rating: profile?.rating ?? 0,
+    totalTrips: profile?.totalTrips ?? 0,
+    serviceId: profile?.serviceId ?? null,
+  };
+};
+
+const findDriver = (driverId, include = {}) =>
+  prisma.user.findFirst({
+    where: { id: driverId, role: 'driver' },
+    include,
+  });
+
 exports.getProfile = async (driverId) => {
   const driver = await repo.findById(driverId);
   if (!driver) throw { status: 404, message: 'Driver not found' };
-  const { passwordHash, ...safe } = driver;
+  const { passwordHash, ...safe } = withDriverProfileFields(driver);
   return safe;
 };
 
 exports.updateProfile = async (driverId, data) => {
   const updated = await repo.updateCaptain(driverId, data);
-  const { passwordHash, ...safe } = updated;
+  const { passwordHash, ...safe } = withDriverProfileFields(updated);
   return safe;
 };
 
@@ -39,73 +83,91 @@ exports.getWallet = async (driverId) => {
 
 exports.getInsuranceCards = (driverId) => repo.getInsuranceCards(driverId);
 
-// ── Admin (drivers) ───────────────────────────────────────────────────────────
-exports.listDrivers = async ({ page = 1, limit = 20, sortBy = 'createdAt', sortOrder = 'desc', search, status, isVerified, onlineStatus } = {}) => {
+exports.listDrivers = async ({
+  page = 1,
+  limit = 20,
+  sortBy = 'createdAt',
+  sortOrder = 'desc',
+  search,
+  status,
+  isVerified,
+  onlineStatus,
+} = {}) => {
   const where = { role: 'driver' };
   if (isVerified && isVerified !== 'all') where.isVerified = isVerified === 'verified';
-  if (onlineStatus && onlineStatus !== 'all') where.isOnline = onlineStatus === 'online';
+  if (onlineStatus && onlineStatus !== 'all') {
+    where.driverProfile = { is: { isOnline: onlineStatus === 'online' } };
+  }
   if (search) {
     where.OR = [
-      { name:           { contains: search } },
-      { email:          { contains: search } },
-      { drivingLicense: { contains: search } },
+      { name: { contains: search } },
+      { email: { contains: search } },
+      { driverProfile: { is: { drivingLicense: { contains: search } } } },
     ];
+  }
+
+  let orderBy = { createdAt: sortOrder };
+  if (sortBy === 'rating' || sortBy === 'totalTrips') {
+    orderBy = { driverProfile: { [sortBy]: sortOrder } };
+  } else if (['createdAt', 'updatedAt', 'name', 'email'].includes(sortBy)) {
+    orderBy = { [sortBy]: sortOrder };
   }
 
   const [total, drivers] = await Promise.all([
     prisma.user.count({ where }),
     prisma.user.findMany({
       where,
-      include: { vehicle: { include: { vehicleModel: true } }, wallet: true },
-      orderBy: { [sortBy]: sortOrder },
-      skip:    (page - 1) * limit,
-      take:    limit,
+      include: { vehicle: { include: { vehicleModel: true } }, wallet: true, driverProfile: true },
+      orderBy,
+      skip: (page - 1) * limit,
+      take: limit,
     }),
   ]);
 
   const data = drivers.map((d) => ({
-    id:             d.id,
-    name:           d.name,
-    email:          d.email,
-    phone:          d.phone,
-    licenseNumber:  d.drivingLicense,
-    vehicleType:    d.vehicle?.vehicleModel?.name || null,
-    status:         d.isVerified ? 'active' : 'pending',
-    rating:         d.rating,
-    ridesCompleted: d.totalTrips,
+    id: d.id,
+    name: d.name,
+    email: d.email,
+    phone: d.phone,
+    licenseNumber: d.driverProfile?.drivingLicense ?? null,
+    vehicleType: d.vehicle?.vehicleModel?.name || null,
+    status: d.isVerified ? 'active' : 'pending',
+    rating: d.driverProfile?.rating ?? 0,
+    ridesCompleted: d.driverProfile?.totalTrips ?? 0,
   }));
 
   return { data, total, pages: Math.ceil(total / limit) };
 };
 
 exports.getDriverDetails = async (driverId) => {
-  const driver = await prisma.user.findUnique({
-    where:   { id: driverId, role: 'driver' },
-    include: {
-      vehicle:         { include: { vehicleModel: true } },
-      tripsAsDriver:   true,
-      ratingsReceived: true,
-      wallet:          true,
-      supportTickets:  true,
-    },
+  const driver = await findDriver(driverId, {
+    driverProfile: true,
+    vehicle: { include: { vehicleModel: true } },
+    tripsAsDriver: true,
+    ratingsReceived: true,
+    wallet: true,
+    supportTickets: true,
   });
   if (!driver) return null;
+
+  const withProfile = withDriverProfileFields(driver);
+
   return {
-    id:             driver.id,
-    name:           driver.name,
-    email:          driver.email,
-    phone:          driver.phone,
-    licenseNumber:  driver.drivingLicense,
-    vehicleType:    driver.vehicle?.vehicleModel?.name || null,
-    status:         driver.isVerified ? 'active' : 'pending',
-    rating:         driver.rating,
-    totalTrips:     driver.totalTrips,
-    trips:          driver.tripsAsDriver,
-    ratings:        driver.ratingsReceived,
-    wallet:         driver.wallet,
-    supportTickets: driver.supportTickets,
-    createdAt:      driver.createdAt,
-    updatedAt:      driver.updatedAt,
+    id: withProfile.id,
+    name: withProfile.name,
+    email: withProfile.email,
+    phone: withProfile.phone,
+    licenseNumber: withProfile.drivingLicense,
+    vehicleType: withProfile.vehicle?.vehicleModel?.name || null,
+    status: withProfile.isVerified ? 'active' : 'pending',
+    rating: withProfile.rating,
+    totalTrips: withProfile.totalTrips,
+    trips: withProfile.tripsAsDriver,
+    ratings: withProfile.ratingsReceived,
+    wallet: withProfile.wallet,
+    supportTickets: withProfile.supportTickets,
+    createdAt: withProfile.createdAt,
+    updatedAt: withProfile.updatedAt,
   };
 };
 
@@ -118,55 +180,97 @@ exports.createDriver = async (data) => {
     const existing = await prisma.user.findUnique({ where: { phone: data.phone } });
     if (existing) throw new Error('Phone number already exists');
   }
+
+  const profileData = {
+    drivingLicense: data.drivingLicense || null,
+    licenseExpiryDate: data.licenseExpiryDate ? new Date(data.licenseExpiryDate) : null,
+  };
+
   const created = await prisma.user.create({
     data: {
-      name:              data.name,
-      email:             data.email             || null,
-      phone:             data.phone             || null,
-      drivingLicense:    data.drivingLicense    || null,
-      licenseExpiryDate: data.licenseExpiryDate ? new Date(data.licenseExpiryDate) : null,
-      isVerified:        false,
-      role:              'driver',
+      name: data.name,
+      email: data.email || null,
+      phone: data.phone || null,
+      isVerified: false,
+      role: 'driver',
+      driverProfile: { create: profileData },
     },
   });
+
   return exports.getDriverDetails(created.id);
 };
 
 exports.updateDriver = async (driverId, updateData) => {
-  const driver = await prisma.user.findUnique({ where: { id: driverId, role: 'driver' } });
+  const driver = await findDriver(driverId);
   if (!driver) throw new Error('Driver not found');
+
   if (updateData.email && updateData.email !== driver.email) {
     const existing = await prisma.user.findUnique({ where: { email: updateData.email } });
     if (existing) throw new Error('Email already exists');
   }
-  await prisma.user.update({ where: { id: driverId }, data: updateData });
+  if (updateData.phone && updateData.phone !== driver.phone) {
+    const existing = await prisma.user.findUnique({ where: { phone: updateData.phone } });
+    if (existing) throw new Error('Phone number already exists');
+  }
+
+  const { userData, profileData } = splitDriverUpdateData(updateData);
+
+  await prisma.user.update({
+    where: { id: driverId },
+    data: {
+      ...userData,
+      ...(Object.keys(profileData).length
+        ? {
+            driverProfile: {
+              upsert: {
+                create: profileData,
+                update: profileData,
+              },
+            },
+          }
+        : {}),
+    },
+  });
+
   return exports.getDriverDetails(driverId);
 };
 
 exports.approveDriver = async (driverId, reason) => {
-  const driver = await prisma.user.findUnique({ where: { id: driverId, role: 'driver' } });
+  const driver = await findDriver(driverId);
   if (!driver) throw new Error('Driver not found');
   await prisma.user.update({ where: { id: driverId }, data: { isVerified: true } });
   return { id: driverId, approved: true, reason: reason || null };
 };
 
 exports.rejectDriver = async (driverId, reason) => {
-  const driver = await prisma.user.findUnique({ where: { id: driverId, role: 'driver' } });
+  const driver = await findDriver(driverId);
   if (!driver) throw new Error('Driver not found');
   await prisma.user.update({ where: { id: driverId }, data: { isVerified: false } });
   return { id: driverId, rejected: true, reason };
 };
 
 exports.suspendDriver = async (driverId, { action, reason, durationDays }) => {
-  const driver = await prisma.user.findUnique({ where: { id: driverId, role: 'driver' } });
+  const driver = await findDriver(driverId);
   if (!driver) throw new Error('Driver not found');
   const isOnline = action === 'unsuspend';
-  await prisma.user.update({ where: { id: driverId }, data: { isOnline } });
+
+  await prisma.user.update({
+    where: { id: driverId },
+    data: {
+      driverProfile: {
+        upsert: {
+          create: { isOnline },
+          update: { isOnline },
+        },
+      },
+    },
+  });
+
   return { id: driverId, isOnline };
 };
 
 exports.issueRefund = async (driverId, { amount, currency, tripId, reason }) => {
-  const driver = await prisma.user.findUnique({ where: { id: driverId, role: 'driver' }, include: { wallet: true } });
+  const driver = await findDriver(driverId, { wallet: true });
   if (!driver) throw new Error('Driver not found');
   if (!driver.wallet) {
     await prisma.wallet.create({ data: { userId: driverId, balance: amount, currency } });
@@ -177,14 +281,14 @@ exports.issueRefund = async (driverId, { amount, currency, tripId, reason }) => 
 };
 
 exports.resetPassword = async (driverId, newPassword) => {
-  const driver = await prisma.user.findUnique({ where: { id: driverId, role: 'driver' } });
+  const driver = await findDriver(driverId);
   if (!driver) throw new Error('Driver not found');
   const hash = await bcrypt.hash(newPassword, 10);
   await prisma.user.update({ where: { id: driverId }, data: { passwordHash: hash } });
 };
 
 exports.deleteDriver = async (driverId) => {
-  const driver = await prisma.user.findUnique({ where: { id: driverId, role: 'driver' } });
+  const driver = await findDriver(driverId);
   if (!driver) throw new Error('Driver not found');
   await prisma.user.delete({ where: { id: driverId } });
 };

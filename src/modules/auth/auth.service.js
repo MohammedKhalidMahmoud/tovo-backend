@@ -80,7 +80,19 @@ const registerCaptain = async ({ name, email, phone, password, drivingLicense, v
 
   const driver = await prisma.$transaction(async (tx) => {
     const newDriver = await tx.user.create({
-      data: { name, email, phone, passwordHash, drivingLicense, serviceId, role: 'driver' },
+      data: {
+        name,
+        email,
+        phone,
+        passwordHash,
+        role: 'driver',
+        driverProfile: {
+          create: {
+            drivingLicense,
+            serviceId,
+          },
+        },
+      },
     });
 
     await tx.vehicle.create({

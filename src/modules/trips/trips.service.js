@@ -512,7 +512,11 @@ const endTrip = async (tripId, driverId) => {
   if (trip.driverId !== driverId) throw { status: 403, message: 'Access denied' };
   if (trip.status !== 'in_progress') throw { status: 422, message: 'Trip is not in progress' };
 
-  await prisma.user.update({ where: { id: driverId }, data: { totalTrips: { increment: 1 } } });
+  await prisma.driverProfile.upsert({
+    where: { userId: driverId },
+    create: { userId: driverId, totalTrips: 1 },
+    update: { totalTrips: { increment: 1 } },
+  });
 
   const endedAt = new Date();
   const completed = await repo.updateTrip(tripId, {
@@ -569,6 +573,7 @@ const rateTrip = async (tripId, userId, stars, comment) => {
   if (!trip) throw { status: 404, message: 'Trip not found' };
   if (trip.userId !== userId) throw { status: 403, message: 'Access denied' };
   if (trip.status !== 'completed') throw { status: 422, message: 'Can only rate completed trips' };
+  if (!trip.driverId) throw { status: 422, message: 'Trip has no assigned driver to rate' };
 
   const existing = await repo.findRatingsByTrip(tripId);
   if (existing) throw { status: 409, message: 'Trip already rated' };
@@ -583,7 +588,11 @@ const rateTrip = async (tripId, userId, stars, comment) => {
   ).catch(() => {});
 
   const allRatings = await prisma.rating.aggregate({ where: { driverId: trip.driverId }, _avg: { stars: true } });
-  await prisma.user.update({ where: { id: trip.driverId }, data: { rating: allRatings._avg.stars || 0 } });
+  await prisma.driverProfile.upsert({
+    where: { userId: trip.driverId },
+    create: { userId: trip.driverId, rating: allRatings._avg.stars || 0 },
+    update: { rating: allRatings._avg.stars || 0 },
+  });
 
   return rating;
 };

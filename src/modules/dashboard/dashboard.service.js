@@ -43,7 +43,9 @@ const adminDashboard = async () => {
   });
   const monthlyRevenue = parseFloat(monthAggr._sum.finalFare || 0);
 
-  const activeDrivers = await prisma.user.count({ where: { role: 'driver', isOnline: true } });
+  const activeDrivers = await prisma.driverProfile.count({
+    where: { isOnline: true, user: { role: 'driver' } },
+  });
   // active riders: users with at least one trip in last 24h
   const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const activeRiders = await prisma.trip.aggregate({

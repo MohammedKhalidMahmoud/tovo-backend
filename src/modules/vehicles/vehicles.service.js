@@ -33,7 +33,7 @@ exports.getVehicle = async (id) => {
 };
 
 exports.createVehicle = async ({ userId, vehicleModelId, vin }) => {
-  const driverExists = await prisma.user.findUnique({ where: { id: userId, role: 'driver' } });
+  const driverExists = await prisma.user.findFirst({ where: { id: userId, role: 'driver' } });
   if (!driverExists) throw Object.assign(new Error('Driver not found'), { statusCode: 404 });
 
   if (vehicleModelId) {
