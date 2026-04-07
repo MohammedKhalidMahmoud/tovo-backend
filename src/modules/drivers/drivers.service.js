@@ -172,6 +172,8 @@ exports.getDriverDetails = async (driverId) => {
 };
 
 exports.createDriver = async (data) => {
+  if (!data.email) throw new Error('Email is required');
+
   if (data.email) {
     const existing = await prisma.user.findUnique({ where: { email: data.email } });
     if (existing) throw new Error('Email already exists');
@@ -189,7 +191,7 @@ exports.createDriver = async (data) => {
   const created = await prisma.user.create({
     data: {
       name: data.name,
-      email: data.email || null,
+      email: data.email,
       phone: data.phone || null,
       isVerified: false,
       role: 'driver',

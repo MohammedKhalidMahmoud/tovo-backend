@@ -35,7 +35,7 @@ router.post(
   '/',
   [
     body('name').notEmpty().withMessage('name is required'),
-    body('email').optional().isEmail().normalizeEmail(),
+    body('email').isEmail().withMessage('email is required and must be valid').normalizeEmail(),
     body('phone').optional().isMobilePhone(),
     body('drivingLicense').optional().trim(),
   ],
