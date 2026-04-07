@@ -1,10 +1,7 @@
 const bcrypt = require('bcrypt');
-const repo   = require('./users.repository');
+const repo = require('./users.repository');
 
-// ════════════════════════════════════════════════════════════════════════════
-// USER-FACING METHODS
-// ════════════════════════════════════════════════════════════════════════════
-
+// User-facing methods
 const getProfile = async (userId) => {
   const user = await repo.findById(userId);
   if (!user) throw { status: 404, message: 'User not found' };
@@ -30,8 +27,6 @@ const getWallet = async (userId) => {
   return wallet;
 };
 
-// ── Addresses ─────────────────────────────────────────────────────────────────
-
 const getSavedAddresses = (userId) => repo.getSavedAddresses(userId);
 
 const addAddress = (userId, data) => repo.createAddress({ userId, ...data });
@@ -40,42 +35,26 @@ const updateAddress = (id, userId, data) => repo.updateAddress(id, userId, data)
 
 const deleteAddress = (id, userId) => repo.deleteAddress(id, userId);
 
-// ── Payment Methods ───────────────────────────────────────────────────────────
-
-const getPaymentMethods = (userId) => repo.getPaymentMethods(userId);
-
-const addPaymentMethod = (userId, data) => repo.createPaymentMethod({ userId, ...data });
-
-const deletePaymentMethod = (id, userId) => repo.deletePaymentMethod(id, userId);
-
-const setDefaultPayment = (id, userId) => repo.setDefaultPayment(id, userId);
-
-// ════════════════════════════════════════════════════════════════════════════
-// ADMIN METHODS
-// ════════════════════════════════════════════════════════════════════════════
-
-/**
- * List all users with filtering, sorting, and pagination.
- */
+// Admin methods
 const listUsers = async (filters) => {
   const { page, limit, sortBy, sortOrder, search, status, dateFrom, dateTo } = filters;
 
   const where = { role: 'customer' };
 
-  if (status === 'active')      where.isActive   = true;
-  else if (status === 'suspended')  where.isActive   = false;
-  else if (status === 'verified')   where.isVerified = true;
+  if (status === 'active') where.isActive = true;
+  else if (status === 'suspended') where.isActive = false;
+  else if (status === 'verified') where.isVerified = true;
   else if (status === 'unverified') where.isVerified = false;
 
   if (dateFrom || dateTo) {
     where.createdAt = {};
     if (dateFrom) where.createdAt.gte = new Date(dateFrom);
-    if (dateTo)   where.createdAt.lte = new Date(dateTo);
+    if (dateTo) where.createdAt.lte = new Date(dateTo);
   }
 
   if (search) {
     where.OR = [
-      { name:  { contains: search } },
+      { name: { contains: search } },
       { email: { contains: search } },
       { phone: { contains: search } },
     ];
@@ -86,24 +65,24 @@ const listUsers = async (filters) => {
   const users = await repo.findManyUsers({
     where,
     orderBy: { [sortBy]: sortOrder },
-    skip:    (page - 1) * limit,
-    take:    limit,
+    skip: (page - 1) * limit,
+    take: limit,
   });
 
   const data = users.map((user) => ({
-    id:                   user.id,
-    name:                 user.name,
-    email:                user.email,
-    phone:                user.phone,
-    isVerified:           user.isVerified,
-    isActive:             user.isActive !== false,
-    language:             user.language,
-    avatarUrl:            user.avatarUrl,
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    phone: user.phone,
+    isVerified: user.isVerified,
+    isActive: user.isActive !== false,
+    language: user.language,
+    avatarUrl: user.avatarUrl,
     notificationsEnabled: user.notificationsEnabled,
-    createdAt:            user.createdAt,
-    updatedAt:            user.updatedAt,
-    walletBalance:        user.wallet?.balance || 0,
-    totalTrips:           user.tripsAsCustomer.length,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt,
+    walletBalance: user.wallet?.balance || 0,
+    totalTrips: user.tripsAsCustomer.length,
     avgRating:
       user.ratingsGiven.length > 0
         ? (user.ratingsGiven.reduce((sum, r) => sum + r.stars, 0) / user.ratingsGiven.length).toFixed(1)
@@ -113,34 +92,33 @@ const listUsers = async (filters) => {
   return { data, total, pages: Math.ceil(total / limit) };
 };
 
-/**
- * Get full details for a single user.
- */
 const getUserDetails = async (userId) => {
   const user = await repo.findUserWithDetails(userId);
   if (!user) return null;
 
   const completedTrips = user.tripsAsCustomer.filter((t) => t.status === 'completed').length;
   const cancelledTrips = user.tripsAsCustomer.filter((t) => t.status === 'cancelled').length;
-  const totalSpent     = user.tripsAsCustomer.reduce((sum, t) => sum + (t.finalFare ? parseFloat(t.finalFare) : 0), 0);
+  const totalSpent = user.tripsAsCustomer.reduce((sum, t) => sum + (t.finalFare ? parseFloat(t.finalFare) : 0), 0);
 
   const ratingDistribution = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
-  user.ratingsGiven.forEach((r) => { ratingDistribution[r.stars]++; });
+  user.ratingsGiven.forEach((r) => {
+    ratingDistribution[r.stars] += 1;
+  });
 
   return {
-    id:                   user.id,
-    name:                 user.name,
-    email:                user.email,
-    phone:                user.phone,
-    isVerified:           user.isVerified,
-    isActive:             user.isActive !== false,
-    language:             user.language,
-    avatarUrl:            user.avatarUrl,
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    phone: user.phone,
+    isVerified: user.isVerified,
+    isActive: user.isActive !== false,
+    language: user.language,
+    avatarUrl: user.avatarUrl,
     notificationsEnabled: user.notificationsEnabled,
-    createdAt:            user.createdAt,
-    updatedAt:            user.updatedAt,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt,
     wallet: {
-      balance:  user.wallet?.balance  || 0,
+      balance: user.wallet?.balance || 0,
       currency: user.wallet?.currency || 'EGP',
     },
     tripsStats: {
@@ -154,33 +132,23 @@ const getUserDetails = async (userId) => {
         user.ratingsGiven.length > 0
           ? (user.ratingsGiven.reduce((sum, r) => sum + r.stars, 0) / user.ratingsGiven.length).toFixed(1)
           : 0,
-      totalRatings:  user.ratingsGiven.length,
-      distribution:  ratingDistribution,
+      totalRatings: user.ratingsGiven.length,
+      distribution: ratingDistribution,
     },
     savedAddresses: user.savedAddresses,
-    paymentMethods: user.paymentMethods.map((pm) => ({
-      id:        pm.id,
-      brand:     pm.brand,
-      lastFour:  pm.lastFour,
-      isDefault: pm.isDefault,
-    })),
     deviceTokens: user.deviceTokens.map((dt) => ({
-      id:        dt.id,
-      platform:  dt.platform,
+      id: dt.id,
+      platform: dt.platform,
       createdAt: dt.createdAt,
     })),
     supportTickets: {
-      total:    user.supportTickets.length,
-      open:     user.supportTickets.filter((t) => t.status === 'open').length,
+      total: user.supportTickets.length,
+      open: user.supportTickets.filter((t) => t.status === 'open').length,
       resolved: user.supportTickets.filter((t) => t.status === 'resolved').length,
     },
   };
 };
 
-/**
- * Update a user's profile fields (admin).
- * Checks for duplicate email/phone before applying changes.
- */
 const adminUpdateUser = async (userId, updateData) => {
   const user = await repo.findById(userId);
   if (!user) throw new Error('User not found');
@@ -199,15 +167,11 @@ const adminUpdateUser = async (userId, updateData) => {
   return getUserDetails(userId);
 };
 
-/**
- * Suspend or unsuspend a user account.
- * Persists isActive, suspensionReason, and suspensionUntil to the database.
- */
 const suspendUser = async (userId, { action, reason, durationDays }) => {
   const user = await repo.findById(userId);
   if (!user) throw new Error('User not found');
 
-  const isActive       = action !== 'suspend';
+  const isActive = action !== 'suspend';
   const suspensionUntil =
     action === 'suspend' && durationDays
       ? new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000)
@@ -222,10 +186,6 @@ const suspendUser = async (userId, { action, reason, durationDays }) => {
   return { id: userId, isActive, suspensionReason: reason || null, suspensionUntil };
 };
 
-/**
- * Credit a user's wallet as a refund.
- * Creates the wallet if it does not yet exist.
- */
 const issueRefund = async (userId, refundData) => {
   const user = await repo.findById(userId);
   if (!user) throw new Error('User not found');
@@ -236,56 +196,40 @@ const issueRefund = async (userId, refundData) => {
     wallet = await repo.createWallet({
       userId,
       currency: refundData.currency,
-      balance:  refundData.amount,
+      balance: refundData.amount,
     });
   } else {
     wallet = await repo.incrementWalletBalance(wallet.id, refundData.amount);
   }
 
-  // TODO: persist a Refund record for audit trail
-  // TODO: send push notification to user
-
   return {
-    refundId:  `REF-${Date.now()}`,
+    refundId: `REF-${Date.now()}`,
     userId,
-    amount:    refundData.amount,
-    currency:  refundData.currency,
-    status:    'pending',
-    tripId:    refundData.tripId || null,
-    reason:    refundData.reason,
-    notes:     refundData.notes || null,
+    amount: refundData.amount,
+    currency: refundData.currency,
+    status: 'pending',
+    tripId: refundData.tripId || null,
+    reason: refundData.reason,
+    notes: refundData.notes || null,
     createdAt: new Date(),
   };
 };
 
-/**
- * Reset a user's password (admin).
- */
 const resetPassword = async (userId, newPassword) => {
   const user = await repo.findById(userId);
   if (!user) throw new Error('User not found');
 
   const passwordHash = await bcrypt.hash(newPassword, 10);
   await repo.updateUser(userId, { passwordHash });
-
-  // TODO: send notification to user about password reset
 };
 
-/**
- * Permanently delete a user account.
- * The reason is accepted for audit logging purposes.
- */
-const adminDeleteUser = async (userId, reason) => {
+const adminDeleteUser = async (userId) => {
   const user = await repo.findById(userId);
   if (!user) throw new Error('User not found');
 
-  // TODO: log deletion activity with `reason` for audit
   await repo.deleteUser(userId);
 };
 
-/**
- * Create a new user (admin).
- */
 const adminCreateUser = async (data) => {
   const existingEmail = await repo.findByEmail(data.email);
   if (existingEmail) throw new Error('Email already exists');
@@ -298,22 +242,19 @@ const adminCreateUser = async (data) => {
   const passwordHash = data.password ? await bcrypt.hash(data.password, 10) : null;
 
   const user = await repo.createUser({
-    name:        data.name,
-    email:       data.email,
-    phone:       data.phone || null,
+    name: data.name,
+    email: data.email,
+    phone: data.phone || null,
     passwordHash,
-    language:    data.language || 'en',
-    isVerified:  data.isVerified || false,
-    role:        'customer',
+    language: data.language || 'en',
+    isVerified: data.isVerified || false,
+    role: 'customer',
   });
 
   return getUserDetails(user.id);
 };
 
-// ── Exports ───────────────────────────────────────────────────────────────────
-
 module.exports = {
-  // user-facing
   getProfile,
   updateProfile,
   updateAvatar,
@@ -322,11 +263,6 @@ module.exports = {
   addAddress,
   updateAddress,
   deleteAddress,
-  getPaymentMethods,
-  addPaymentMethod,
-  deletePaymentMethod,
-  setDefaultPayment,
-  // admin
   listUsers,
   getUserDetails,
   adminUpdateUser,

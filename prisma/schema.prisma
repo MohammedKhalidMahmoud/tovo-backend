@@ -38,12 +38,6 @@ enum TransactionType {
   debit
 }
 
-enum PaymentBrand {
-  visa
-  mastercard
-  apple_pay
-}
-
 enum SupportTicketStatus {
   open
   in_progress
@@ -85,7 +79,6 @@ model User {
   vehicle         Vehicle?
   wallet          Wallet?
   savedAddresses  SavedAddress[]
-  paymentMethods  PaymentMethod[]
   tripsAsCustomer Trip[]          @relation("CustomerTrips")
   tripsAsDriver   Trip[]          @relation("DriverTrips")
   ratingsGiven    Rating[]        @relation("CustomerRatings")
@@ -181,7 +174,6 @@ model Trip {
   serviceId       String?
   couponId        String?
   couponCode      String?
-  paymentMethodId String?
   status          TripStatus  @default(searching)
   pickupLat       Float
   pickupLng       Float
@@ -211,7 +203,6 @@ model Trip {
   driver          User?          @relation("DriverTrips", fields: [driverId], references: [id])
   service         Service?       @relation(fields: [serviceId], references: [id])
   coupon          Coupon?        @relation(fields: [couponId], references: [id])
-  paymentMethod   PaymentMethod? @relation(fields: [paymentMethodId], references: [id])
   rating              Rating?
   stops               TripStop[]
   declines            TripDecline[]
@@ -271,26 +262,6 @@ model Rating {
 
   @@index([driverId])
   @@map("ratings")
-}
-
-// ─────────────────────────────────────────────
-//  PAYMENT
-// ─────────────────────────────────────────────
-
-model PaymentMethod {
-  id            String        @id @default(uuid())
-  userId        String
-  brand         PaymentBrand
-  lastFour      String?
-  maskedNumber  String?
-  expiry        String?
-  isDefault     Boolean       @default(false)
-  createdAt     DateTime      @default(now())
-
-  user          User          @relation(fields: [userId], references: [id])
-  trips         Trip[]
-
-  @@map("payment_methods")
 }
 
 // ─────────────────────────────────────────────

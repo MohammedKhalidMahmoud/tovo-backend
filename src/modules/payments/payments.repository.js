@@ -9,7 +9,6 @@ const tripInclude = {
   user:          { select: { id: true, name: true, email: true, phone: true } },
   driver:        { select: { id: true, name: true, email: true, phone: true } },
   service:       { select: { id: true, name: true } },
-  paymentMethod: { select: { brand: true, lastFour: true, maskedNumber: true } },
 };
 
 const findTripById = (id) =>
@@ -25,11 +24,4 @@ const listTrips = (where, { page = 1, limit = 20 } = {}) =>
   });
 
 const countTrips = (where) => prisma.trip.count({ where });
-
-// Check if a refund wallet transaction already exists for a given tripId
-const findRefundTransaction = (tripId) =>
-  prisma.walletTransaction.findFirst({
-    where: { tripId, type: 'credit', reason: 'refund' },
-  });
-
-module.exports = { findTripById, listTrips, countTrips, findRefundTransaction };
+module.exports = { findTripById, listTrips, countTrips };

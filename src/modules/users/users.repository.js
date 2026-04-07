@@ -1,7 +1,6 @@
 const prisma = require('../../config/prisma');
 
-// ── User ──────────────────────────────────────────────────────────────────────
-
+// User
 const findById = (id) =>
   prisma.user.findUnique({
     where: { id },
@@ -30,9 +29,9 @@ const findManyUsers = ({ where, orderBy, skip, take }) =>
   prisma.user.findMany({
     where,
     include: {
-      wallet:           true,
-      tripsAsCustomer:  { select: { id: true } },
-      ratingsGiven:     { select: { stars: true } },
+      wallet: true,
+      tripsAsCustomer: { select: { id: true } },
+      ratingsGiven: { select: { stars: true } },
     },
     orderBy,
     skip,
@@ -43,18 +42,16 @@ const findUserWithDetails = (id) =>
   prisma.user.findUnique({
     where: { id },
     include: {
-      wallet:         true,
+      wallet: true,
       savedAddresses: true,
-      paymentMethods: true,
-      deviceTokens:   true,
+      deviceTokens: true,
       tripsAsCustomer: { select: { id: true, status: true, finalFare: true, createdAt: true } },
-      ratingsGiven:    true,
+      ratingsGiven: true,
       supportTickets: { select: { id: true, status: true } },
     },
   });
 
-// ── Wallet ────────────────────────────────────────────────────────────────────
-
+// Wallet
 const getWallet = (userId) =>
   prisma.wallet.findUnique({ where: { userId } });
 
@@ -64,11 +61,10 @@ const createWallet = (data) =>
 const incrementWalletBalance = (walletId, amount) =>
   prisma.wallet.update({
     where: { id: walletId },
-    data:  { balance: { increment: amount } },
+    data: { balance: { increment: amount } },
   });
 
-// ── Saved Addresses ───────────────────────────────────────────────────────────
-
+// Saved Addresses
 const getSavedAddresses = (userId) =>
   prisma.savedAddress.findMany({ where: { userId } });
 
@@ -81,24 +77,7 @@ const updateAddress = (id, userId, data) =>
 const deleteAddress = (id, userId) =>
   prisma.savedAddress.deleteMany({ where: { id, userId } });
 
-// ── Payment Methods ───────────────────────────────────────────────────────────
-
-const getPaymentMethods = (userId) =>
-  prisma.paymentMethod.findMany({ where: { userId } });
-
-const createPaymentMethod = (data) =>
-  prisma.paymentMethod.create({ data });
-
-const deletePaymentMethod = (id, userId) =>
-  prisma.paymentMethod.deleteMany({ where: { id, userId } });
-
-const setDefaultPayment = async (id, userId) => {
-  await prisma.paymentMethod.updateMany({ where: { userId }, data: { isDefault: false } });
-  return prisma.paymentMethod.updateMany({ where: { id, userId }, data: { isDefault: true } });
-};
-
 module.exports = {
-  // user
   findById,
   findByEmail,
   findByPhone,
@@ -108,18 +87,11 @@ module.exports = {
   countUsers,
   findManyUsers,
   findUserWithDetails,
-  // wallet
   getWallet,
   createWallet,
   incrementWalletBalance,
-  // addresses
   getSavedAddresses,
   createAddress,
   updateAddress,
   deleteAddress,
-  // payment methods
-  getPaymentMethods,
-  createPaymentMethod,
-  deletePaymentMethod,
-  setDefaultPayment,
 };

@@ -76,7 +76,6 @@ async function cleanup() {
   await prisma.notification.deleteMany();
   await prisma.deviceToken.deleteMany();
   await prisma.savedAddress.deleteMany();
-  await prisma.paymentMethod.deleteMany();
   await prisma.otp.deleteMany();
   await prisma.refreshToken.deleteMany();
   await prisma.passwordResetToken.deleteMany();
@@ -443,40 +442,6 @@ async function main() {
   ]);
   console.log('Seeded wallets');
 
-  const [ahmedVisa, ahmedMastercard, saraApplePay] = await Promise.all([
-    prisma.paymentMethod.create({
-      data: {
-        userId: ahmed.id,
-        brand: 'visa',
-        lastFour: '4242',
-        maskedNumber: '4242 **** **** 4242',
-        expiry: '12/27',
-        isDefault: true,
-      },
-    }),
-    prisma.paymentMethod.create({
-      data: {
-        userId: ahmed.id,
-        brand: 'mastercard',
-        lastFour: '8888',
-        maskedNumber: '5555 **** **** 8888',
-        expiry: '08/26',
-        isDefault: false,
-      },
-    }),
-    prisma.paymentMethod.create({
-      data: {
-        userId: sara.id,
-        brand: 'apple_pay',
-        lastFour: null,
-        maskedNumber: null,
-        expiry: null,
-        isDefault: true,
-      },
-    }),
-  ]);
-  console.log('Seeded payment methods');
-
   await prisma.savedAddress.createMany({
     data: [
       {
@@ -588,12 +553,11 @@ async function main() {
   });
   console.log('Seeded coupons');
 
-  const tripCompletedCard = await prisma.trip.create({
+  const tripCompletedAhmed = await prisma.trip.create({
     data: {
       userId: ahmed.id,
       driverId: driver1.id,
       serviceId: svcComfort.id,
-      paymentMethodId: ahmedVisa.id,
       status: 'completed',
       pickupLat: 30.0444,
       pickupLng: 31.2357,
@@ -601,7 +565,7 @@ async function main() {
       dropoffLat: 30.0626,
       dropoffLng: 31.2497,
       dropoffAddress: 'Ramses Square, Cairo',
-      paymentType: 'card',
+      paymentType: 'cash',
       finalFare: 70.8,
       originalFare: 70.8,
       discountAmount: 0,
@@ -670,7 +634,6 @@ async function main() {
       userId: ahmed.id,
       driverId: driver2.id,
       serviceId: svcComfort.id,
-      paymentMethodId: ahmedMastercard.id,
       status: 'on_way',
       pickupLat: 30.0444,
       pickupLng: 31.2357,
@@ -678,7 +641,7 @@ async function main() {
       dropoffLat: 30.0761,
       dropoffLng: 31.2986,
       dropoffAddress: 'Cairo International Airport',
-      paymentType: 'card',
+      paymentType: 'cash',
       finalFare: 132,
       originalFare: 132,
       discountAmount: 0,
@@ -695,7 +658,6 @@ async function main() {
       userId: sara.id,
       driverId: driver1.id,
       serviceId: svcRegular.id,
-      paymentMethodId: saraApplePay.id,
       status: 'in_progress',
       pickupLat: 30.05,
       pickupLng: 31.24,
@@ -703,7 +665,7 @@ async function main() {
       dropoffLat: 30.09,
       dropoffLng: 31.29,
       dropoffAddress: 'Nasr City, Cairo',
-      paymentType: 'card',
+      paymentType: 'cash',
       finalFare: 92,
       originalFare: 92,
       discountAmount: 0,
@@ -743,7 +705,6 @@ async function main() {
     data: {
       userId: sara.id,
       serviceId: svcRegular.id,
-      paymentMethodId: saraApplePay.id,
       status: 'cancelled',
       pickupLat: 30.0626,
       pickupLng: 31.2197,
@@ -751,7 +712,7 @@ async function main() {
       dropoffLat: 30.0131,
       dropoffLng: 31.2089,
       dropoffAddress: 'Maadi, Cairo',
-      paymentType: 'card',
+      paymentType: 'cash',
       finalFare: null,
       originalFare: null,
       discountAmount: 0,
@@ -778,9 +739,9 @@ async function main() {
   await prisma.commissionLog.createMany({
     data: [
       {
-        tripId: tripCompletedCard.id,
+        tripId: tripCompletedAhmed.id,
         amount: 10.8,
-        paymentType: 'card',
+        paymentType: 'cash',
         serviceId: svcComfort.id,
       },
       {
@@ -796,7 +757,7 @@ async function main() {
   await prisma.rating.createMany({
     data: [
       {
-        tripId: tripCompletedCard.id,
+        tripId: tripCompletedAhmed.id,
         userId: ahmed.id,
         driverId: driver1.id,
         stars: 5,
@@ -817,10 +778,10 @@ async function main() {
     data: [
       {
         walletId: walletDriver1.id,
-        type: 'credit',
-        amount: 60,
-        reason: 'trip_earnings_credit',
-        tripId: tripCompletedCard.id,
+        type: 'debit',
+        amount: 10.8,
+        reason: 'trip_commission_deduction',
+        tripId: tripCompletedAhmed.id,
       },
       {
         walletId: walletDriver2.id,
@@ -834,7 +795,7 @@ async function main() {
         type: 'credit',
         amount: 50,
         reason: 'refund',
-        tripId: tripCompletedCard.id,
+        tripId: tripCompletedAhmed.id,
       },
       {
         walletId: walletOmar.id,
@@ -882,7 +843,7 @@ async function main() {
       {
         userId: ahmed.id,
         title: 'Refund Issued',
-        body: 'A wallet refund for your last card trip has been processed.',
+        body: 'A wallet refund for your last trip has been processed.',
         isRead: false,
       },
       {
@@ -1039,13 +1000,13 @@ async function main() {
       },
       {
         question: 'What payment methods are accepted?',
-        answer: 'Tovo supports cash, Visa, Mastercard, and Apple Pay.',
+        answer: 'Tovo currently supports cash payments only.',
         order: 3,
         isActive: true,
       },
       {
         question: 'How do refunds work?',
-        answer: 'Card trip refunds are credited to the customer wallet after admin approval.',
+        answer: 'Approved refunds are credited to the customer wallet after review.',
         order: 4,
         isActive: true,
       },

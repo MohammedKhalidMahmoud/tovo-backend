@@ -44,7 +44,8 @@ router.post('/', ...userOnly, [
   body('dropoff_lng').isFloat(),
   body('dropoff_address').notEmpty(),
   body('service_id').notEmpty().isUUID().withMessage('service_id is required and must be a valid UUID'),
-  body('payment_type').isIn(['cash', 'instapay']).withMessage('payment_type must be cash or instapay'),
+  body('payment_type').optional().equals('cash').withMessage('payment_type must be cash'),
+  body('payment_method_id').not().exists().withMessage('payment_method_id is no longer supported'),
   body('stops').optional().custom((value) => {
     if (!Array.isArray(value)) throw new Error('stops must be an array');
     value.forEach((stop) => {

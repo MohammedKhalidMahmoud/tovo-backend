@@ -209,16 +209,12 @@ const createTrip = async (userId, body) => {
     dropoff_lat,
     dropoff_lng,
     dropoff_address,
-    payment_type,
-    payment_method_id,
     service_id,
     stops = [],
   } = body;
 
   const svc = await serviceRepo.findById(service_id);
   if (!svc || !svc.isActive) throw Object.assign(new Error('Service not found or inactive'), { statusCode: 404 });
-
-  // payment_method_id is optional; no validation required here
 
   await validatePickupInRegion(pickup_lat, pickup_lng);
 
@@ -235,7 +231,6 @@ const createTrip = async (userId, body) => {
   const trip = await repo.createTrip({
     user:          { connect: { id: userId } },
     service:       { connect: { id: service_id } },
-    paymentMethod: payment_method_id ? { connect: { id: payment_method_id } } : undefined,
     pickupLat:      pickup_lat,
     pickupLng:      pickup_lng,
     pickupAddress:  pickup_address,
@@ -248,7 +243,7 @@ const createTrip = async (userId, body) => {
     discountAmount: 0,
     commission:     pricing.commission,
     driverEarnings: pricing.driverEarnings,
-    paymentType:    payment_type,
+    paymentType:    'cash',
     status:         'searching',
     stops: normalizedStops.length
       ? {
@@ -411,18 +406,11 @@ const endTrip = async (tripId, driverId) => {
 
   // Stored commission and driver earnings are based on originalFare, not the discounted finalFare.
   if (commission !== null && driverEarnings !== null) {
-    if (trip.paymentType === 'cash') {
-      // Driver collected the discounted cash fare directly, so only settle the platform cut in-wallet.
-      await walletsRepo.adjustUserWallet(driverId, -commission, {
-        reason: 'trip_commission_deduction',
-        tripId,
-      });
-    } else {
-      await walletsRepo.adjustUserWallet(driverId, +driverEarnings, {
-        reason: 'trip_earnings_credit',
-        tripId,
-      });
-    }
+    // Cash is the only supported payment type, so drivers always settle the platform cut in-wallet.
+    await walletsRepo.adjustUserWallet(driverId, -commission, {
+      reason: 'trip_commission_deduction',
+      tripId,
+    });
 
     if (discountAmount > 0) {
       await walletsRepo.adjustUserWallet(driverId, +discountAmount, {
@@ -437,7 +425,7 @@ const endTrip = async (tripId, driverId) => {
     await commissionRepo.createCommissionLog({
       tripId: trip.id,
       amount: trip.commission,
-      paymentType: trip.paymentType ?? 'cash',
+      paymentType: 'cash',
       serviceId: trip.serviceId ?? null,
     });
   }

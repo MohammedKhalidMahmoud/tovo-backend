@@ -4,7 +4,7 @@
 // ════════════════════════════════════════════════════════════════════════════════
 
 const router  = require('express').Router();
-const { query, param, body } = require('express-validator');
+const { query, param } = require('express-validator');
 const controller = require('./payments.controller');
 const validate   = require('../../middleware/validate.middleware');
 const { authenticate, authorize } = require('../../middleware/auth.middleware');
@@ -46,25 +46,12 @@ router.get(
     query('status').optional().isString(),
     query('userId').optional().isUUID(),
     query('driverId').optional().isUUID(),
-    query('paymentType').optional().isIn(['cash', 'card']),
+    query('paymentType').optional().equals('cash'),
     query('dateFrom').optional().isISO8601(),
     query('dateTo').optional().isISO8601(),
   ],
   validate,
   controller.listPayments
-);
-
-// POST /payments/:id/refund — issue refund
-router.post(
-  '/:id/refund',
-  authenticate, authorize('admin'),
-  [
-    param('id').isUUID(),
-    body('amount').isFloat({ min: 0.01 }),
-    body('reason').trim().isLength({ min: 1 }),
-  ],
-  validate,
-  controller.refundPayment
 );
 
 module.exports = router;

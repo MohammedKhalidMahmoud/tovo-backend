@@ -2,10 +2,7 @@ const service = require('./users.service');
 const { success, created, error } = require('../../utils/response');
 const { deleteLocalFile } = require('../../utils/uploads');
 
-// ════════════════════════════════════════════════════════════════════════════
-// USER-FACING CONTROLLERS
-// ════════════════════════════════════════════════════════════════════════════
-
+// User-facing controllers
 const getProfile = async (req, res, next) => {
   try {
     const data = await service.getProfile(req.actor.id);
@@ -47,8 +44,6 @@ const getWallet = async (req, res, next) => {
   }
 };
 
-// ── Addresses ─────────────────────────────────────────────────────────────────
-
 const getSavedAddresses = async (req, res, next) => {
   try {
     const data = await service.getSavedAddresses(req.actor.id);
@@ -85,74 +80,29 @@ const deleteAddress = async (req, res, next) => {
   }
 };
 
-// ── Payment Methods ───────────────────────────────────────────────────────────
-
-const getPaymentMethods = async (req, res, next) => {
-  try {
-    const data = await service.getPaymentMethods(req.actor.id);
-    return success(res, data);
-  } catch (err) {
-    next(err);
-  }
-};
-
-const addPaymentMethod = async (req, res, next) => {
-  try {
-    const data = await service.addPaymentMethod(req.actor.id, req.body);
-    return created(res, data, 'Payment method added');
-  } catch (err) {
-    next(err);
-  }
-};
-
-const deletePaymentMethod = async (req, res, next) => {
-  try {
-    await service.deletePaymentMethod(req.params.id, req.actor.id);
-    return success(res, {}, 'Payment method removed');
-  } catch (err) {
-    next(err);
-  }
-};
-
-const setDefaultPayment = async (req, res, next) => {
-  try {
-    await service.setDefaultPayment(req.params.id, req.actor.id);
-    return success(res, {}, 'Default payment method updated');
-  } catch (err) {
-    next(err);
-  }
-};
-
-// ════════════════════════════════════════════════════════════════════════════
-// ADMIN CONTROLLERS
-// ════════════════════════════════════════════════════════════════════════════
-
-/**
- * GET /api/v1/admin/users
- * List all users with filtering, sorting, and pagination.
- */
+// Admin controllers
 const listUsers = async (req, res, next) => {
   try {
     const filters = {
-      page:      parseInt(req.query.page)  || 1,
-      limit:     parseInt(req.query.limit) || 20,
-      sortBy:    req.query.sortBy    || 'createdAt',
+      page: parseInt(req.query.page) || 1,
+      limit: parseInt(req.query.limit) || 20,
+      sortBy: req.query.sortBy || 'createdAt',
       sortOrder: req.query.sortOrder || 'desc',
-      search:    req.query.search,
-      status:    req.query.status || 'all',
-      dateFrom:  req.query.dateFrom,
-      dateTo:    req.query.dateTo,
+      search: req.query.search,
+      status: req.query.status || 'all',
+      dateFrom: req.query.dateFrom,
+      dateTo: req.query.dateTo,
     };
 
     const result = await service.listUsers(filters);
 
-    res.set('X-Total-Count',  result.total);
-    res.set('X-Total-Pages',  result.pages);
+    res.set('X-Total-Count', result.total);
+    res.set('X-Total-Pages', result.pages);
     res.set('X-Current-Page', filters.page);
-    res.set('X-Per-Page',     filters.limit);
+    res.set('X-Per-Page', filters.limit);
 
     return success(res, result.data, 'Users retrieved successfully', 200, {
-      page:  filters.page,
+      page: filters.page,
       limit: filters.limit,
       total: result.total,
       pages: result.pages,
@@ -162,10 +112,6 @@ const listUsers = async (req, res, next) => {
   }
 };
 
-/**
- * GET /api/v1/admin/users/:userId
- * Get detailed information about a specific user.
- */
 const getUser = async (req, res, next) => {
   try {
     const user = await service.getUserDetails(req.params.userId);
@@ -176,16 +122,12 @@ const getUser = async (req, res, next) => {
   }
 };
 
-/**
- * POST /api/v1/admin/users
- * Create a new user (admin).
- */
 const createUser = async (req, res, next) => {
   try {
     const newUser = await service.adminCreateUser({
-      name:     req.body.name,
-      email:    req.body.email,
-      phone:    req.body.phone,
+      name: req.body.name,
+      email: req.body.email,
+      phone: req.body.phone,
       password: req.body.password,
       language: req.body.language || 'en',
     });
@@ -196,37 +138,29 @@ const createUser = async (req, res, next) => {
   }
 };
 
-/**
- * PUT /api/v1/admin/users/:userId
- * Replace/update user information (admin).
- */
 const updateUser = async (req, res, next) => {
   try {
     const updateData = {};
-    if (req.body.name                !== undefined) updateData.name                = req.body.name;
-    if (req.body.email               !== undefined) updateData.email               = req.body.email;
-    if (req.body.phone               !== undefined) updateData.phone               = req.body.phone;
-    if (req.body.language            !== undefined) updateData.language            = req.body.language;
+    if (req.body.name !== undefined) updateData.name = req.body.name;
+    if (req.body.email !== undefined) updateData.email = req.body.email;
+    if (req.body.phone !== undefined) updateData.phone = req.body.phone;
+    if (req.body.language !== undefined) updateData.language = req.body.language;
     if (req.body.notificationsEnabled !== undefined) updateData.notificationsEnabled = req.body.notificationsEnabled;
 
     const updatedUser = await service.adminUpdateUser(req.params.userId, updateData);
     return success(res, updatedUser, 'User updated successfully');
   } catch (err) {
-    if (err.message.includes('not found'))    return error(res, err.message, 404);
+    if (err.message.includes('not found')) return error(res, err.message, 404);
     if (err.message.includes('already exists')) return error(res, err.message, 409);
     next(err);
   }
 };
 
-/**
- * POST /api/v1/admin/users/:userId/suspend
- * Suspend or unsuspend a user account.
- */
 const suspendUser = async (req, res, next) => {
   try {
     const result = await service.suspendUser(req.params.userId, {
-      action:      req.body.action,
-      reason:      req.body.reason,
+      action: req.body.action,
+      reason: req.body.reason,
       durationDays: req.body.durationDays,
     });
     return success(res, result, `User ${req.body.action}ed successfully`);
@@ -236,31 +170,23 @@ const suspendUser = async (req, res, next) => {
   }
 };
 
-/**
- * POST /api/v1/admin/users/:userId/refund
- * Issue a refund to a user's wallet.
- */
 const issueRefund = async (req, res, next) => {
   try {
     const result = await service.issueRefund(req.params.userId, {
-      amount:   req.body.amount,
+      amount: req.body.amount,
       currency: req.body.currency,
-      tripId:   req.body.tripId,
-      reason:   req.body.reason,
-      notes:    req.body.notes,
+      tripId: req.body.tripId,
+      reason: req.body.reason,
+      notes: req.body.notes,
     });
     return created(res, result, 'Refund issued successfully');
   } catch (err) {
-    if (err.message.includes('not found'))    return error(res, err.message, 404);
+    if (err.message.includes('not found')) return error(res, err.message, 404);
     if (err.message.includes('insufficient')) return error(res, err.message, 422);
     next(err);
   }
 };
 
-/**
- * POST /api/v1/admin/users/:userId/reset-password
- * Reset a user's password (admin).
- */
 const resetPassword = async (req, res, next) => {
   try {
     await service.resetPassword(req.params.userId, req.body.newPassword);
@@ -271,10 +197,6 @@ const resetPassword = async (req, res, next) => {
   }
 };
 
-/**
- * DELETE /api/v1/admin/users/:userId
- * Permanently delete a user account.
- */
 const deleteUser = async (req, res, next) => {
   try {
     await service.adminDeleteUser(req.params.userId, req.body.reason);
@@ -285,10 +207,7 @@ const deleteUser = async (req, res, next) => {
   }
 };
 
-// ── Exports ───────────────────────────────────────────────────────────────────
-
 module.exports = {
-  // user-facing
   getProfile,
   updateProfile,
   updateAvatar,
@@ -297,11 +216,6 @@ module.exports = {
   addAddress,
   updateAddress,
   deleteAddress,
-  getPaymentMethods,
-  addPaymentMethod,
-  deletePaymentMethod,
-  setDefaultPayment,
-  // admin
   listUsers,
   getUser,
   createUser,

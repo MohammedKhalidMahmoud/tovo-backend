@@ -55,17 +55,3 @@ exports.getPayment = async (req, res, next) => {
     next(err);
   }
 };
-
-/**
- * POST /api/v1/admin/payments/:id/refund
- * Admin: issue a wallet refund for a card payment
- */
-exports.refundPayment = async (req, res, next) => {
-  try {
-    const { amount, reason } = req.body;
-    const result = await service.refundPayment(req.params.id, { amount, reason });
-    return success(res, result, 'Refund processed successfully');
-  } catch (err) {
-    next(err);
-  }
-};

@@ -3,7 +3,6 @@ const prisma = require('../../config/prisma');
 const TRIP_INCLUDE = {
   driver:  { select: { id: true, name: true, avatarUrl: true, rating: true, totalTrips: true } },
   user:    { select: { id: true, name: true, avatarUrl: true } },
-  paymentMethod: { select: { id: true, brand: true, maskedNumber: true } },
   service: {
     select: {
       id: true,
