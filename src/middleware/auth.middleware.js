@@ -3,7 +3,7 @@ const { unauthorized, forbidden } = require('../utils/response');
 const prisma = require('../config/prisma');
 
 /**
- * Verifies JWT and attaches decoded user/captain to req.actor
+ * Verifies JWT and attaches decoded user/driver to req.actor
  */
 const authenticate = async (req, res, next) => {
   try {

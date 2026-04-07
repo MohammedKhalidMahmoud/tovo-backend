@@ -59,7 +59,7 @@ const registerUser = async ({ name, email, phone, password }) => {
 // ─────────────────────────────────────────────────────────────────────────────
 //  REGISTER DRIVER
 // ─────────────────────────────────────────────────────────────────────────────
-const registerCaptain = async ({ name, email, phone, password, drivingLicense, vehicleModelName, vin }) => {
+const registerDriver = async ({ name, email, phone, password, drivingLicense, vehicleModelName, vin }) => {
   const existingEmail = await repo.findUserByEmail(email);
   if (existingEmail) throw { status: 409, message: 'Email already registered' };
 
@@ -111,51 +111,35 @@ const registerCaptain = async ({ name, email, phone, password, drivingLicense, v
 // ─────────────────────────────────────────────────────────────────────────────
 //  LOGIN
 // ─────────────────────────────────────────────────────────────────────────────
-const login = async ({ identifier, email: emailField, password, role }) => {
+const login = async ({ identifier, email: emailField, password }) => {
   // Accept `identifier` (email or phone) or fall back to legacy `email` field
   const raw = (identifier ?? emailField ?? '').trim();
   const isEmail = raw.includes('@');
-
-  let actor;
-  if (role === 'customer' || role === 'driver') {
-    actor = isEmail
-      ? await repo.findUserByEmail(raw)
-      : await repo.findUserByPhone(raw);
-    // Ensure the found user actually has the requested role
-    if (actor && actor.role !== role) actor = null;
-  } else if (role === 'admin') {
-    actor = await repo.findAdminByEmail(raw);
-  } else {
-    throw { status: 400, message: 'Invalid role. Must be customer, driver, or admin' };
-  }
+  const actor = isEmail
+    ? await repo.findUserByEmail(raw)
+    : await repo.findUserByPhone(raw);
 
   if (!actor) throw { status: 401, message: 'Invalid credentials' };
-
-  if (role === 'admin' && !actor.isActive) {
-    throw { status: 403, message: 'Admin account is deactivated' };
-  }
+  if (!['customer', 'driver'].includes(actor.role)) throw { status: 401, message: 'Invalid credentials' };
 
   const isMatch = await bcrypt.compare(password, actor.passwordHash);
   if (!isMatch) throw { status: 401, message: 'Invalid credentials' };
 
+  const role = actor.role;
   const payload = { id: actor.id, role };
   const accessToken  = generateAccessToken(payload);
   const refreshToken = generateRefreshToken(payload);
 
   const tokenData = {
     token:     refreshToken,
+    userId:    actor.id,
     expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
   };
-  if (role === 'customer' || role === 'driver') tokenData.userId = actor.id;
-  // admin tokens stored without foreign key
 
   await repo.createRefreshToken(tokenData);
 
   const { passwordHash: _, ...safeActor } = actor;
-  const normalizedActor = role === 'admin'
-    ? { ...safeActor, adminRole: safeActor.role, role: 'admin' }
-    : safeActor;
-  return { accessToken, refreshToken, user: normalizedActor, role };
+  return { accessToken, refreshToken, user: safeActor, role };
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -422,7 +406,7 @@ const socialAuth = async ({ provider, access_token, role }) => {
 };
 
 module.exports = {
-  registerUser, registerCaptain, login, adminLogin, logout,
+  registerUser, registerDriver, login, adminLogin, logout,
   refreshToken, sendOtp, verifyOtp,
   forgotPassword, resetPassword, socialAuth,
 };

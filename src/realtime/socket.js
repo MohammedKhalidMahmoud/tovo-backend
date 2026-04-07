@@ -127,17 +127,17 @@ const buildTripStatusNotification = (target, payload) => {
   };
 };
 
-const emitLastKnownCaptainLocation = ({ socket, tripId, driverId }) => {
+const emitLastKnownDriverLocation = ({ socket, tripId, driverId }) => {
   const loc = locationStore.get(driverId);
   if (!loc) return;
 
   emitRealtimeEvent({
-    event: 'trip.captain_location',
+    event: 'trip.driver_location',
     payload: {
       latitude: loc.lat,
       longitude: loc.lng,
       heading: loc.heading,
-      captainId: driverId,
+      driverId: driverId,
     },
     socket,
     skipPush: true,
@@ -183,14 +183,14 @@ const setupSocket = (io) => {
       socket.join(`trip:${tripId}`);
       logger.info(`trip_share:${tripId} joined trip room: trip:${tripId}`);
 
-      emitLastKnownCaptainLocation({ socket, tripId, driverId });
+      emitLastKnownDriverLocation({ socket, tripId, driverId });
     } else {
       const privateRoom = role === 'customer' ? `user:${id}` : `${role}:${id}`;
       socket.join(privateRoom);
     }
 
     if (role === 'driver') {
-      socket.join('captains:available');
+      socket.join('drivers:available');
 
       try {
         const prisma = require('../config/prisma');
@@ -202,7 +202,7 @@ const setupSocket = (io) => {
       }
     }
 
-    socket.on('captain.location_update', ({ latitude, longitude, heading, tripId }) => {
+    socket.on('driver.location_update', ({ latitude, longitude, heading, tripId }) => {
       if (role !== 'driver') return;
 
       logger.info(`Driver ${id} sent location: (${latitude}, ${longitude})`);
@@ -214,8 +214,8 @@ const setupSocket = (io) => {
         logger.info(`Forwarding location to trip room: trip:${tripId}`);
         emitRealtimeEvent({
           io,
-          event: 'trip.captain_location',
-          payload: { latitude, longitude, heading, captainId: id },
+          event: 'trip.driver_location',
+          payload: { latitude, longitude, heading, driverId: id },
           rooms: [`trip:${tripId}`],
           skipPush: true,
         });
@@ -238,7 +238,7 @@ const setupSocket = (io) => {
         });
 
         if (trip?.driverId && ['matched', 'on_way', 'in_progress'].includes(trip.status)) {
-          emitLastKnownCaptainLocation({ socket, tripId, driverId: trip.driverId });
+          emitLastKnownDriverLocation({ socket, tripId, driverId: trip.driverId });
         }
       } catch (e) {
         logger.error('Failed to push last known location on trip.join', e);
@@ -266,10 +266,10 @@ const setupSocket = (io) => {
   });
 };
 
-const emitCaptainMatched = (io, userId, tripData) => {
+const emitDriverMatched = (io, userId, tripData) => {
   emitRealtimeEvent({
     io,
-    event: 'trip.captain_matched',
+    event: 'trip.driver_matched',
     payload: tripData,
     rooms: [`user:${userId}`],
     pushTargets: [{ id: userId, role: 'customer' }],
@@ -355,7 +355,7 @@ const emitTripTaken = (io, trip) => {
     io,
     event: 'trip.taken',
     payload: { tripId: trip.id },
-    rooms: ['captains:available'],
+    rooms: ['drivers:available'],
     pushTargets: locationStore
       .getNearby(trip.pickupLat, trip.pickupLng, 10, trip.serviceId ?? null)
       .filter(({ id }) => id !== trip.driverId)
@@ -384,7 +384,7 @@ const emitTripRemoved = (io, driverId, tripId) => {
 module.exports = {
   setupSocket,
   emitRealtimeEvent,
-  emitCaptainMatched,
+  emitDriverMatched,
   emitTripStatusChanged,
   emitTripCancelled,
   emitTripRequest,

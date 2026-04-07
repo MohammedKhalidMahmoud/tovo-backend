@@ -166,11 +166,11 @@
     responses:
       '200': { description: Trip history }
 
-/trips/nearby-captains:
+/trips/nearby-drivers:
   get:
     tags: [Trips]
-    summary: Get nearby available captains
-    description: Returns a list of captains currently online and within the given radius, optionally filtered by service type. Data is served from the in-memory location store updated in real-time via Socket.io.
+    summary: Get nearby available drivers
+    description: Returns a list of drivers currently online and within the given radius, optionally filtered by service type. Data is served from the in-memory location store updated in real-time via Socket.io.
     security: [{ BearerAuth: [] }]
     parameters:
       - name: latitude
@@ -190,10 +190,10 @@
         in: query
         required: false
         schema: { type: string, format: uuid }
-        description: Filter captains by service type UUID
+        description: Filter drivers by service type UUID
     responses:
       '200':
-        description: List of nearby captains
+        description: List of nearby drivers
         content:
           application/json:
             schema:
@@ -233,7 +233,7 @@
 /trips/{id}/rating:
   post:
     tags: [Trips]
-    summary: Rate captain after completed trip
+    summary: Rate driver after completed trip
     security: [{ BearerAuth: [] }]
     parameters:
       - name: id

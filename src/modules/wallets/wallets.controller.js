@@ -8,7 +8,7 @@ const { success, error } = require('../../utils/response');
 
 /**
  * GET /api/v1/wallets/me
- * Get the authenticated user's or captain's own wallet
+ * Get the authenticated user's or driver's own wallet
  */
 exports.getMyWallet = async (req, res, next) => {
   try {
@@ -21,7 +21,7 @@ exports.getMyWallet = async (req, res, next) => {
 
 /**
  * GET /api/v1/wallets/me/transactions
- * Get the authenticated user's or captain's own wallet transaction history
+ * Get the authenticated user's or driver's own wallet transaction history
  */
 exports.getMyTransactions = async (req, res, next) => {
   try {
@@ -106,7 +106,7 @@ exports.adjustWallet = async (req, res, next) => {
 };
 
 /**
- * POST /api/v1/captains/me/trips/:tripId/credit-customer
+ * POST /api/v1/drivers/me/trips/:tripId/credit-customer
  * Driver credits a customer's wallet from a completed trip
  * Body: { amount: number }
  */

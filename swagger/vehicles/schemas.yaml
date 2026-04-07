@@ -15,7 +15,7 @@ VehicleDetail:
     updatedAt: { type: string, format: date-time }
     vehicleModel:
       $ref: '../vehicle-models/schemas.yaml#/VehicleModel'
-    captain:
+    driver:
       type: object
       properties:
         id:    { type: string, format: uuid }

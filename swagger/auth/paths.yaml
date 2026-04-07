@@ -28,10 +28,10 @@
                       $ref: '#/components/schemas/User'
       '409': { description: Email or phone already exists }
 
-/auth/register/captain:
+/auth/register/driver:
   post:
     tags: [Auth]
-    summary: Register captain (driver) account
+    summary: Register driver (driver) account
     requestBody:
       required: true
       content:
@@ -52,30 +52,29 @@
                 description: "Exact name of an active VehicleModel from GET /vehicle-models. Registration is rejected if the model is not in the whitelist or is inactive."
               vin: { type: string, description: Vehicle Identification Number }
     responses:
-      '201': { description: Captain registered }
+      '201': { description: Driver registered }
       '409': { description: Email or phone already exists }
 
 /auth/login:
   post:
     tags: [Auth]
-    summary: Login for customers and captains
+    summary: Login for customers and drivers
     description: >
       Accepts `identifier` as either an email address (contains `@`) or a phone number.
-      Use `role` to specify which account type to authenticate.
+      The backend determines the account role automatically from the matched user record.
     requestBody:
       required: true
       content:
         application/json:
           schema:
             type: object
-            required: [identifier, password, role]
+            required: [identifier, password]
             properties:
               identifier:
                 type: string
                 description: Email address or phone number
                 example: '+201012345678'
               password: { type: string }
-              role: { type: string, enum: [customer, driver] }
     responses:
       '200':
         description: Login successful
@@ -90,7 +89,7 @@
                     role: { type: string, enum: [customer, driver] }
                     user: { $ref: '#/components/schemas/User' }
       '401': { description: Invalid credentials }
-      '400': { description: Invalid role }
+      '400': { description: Validation failed }
 
 /auth/admin/login:
   post:

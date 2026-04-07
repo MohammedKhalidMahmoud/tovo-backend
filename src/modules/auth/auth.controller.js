@@ -11,15 +11,15 @@ const registerUser = async (req, res, next) => {
   }
 };
 
-const registerCaptain = async (req, res, next) => {
+const registerDriver = async (req, res, next) => {
   try {
     const { driving_license, vehicle_model, ...rest } = req.body;
-    const data = await authService.registerCaptain({
+    const data = await authService.registerDriver({
       ...rest,
       drivingLicense: driving_license,
       vehicleModelName: vehicle_model,
     });
-    return created(res, data, 'Captain registered successfully');
+    return created(res, data, 'Driver registered successfully');
   } catch (err) {
     if (err.status) return error(res, err.message, err.status);
     next(err);
@@ -28,7 +28,8 @@ const registerCaptain = async (req, res, next) => {
 
 const login = async (req, res, next) => {
   try {
-    const data = await authService.login(req.body);
+    const { identifier, email, password } = req.body;
+    const data = await authService.login({ identifier, email, password });
     return success(res, data, 'Login successful');
   } catch (err) {
     if (err.status) return error(res, err.message, err.status);
@@ -119,7 +120,7 @@ const socialAuth = async (req, res, next) => {
 };
 
 module.exports = {
-  registerUser, registerCaptain, login, adminLogin, logout,
+  registerUser, registerDriver, login, adminLogin, logout,
   refreshToken, sendOtp, verifyOtp,
   forgotPassword, resetPassword, socialAuth,
 };

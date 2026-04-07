@@ -21,7 +21,7 @@
   get:
     tags: [Vehicles]
     summary: List all vehicles
-    description: Paginated list of all captain-assigned vehicles with captain and vehicle model details.
+    description: Paginated list of all driver-assigned vehicles with driver and vehicle model details.
     security: [{ BearerAuth: [] }]
     parameters:
       - name: page
@@ -36,7 +36,7 @@
         schema: { type: string, format: uuid }
       - name: search
         in: query
-        description: Search by VIN or captain name/email
+        description: Search by VIN or driver name/email
         schema: { type: string }
     responses:
       '200':
@@ -56,7 +56,7 @@
                       items: { $ref: '#/components/schemas/VehicleDetail' }
   post:
     tags: [Vehicles]
-    summary: Assign a vehicle to a captain
+    summary: Assign a vehicle to a driver
     security: [{ BearerAuth: [] }]
     requestBody:
       required: true
@@ -64,9 +64,9 @@
         application/json:
           schema:
             type: object
-            required: [captainId, vin]
+            required: [driverId, vin]
             properties:
-              captainId:      { type: string, format: uuid }
+              driverId:      { type: string, format: uuid }
               vehicleModelId: { type: string, format: uuid, nullable: true }
               vin:            { type: string, example: 1HGCM82633A123456 }
     responses:
@@ -80,7 +80,7 @@
                 - type: object
                   properties:
                     data: { $ref: '#/components/schemas/VehicleDetail' }
-      '404': { description: Captain or vehicle model not found }
+      '404': { description: Driver or vehicle model not found }
 
 /admin/vehicles/{id}:
   get:

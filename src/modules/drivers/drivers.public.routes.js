@@ -3,7 +3,7 @@ const { body, param, query } = require('express-validator');
 const multer = require('multer');
 const path   = require('path');
 const driverController      = require('./drivers.controller');
-// const driverController = require('./captains.admin.driverController');
+// const driverController = require('./drivers.admin.driverController');
 const tripsController = require('../trips/trips.controller');
 const walletsController = require('../wallets/wallets.controller');
 const validate = require('../../middleware/validate.middleware');
@@ -17,35 +17,35 @@ const storage = multer.diskStorage({
   },
 });
 const upload = multer({ storage });
-const captainOnly = [authenticate, authorize('driver')];
+const driverOnly = [authenticate, authorize('driver')];
 
 // ── Profile ───────────────────────────────────────────────────────────────────
-router.get('/me',                          ...captainOnly, driverController.getProfile);
-router.put('/me',                          ...captainOnly, [
+router.get('/me',                          ...driverOnly, driverController.getProfile);
+router.put('/me',                          ...driverOnly, [
   body('name').optional().notEmpty().trim(),
   body('phone').optional().notEmpty().trim(),
   body('language').optional().isIn(['en', 'ar']).withMessage('language must be en or ar'),
   body('notificationsEnabled').optional().isBoolean(),
 ], validate, driverController.updateProfile);
-router.patch('/me/avatar',                 ...captainOnly, upload.single('avatar'), driverController.updateAvatar);
-router.post('/me/duty/start',              ...captainOnly, driverController.startDuty);
-router.post('/me/duty/end',                ...captainOnly, driverController.endDuty);
-router.get('/me/wallet',                   ...captainOnly, driverController.getWallet);
+router.patch('/me/avatar',                 ...driverOnly, upload.single('avatar'), driverController.updateAvatar);
+router.post('/me/duty/start',              ...driverOnly, driverController.startDuty);
+router.post('/me/duty/end',                ...driverOnly, driverController.endDuty);
+router.get('/me/wallet',                   ...driverOnly, driverController.getWallet);
 
 // ── Insurance ─────────────────────────────────────────────────────────────────
-router.get('/me/insurance',                ...captainOnly, driverController.getInsuranceCards);
+router.get('/me/insurance',                ...driverOnly, driverController.getInsuranceCards);
 
-// ── Trip Management (Captain side) ────────────────────────────────────────────
-router.get('/me/trips',                    ...captainOnly, tripsController.getCaptainTrips);
-router.patch('/me/trips/:id/accept',       ...captainOnly, [param('id').isUUID()], validate, tripsController.acceptTrip);
-router.patch('/me/trips/:id/decline',      ...captainOnly, [param('id').isUUID()], validate, tripsController.declineTrip);
-router.patch('/me/trips/:id/start',        ...captainOnly, [param('id').isUUID()], validate, tripsController.startTrip);
-router.patch('/me/trips/:id/end',          ...captainOnly, [param('id').isUUID()], validate, tripsController.endTrip);
-router.patch('/me/trips/:id/stops/:stopId/arrive', ...captainOnly, [
+// ── Trip Management (Driver side) ────────────────────────────────────────────
+router.get('/me/trips',                    ...driverOnly, tripsController.getDriverTrips);
+router.patch('/me/trips/:id/accept',       ...driverOnly, [param('id').isUUID()], validate, tripsController.acceptTrip);
+router.patch('/me/trips/:id/decline',      ...driverOnly, [param('id').isUUID()], validate, tripsController.declineTrip);
+router.patch('/me/trips/:id/start',        ...driverOnly, [param('id').isUUID()], validate, tripsController.startTrip);
+router.patch('/me/trips/:id/end',          ...driverOnly, [param('id').isUUID()], validate, tripsController.endTrip);
+router.patch('/me/trips/:id/stops/:stopId/arrive', ...driverOnly, [
   param('id').isUUID(),
   param('stopId').isUUID(),
 ], validate, tripsController.markStopArrived);
-router.post('/me/trips/:tripId/credit-customer', ...captainOnly, [
+router.post('/me/trips/:tripId/credit-customer', ...driverOnly, [
   param('tripId').isUUID().withMessage('tripId must be a valid UUID'),
   body('amount').isFloat({ gt: 0 }).withMessage('amount must be a positive number'),
 ], validate, walletsController.driverCreditCustomer);

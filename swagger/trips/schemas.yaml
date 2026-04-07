@@ -30,8 +30,8 @@ Trip:
         lastName:  { type: string }
     isSchedule:       { type: boolean }
     scheduleDatetime: { type: string, format: date-time }
-    captain:
-      $ref: '../captains/schemas.yaml#/Captain'
+    driver:
+      $ref: '../drivers/schemas.yaml#/Driver'
     createdAt:  { type: string, format: date-time }
     startedAt:  { type: string, format: date-time, nullable: true }
     endedAt:    { type: string, format: date-time, nullable: true }
@@ -41,7 +41,7 @@ RideCreate:
   required: [userId, pickupLat, pickupLng, dropoffLat, dropoffLng, pickupAddress, dropoffAddress]
   properties:
     userId:         { type: string, format: uuid }
-    captainId:      { type: string, format: uuid }
+    driverId:      { type: string, format: uuid }
     pickupLat:      { type: number }
     pickupLng:      { type: number }
     dropoffLat:     { type: number }
@@ -59,7 +59,7 @@ RideUpdate:
     status:       { type: string }
     finalFare:    { type: number }
     originalFare: { type: number }
-    captainId:    { type: string, format: uuid }
+    driverId:    { type: string, format: uuid }
 
 Rating:
   type: object

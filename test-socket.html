@@ -24,13 +24,13 @@
 
 <!-- ── CONNECTION ─────────────────────────────────────────────── -->
 <h2>1. Connect</h2>
-<label>JWT (captain or user)</label>
+<label>JWT (driver or user)</label>
 <textarea id="token" rows="3" placeholder="Paste your Bearer token here (without the word 'Bearer')"></textarea>
 <button onclick="connect()">Connect</button>
 <button class="red" onclick="disconnect()">Disconnect</button>
 
-<!-- ── CAPTAIN: LOCATION ──────────────────────────────────────── -->
-<h2>2. Captain — Send Location</h2>
+<!-- ── DRIVER: LOCATION ──────────────────────────────────────── -->
+<h2>2. Driver — Send Location</h2>
 <p style="color:#aaa;font-size:13px">Call this every few seconds while on duty. Must be within 10 km of your test pickup point.</p>
 <div class="row">
   <div><label>Latitude</label><input id="lat" value="30.0444" /></div>
@@ -81,19 +81,19 @@
     socket.on('disconnect', () => log('🔌 Disconnected'));
     socket.on('connect_error', (e) => log(`❌ Auth error: ${e.message}`, 'error'));
 
-    // ── Trip events (captain receives) ──
+    // ── Trip events (driver receives) ──
     socket.on('trip.new_request',     (d) => log(`🚖 NEW TRIP REQUEST:\n${JSON.stringify(d, null, 2)}`));
-    socket.on('trip.taken',           (d) => log(`🚫 Trip taken by another captain: ${d.tripId}`));
+    socket.on('trip.taken',           (d) => log(`🚫 Trip taken by another driver: ${d.tripId}`));
     socket.on('trip.removed',         (d) => log(`👋 Trip removed from your list: ${d.tripId}`));
 
     // ── Trip events (user receives) ──
-    socket.on('trip.captain_matched', (d) => log(`🎉 Captain matched:\n${JSON.stringify(d, null, 2)}`));
+    socket.on('trip.driver_matched', (d) => log(`🎉 Driver matched:\n${JSON.stringify(d, null, 2)}`));
     socket.on('trip.status_changed',  (d) => log(`🔄 Status changed → ${d.status}`));
     socket.on('trip.cancelled',       (d) => log(`❌ Trip cancelled by ${d.cancelledBy}`));
     socket.on('trip.fare_offered',    (d) => log(`💰 Fare offer received:\n${JSON.stringify(d, null, 2)}`));
 
     // ── Live location (user receives while in trip room) ──
-    socket.on('trip.captain_location', (d) => log(`📍 Captain at ${d.latitude}, ${d.longitude} heading=${d.heading}`));
+    socket.on('trip.driver_location', (d) => log(`📍 Driver at ${d.latitude}, ${d.longitude} heading=${d.heading}`));
   }
 
   function disconnect() {
@@ -109,7 +109,7 @@
       heading:   parseFloat(document.getElementById('heading').value) || 0,
       tripId:    document.getElementById('locTripId').value.trim() || undefined,
     };
-    socket.emit('captain.location_update', payload);
+    socket.emit('driver.location_update', payload);
     log(`📡 Sent location_update: ${payload.latitude}, ${payload.longitude}`);
   }
 

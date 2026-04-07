@@ -2,7 +2,7 @@ const service = require('./trips.service');
 const regionsService = require('../regions/regions.service');
 const { success, created, error, paginate } = require('../../utils/response');
 const {
-  emitCaptainMatched,
+  emitDriverMatched,
   emitTripStatusChanged,
   emitTripCancelled,
   emitTripRequest,
@@ -44,7 +44,7 @@ const createTrip = async (req, res, next) => {
 
     emitTripRequest(io, trip, 10);
 
-    return created(res, trip, 'Trip created and searching for captains');
+    return created(res, trip, 'Trip created and searching for drivers');
   } catch (err) {
     if (err.statusCode) return error(res, err.message, err.statusCode);
     if (err.status) return error(res, err.message, err.status);
@@ -126,10 +126,10 @@ const cancelTrip = async (req, res, next) => {
   }
 };
 
-const getCaptainTrips = async (req, res, next) => {
+const getDriverTrips = async (req, res, next) => {
   try {
     const { page = 1, per_page = 20 } = req.query;
-    const result = await service.getCaptainTrips(req.actor.id, +page, +per_page);
+    const result = await service.getDriverTrips(req.actor.id, +page, +per_page);
     return success(res, result.trips, 'Success', 200, paginate(page, per_page, result.total));
   } catch (err) {
     next(err);
@@ -152,12 +152,12 @@ const acceptTrip = async (req, res, next) => {
 
     // Server-side: join both parties to the trip room so location tracking
     // starts immediately without waiting for the client to emit trip.join.
-    // This also acts as the authorization gate for captain.location_update
+    // This also acts as the authorization gate for driver.location_update
     // tripId validation (socket.rooms.has check in socket.js).
     io.in(`driver:${trip.driverId}`).socketsJoin(`trip:${trip.id}`);
     io.in(`user:${trip.userId}`).socketsJoin(`trip:${trip.id}`);
 
-    emitCaptainMatched(io, trip.userId, trip);
+    emitDriverMatched(io, trip.userId, trip);
     emitTripTaken(io, trip);
     return success(res, trip, 'Trip accepted');
   } catch (err) {
@@ -225,20 +225,20 @@ const rateTrip = async (req, res, next) => {
   }
 };
 
-const getCaptainRatings = async (req, res, next) => {
+const getDriverRatings = async (req, res, next) => {
   try {
     const { page = 1, per_page = 20 } = req.query;
-    const result = await service.getCaptainRatings(req.params.captainId, +page, +per_page);
+    const result = await service.getDriverRatings(req.params.driverId, +page, +per_page);
     return success(res, result.ratings, 'Success', 200, paginate(page, per_page, result.total));
   } catch (err) {
     next(err);
   }
 };
 
-const getNearbyCaptains = (req, res, next) => {
+const getNearbyDrivers = (req, res, next) => {
   try {
     const { latitude, longitude, radius, serviceId } = req.query;
-    const data = service.getNearbyCaptains(+latitude, +longitude, +(radius || 5), serviceId || null);
+    const data = service.getNearbyDrivers(+latitude, +longitude, +(radius || 5), serviceId || null);
     return success(res, data);
   } catch (err) {
     next(err);
@@ -247,6 +247,6 @@ const getNearbyCaptains = (req, res, next) => {
 
 module.exports = {
   estimateFare, getActiveRegions, createTrip, getUserTrips, addTripStops, getTripById, cancelTrip,
-  getCaptainTrips, getNewRequests, acceptTrip, declineTrip, startTrip, endTrip, markStopArrived,
-  rateTrip, getCaptainRatings, getNearbyCaptains, generateTripShareLink, getSharedTrip,
+  getDriverTrips, getNewRequests, acceptTrip, declineTrip, startTrip, endTrip, markStopArrived,
+  rateTrip, getDriverRatings, getNearbyDrivers, generateTripShareLink, getSharedTrip,
 };

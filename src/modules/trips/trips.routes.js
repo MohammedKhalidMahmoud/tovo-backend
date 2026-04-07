@@ -5,7 +5,7 @@ const validate = require('../../middleware/validate.middleware');
 const { authenticate, authorize } = require('../../middleware/auth.middleware');
 
 const userOnly    = [authenticate, authorize('customer')];
-const captainOnly = [authenticate, authorize('driver')];
+const driverOnly = [authenticate, authorize('driver')];
 const bothRoles   = [authenticate, authorize('customer', 'driver')];
 
 // ── Public ────────────────────────────────────────────────────────────────────
@@ -72,26 +72,26 @@ router.post('/:id/share-link', ...userOnly, [
   param('id').isUUID().withMessage('id must be a valid UUID'),
 ], validate, controller.generateTripShareLink);
 
-// ── Nearby Captains (must be before /:id) ────────────────────────────────────
-router.get('/nearby-captains', authenticate, [
+// ── Nearby Drivers (must be before /:id) ────────────────────────────────────
+router.get('/nearby-drivers', authenticate, [
   query('latitude').isFloat().withMessage('latitude is required and must be a float'),
   query('longitude').isFloat().withMessage('longitude is required and must be a float'),
   query('radius').optional().isFloat({ min: 0 }).withMessage('radius must be a positive number'),
   query('serviceId').optional().isUUID().withMessage('serviceId must be a valid UUID'),
-], validate, controller.getNearbyCaptains);
+], validate, controller.getNearbyDrivers);
 
-// ── Captain: Browse & History (must be before /:id) ──────────────────────────
-router.get('/captain/requests', ...captainOnly, controller.getNewRequests);
-router.get('/captain/trips',    ...captainOnly, controller.getCaptainTrips);
+// ── Driver: Browse & History (must be before /:id) ──────────────────────────
+router.get('/driver/requests', ...driverOnly, controller.getNewRequests);
+router.get('/driver/trips',    ...driverOnly, controller.getDriverTrips);
 
-// ── Captain Ratings (must be before /:id) ────────────────────────────────────
+// ── Driver Ratings (must be before /:id) ────────────────────────────────────
 router.get('/share/:token', [
   param('token').isLength({ min: 48, max: 48 }).isHexadecimal().withMessage('token must be a valid share token'),
 ], validate, controller.getSharedTrip);
 
-router.get('/captains/:captainId/ratings', authenticate, [
-  param('captainId').isUUID().withMessage('captainId must be a valid UUID'),
-], validate, controller.getCaptainRatings);
+router.get('/drivers/:driverId/ratings', authenticate, [
+  param('driverId').isUUID().withMessage('driverId must be a valid UUID'),
+], validate, controller.getDriverRatings);
 
 router.get('/:id',          ...bothRoles,   [param('id').isUUID()], validate, controller.getTripById);
 router.patch('/:id/cancel', ...userOnly,    [param('id').isUUID()], validate, controller.cancelTrip);

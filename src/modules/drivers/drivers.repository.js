@@ -15,7 +15,7 @@ const DRIVER_PROFILE_FIELDS = new Set([
   'serviceId',
 ]);
 
-const splitCaptainUpdateData = (data = {}) => {
+const splitDriverUpdateData = (data = {}) => {
   const userData = {};
   const profileData = {};
 
@@ -34,8 +34,8 @@ const findById = (id) =>
     include: DRIVER_INCLUDE,
   });
 
-const updateCaptain = (id, data) => {
-  const { userData, profileData } = splitCaptainUpdateData(data);
+const updateDriver = (id, data) => {
+  const { userData, profileData } = splitDriverUpdateData(data);
 
   return prisma.user.update({
     where: { id },
@@ -63,6 +63,6 @@ const getInsuranceCards = (userId) =>
   prisma.insuranceCard.findMany({ where: { userId } });
 
 module.exports = {
-  findById, updateCaptain, getWallet,
+  findById, updateDriver, getWallet,
   getInsuranceCards,
 };

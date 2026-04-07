@@ -8,7 +8,7 @@ const ADMIN_PATH_SEGMENT = "/admin/";
 const ADMIN_ONLY_PATHS = new Set([
   "/dashboard/statistics",
   "/notifications/send-to-user",
-  "/notifications/send-to-captain",
+  "/notifications/send-to-driver",
 ]);
 
 function buildSwaggerSpec(info, schemas, paths) {

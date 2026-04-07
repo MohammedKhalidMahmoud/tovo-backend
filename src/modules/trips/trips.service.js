@@ -308,7 +308,7 @@ const validatePickupInRegion = async (pickupLat, pickupLng) => {
 // ─────────────────────────────────────────────────────────────────────────────
 //  NEARBY DRIVERS
 // ─────────────────────────────────────────────────────────────────────────────
-const getNearbyCaptains = (pickupLat, pickupLng, radiusKm = 10, serviceId = null) =>
+const getNearbyDrivers = (pickupLat, pickupLng, radiusKm = 10, serviceId = null) =>
   locationStore.getNearby(pickupLat, pickupLng, radiusKm, serviceId);
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -495,7 +495,7 @@ const cancelTrip = async (tripId, userId) => {
 // ─────────────────────────────────────────────────────────────────────────────
 //  DRIVER ACTIONS
 // ─────────────────────────────────────────────────────────────────────────────
-const getCaptainTrips = async (driverId, page = 1, perPage = 20) => {
+const getDriverTrips = async (driverId, page = 1, perPage = 20) => {
   const skip = (page - 1) * perPage;
   const [trips, total] = await repo.findTripsByDriver(driverId, skip, perPage);
   return { trips, total, page, perPage };
@@ -642,14 +642,14 @@ const rateTrip = async (tripId, userId, stars, comment) => {
   return rating;
 };
 
-const getCaptainRatings = async (driverId, page = 1, perPage = 20) => {
+const getDriverRatings = async (driverId, page = 1, perPage = 20) => {
   const skip = (page - 1) * perPage;
   const [ratings, total] = await repo.findDriverRatings(driverId, skip, perPage);
   return { ratings, total, page, perPage };
 };
 
 module.exports = {
-  estimateFare, getNearbyCaptains, createTrip, getTripById, getUserTrips, addTripStops, cancelTrip,
-  getCaptainTrips, getNewRequests, acceptTrip, declineTrip, startTrip, markStopArrived, endTrip,
-  rateTrip, getCaptainRatings, generateTripShareLink, getSharedTrip, resolveShareTokenSocketContext,
+  estimateFare, getNearbyDrivers, createTrip, getTripById, getUserTrips, addTripStops, cancelTrip,
+  getDriverTrips, getNewRequests, acceptTrip, declineTrip, startTrip, markStopArrived, endTrip,
+  rateTrip, getDriverRatings, generateTripShareLink, getSharedTrip, resolveShareTokenSocketContext,
 };

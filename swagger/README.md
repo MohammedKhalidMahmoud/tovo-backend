@@ -21,11 +21,11 @@ swagger/
 │
 ├── auth/
 │   ├── paths.yaml            ← /auth/register, /auth/login, /auth/logout, OTP, social
-│   └── schemas.yaml          ← (references users/captains schemas)
+│   └── schemas.yaml          ← (references users/drivers schemas)
 │
-├── captains/
-│   ├── paths.yaml            ← /captains/me, duty, wallet, insurance, trips
-│   └── schemas.yaml          ← Captain, DriverCreate, DriverUpdate
+├── drivers/
+│   ├── paths.yaml            ← /drivers/me, duty, wallet, insurance, trips
+│   └── schemas.yaml          ← Driver, DriverCreate, DriverUpdate
 │
 ├── coupons/
 │   ├── paths.yaml            ← /promotions, /promotions/coupons/validate, /admin/promotions/coupons
@@ -40,11 +40,11 @@ swagger/
 │   └── schemas.yaml          ← Faq
 │
 ├── locations/
-│   ├── paths.yaml            ← /locations/search, nearby-captains, reverse-geocode
+│   ├── paths.yaml            ← /locations/search, nearby-drivers, reverse-geocode
 │   └── schemas.yaml          ← (no standalone schemas)
 │
 ├── notifications/
-│   ├── paths.yaml            ← /notifications, device-token, send-to-user/captain
+│   ├── paths.yaml            ← /notifications, device-token, send-to-user/driver
 │   └── schemas.yaml          ← Notification
 │
 ├── payments/

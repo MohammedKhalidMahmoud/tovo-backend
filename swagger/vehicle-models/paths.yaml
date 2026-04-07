@@ -2,7 +2,7 @@
   get:
     tags: [Vehicle Models]
     summary: List active vehicle models
-    description: Public endpoint — returns all active (whitelisted) models for use in the captain registration screen.
+    description: Public endpoint — returns all active (whitelisted) models for use in the driver registration screen.
     responses:
       '200':
         description: List of active vehicle models

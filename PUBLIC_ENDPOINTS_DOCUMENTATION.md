@@ -46,7 +46,7 @@ Mounted at `/api/v1/auth`.
 | Method | Path | Auth | Notes |
 |---|---|---|---|
 | `POST` | `/api/v1/auth/register/user` | public | Customer registration |
-| `POST` | `/api/v1/auth/register/captain` | public | Driver registration |
+| `POST` | `/api/v1/auth/register/driver` | public | Driver registration |
 | `POST` | `/api/v1/auth/login` | public | Customer or driver login |
 | `POST` | `/api/v1/auth/token/refresh` | public | Refresh access token |
 | `POST` | `/api/v1/auth/otp/send` | public | Send phone OTP |
@@ -106,10 +106,10 @@ Mounted at `/api/v1/trips`.
 | `GET` | `/api/v1/trips/estimate` | public | Fare estimate |
 | `POST` | `/api/v1/trips` | customer | Create trip |
 | `GET` | `/api/v1/trips` | customer | Customer trip history |
-| `GET` | `/api/v1/trips/nearby-captains` | auth | Nearby available drivers |
-| `GET` | `/api/v1/trips/captain/requests` | driver | Driver open trip requests |
-| `GET` | `/api/v1/trips/captain/trips` | driver | Driver trip history |
-| `GET` | `/api/v1/trips/captains/:captainId/ratings` | auth | Driver ratings |
+| `GET` | `/api/v1/trips/nearby-drivers` | auth | Nearby available drivers |
+| `GET` | `/api/v1/trips/driver/requests` | driver | Driver open trip requests |
+| `GET` | `/api/v1/trips/driver/trips` | driver | Driver trip history |
+| `GET` | `/api/v1/trips/drivers/:driverId/ratings` | auth | Driver ratings |
 | `GET` | `/api/v1/trips/:id` | customer\|driver | Trip detail for involved actors |
 | `PATCH` | `/api/v1/trips/:id/cancel` | customer | Cancel trip |
 | `POST` | `/api/v1/trips/:id/rating` | customer | Rate completed trip |

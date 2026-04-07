@@ -16,8 +16,8 @@ router.post('/register/user', [
   }),
 ], validate, controller.registerUser);
 
-// ── POST /auth/register/captain ───────────────────────────────────────────────
-router.post('/register/captain', [
+// ── POST /auth/register/driver ───────────────────────────────────────────────
+router.post('/register/driver', [
   body('name').notEmpty().trim(),
   body('email').isEmail().normalizeEmail(),
   body('phone').notEmpty().trim(),
@@ -30,13 +30,12 @@ router.post('/register/captain', [
   // frontend sends vehicle model **name** instead of id
   body('vehicle_model').notEmpty().trim(),
   body('vin').notEmpty().trim(),
-], validate, controller.registerCaptain);
+], validate, controller.registerDriver);
 
 // ── POST /auth/login ──────────────────────────────────────────────────────────
 router.post('/login', [
   body('identifier').notEmpty().trim().withMessage('identifier (email or phone) is required'),
   body('password').notEmpty(),
-  body('role').isIn(['customer', 'driver']),
 ], validate, controller.login);
 
 // ── POST /auth/admin/login ────────────────────────────────────────────────────

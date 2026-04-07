@@ -68,7 +68,7 @@
             properties:
               user_id: { type: string, format: uuid }
               title:   { type: string, example: Your ride is on the way! }
-              body:    { type: string, example: Your captain is 2 minutes away. }
+              body:    { type: string, example: Your driver is 2 minutes away. }
               data:    { type: object, description: Optional key-value data payload, example: { tripId: abc-123 } }
     responses:
       '200':
@@ -82,11 +82,11 @@
       '403': { description: Invalid or missing admin key }
       '422': { description: Validation error }
 
-/notifications/send-to-captain:
+/notifications/send-to-driver:
   post:
     tags: [Notifications]
-    summary: Send push notification to a captain (Admin)
-    description: Sends an FCM push to all devices registered by the given captain. Protected by `X-Admin-Key` header.
+    summary: Send push notification to a driver (Admin)
+    description: Sends an FCM push to all devices registered by the given driver. Protected by `X-Admin-Key` header.
     parameters:
       - name: X-Admin-Key
         in: header
@@ -97,9 +97,9 @@
       content:
         application/json:
           schema:
-            required: [captain_id, title, body]
+            required: [driver_id, title, body]
             properties:
-              captain_id: { type: string, format: uuid }
+              driver_id: { type: string, format: uuid }
               title:      { type: string, example: New trip request! }
               body:       { type: string, example: A passenger is waiting 1.2 km away. }
               data:       { type: object, description: Optional key-value data payload, example: { tripId: abc-123 } }

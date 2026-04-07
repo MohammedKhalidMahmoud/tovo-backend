@@ -56,23 +56,23 @@ exports.getProfile = async (driverId) => {
 };
 
 exports.updateProfile = async (driverId, data) => {
-  const updated = await repo.updateCaptain(driverId, data);
+  const updated = await repo.updateDriver(driverId, data);
   const { passwordHash, ...safe } = withDriverProfileFields(updated);
   return safe;
 };
 
 exports.updateAvatar = async (driverId, avatarUrl) => {
   const existing = await repo.findById(driverId);
-  await repo.updateCaptain(driverId, { avatarUrl });
+  await repo.updateDriver(driverId, { avatarUrl });
   return existing?.avatarUrl ?? null;
 };
 
 exports.startDuty = (driverId) =>
-  repo.updateCaptain(driverId, { isOnline: true });
+  repo.updateDriver(driverId, { isOnline: true });
 
 exports.endDuty = async (driverId) => {
   locationStore.remove(driverId);
-  return repo.updateCaptain(driverId, { isOnline: false });
+  return repo.updateDriver(driverId, { isOnline: false });
 };
 
 exports.getWallet = async (driverId) => {

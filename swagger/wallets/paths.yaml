@@ -2,7 +2,7 @@
   get:
     tags: [Wallets]
     summary: Get my wallet
-    description: Returns the authenticated user's or captain's own wallet balance and details.
+    description: Returns the authenticated user's or driver's own wallet balance and details.
     security: [{ BearerAuth: [] }]
     responses:
       '200':
@@ -22,7 +22,7 @@
   get:
     tags: [Wallets]
     summary: Get my wallet transaction history
-    description: Returns a paginated list of all credits and debits on the authenticated user's or captain's wallet.
+    description: Returns a paginated list of all credits and debits on the authenticated user's or driver's wallet.
     security: [{ BearerAuth: [] }]
     parameters:
       - name: page
@@ -85,7 +85,7 @@
   get:
     tags: [Wallets]
     summary: List all wallets
-    description: Returns a paginated list of all user and captain wallets, optionally filtered by owner type or a name/email search term.
+    description: Returns a paginated list of all user and driver wallets, optionally filtered by owner type or a name/email search term.
     security: [{ BearerAuth: [] }]
     parameters:
       - name: page
@@ -97,7 +97,7 @@
       - name: ownerType
         in: query
         description: Filter by wallet owner type
-        schema: { type: string, enum: [all, user, captain], default: all }
+        schema: { type: string, enum: [all, user, driver], default: all }
       - name: search
         in: query
         description: Search by owner name or email
@@ -129,7 +129,7 @@
   get:
     tags: [Wallets]
     summary: Get a single wallet
-    description: Returns full wallet details including the linked user or captain.
+    description: Returns full wallet details including the linked user or driver.
     security: [{ BearerAuth: [] }]
     parameters:
       - name: id

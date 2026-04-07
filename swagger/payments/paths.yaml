@@ -74,7 +74,7 @@
         schema: { type: string, format: uuid }
       - name: driverId
         in: query
-        description: Filter by captain (driver) ID
+        description: Filter by driver (driver) ID
         schema: { type: string, format: uuid }
       - name: paymentType
         in: query

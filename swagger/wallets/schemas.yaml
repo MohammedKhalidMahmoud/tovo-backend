@@ -25,7 +25,7 @@ Wallet:
     balance:  { type: number, example: 350.00 }
     currency: { type: string, example: EGP }
     userId:   { type: string, format: uuid, nullable: true }
-    captainId: { type: string, format: uuid, nullable: true }
+    driverId: { type: string, format: uuid, nullable: true }
     user:
       nullable: true
       type: object
@@ -33,7 +33,7 @@ Wallet:
         name:  { type: string }
         email: { type: string, format: email }
         phone: { type: string }
-    captain:
+    driver:
       nullable: true
       type: object
       properties:

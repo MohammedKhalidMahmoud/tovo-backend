@@ -27,7 +27,7 @@ Payment:
         name:  { type: string }
         email: { type: string, format: email }
         phone: { type: string }
-    captain:
+    driver:
       nullable: true
       type: object
       properties:

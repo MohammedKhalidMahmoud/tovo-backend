@@ -1,9 +1,9 @@
 # ════════════════════════════════════════════════════════════════════════════
-# CAPTAINS MODULE — paths.yaml
+# DRIVERS MODULE — paths.yaml
 # Covers: /api/v1/drivers  (driver-facing) + /api/v1/admin/drivers  (admin)
 # ════════════════════════════════════════════════════════════════════════════
 
-# ── CAPTAIN-FACING ROUTES ────────────────────────────────────────────────────
+# ── DRIVER-FACING ROUTES ────────────────────────────────────────────────────
 
 /drivers/me:
   get:

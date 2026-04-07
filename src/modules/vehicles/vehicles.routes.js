@@ -12,7 +12,7 @@ router.post(
   '/',
   authenticate, authorize('admin'),
   [
-    body('captainId').isUUID().withMessage('captainId must be a valid UUID'),
+    body('driverId').isUUID().withMessage('driverId must be a valid UUID'),
     body('vehicleModelId').optional().isUUID().withMessage('vehicleModelId must be a valid UUID'),
     body('vin').trim().isLength({ min: 1 }).withMessage('vin is required'),
   ],

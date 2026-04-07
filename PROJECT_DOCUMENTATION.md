@@ -9,11 +9,11 @@
 ### 2026-04-07 (rev 6) - Documentation Sync With Current Backend Surface
 
 #### Problem
-`PROJECT_DOCUMENTATION.md` had drifted from the current codebase in several critical areas: route mounts (`/drivers` vs `/captains`), payment capabilities (cash-only), database models (driver profile split), and newer modules/features (trip sharing + toll gates).
+`PROJECT_DOCUMENTATION.md` had drifted from the current codebase in several critical areas: route mounts (`/drivers` vs `/drivers`), payment capabilities (cash-only), database models (driver profile split), and newer modules/features (trip sharing + toll gates).
 
 #### Solution
 - Updated API module sections to match mounted routes in `src/app.js`
-- Replaced legacy captain-centric endpoint docs with current driver-facing paths under `/api/v1/drivers`
+- Replaced legacy driver-centric endpoint docs with current driver-facing paths under `/api/v1/drivers`
 - Removed stale `PaymentMethod`/card-payment assumptions and documented cash-only payment behavior
 - Added missing trip-share endpoints (`POST /trips/:id/share-link`, `GET /trips/share/:token`) and share-token behavior
 - Added toll gates module coverage (`/api/v1/admin/toll-gates`)
@@ -34,7 +34,7 @@ Trip pricing docs and realtime behavior had drifted from the current backend. Th
 - Clarified that driver settlement uses pre-discount pricing and adds `trip_coupon_reimbursement` when a coupon discount exists
 - Centralized non-location socket events in `emitRealtimeEvent()` inside `src/realtime/socket.js`
 - Every existing non-location socket event now emits over Socket.io and sends an unconditional FCM push with the same event name in the payload
-- `trip.captain_location` remains socket-only by design
+- `trip.driver_location` remains socket-only by design
 - Standardized private customer socket rooms as `user:{id}`
 
 ---
@@ -219,10 +219,10 @@ Commission per trip was stored only in the `trips.commission` field. For cash tr
 ### 2026-03-16 — Trip Dispatch Refactor + Public Vehicle Models + Apple Sign-In
 
 #### 1. Trip request dispatch moved to `emitTripRequest` in `socket.js`
-- **Previously:** `trips.controller.js` `createTrip` contained an inline `nearbyCaptains.forEach(...)` loop that emitted `trip.new_request` directly. `trips.service.js` `createTrip` returned `{ trip, nearbyCaptains }` so the controller could reuse the already-computed nearby list.
+- **Previously:** `trips.controller.js` `createTrip` contained an inline `nearbyDrivers.forEach(...)` loop that emitted `trip.new_request` directly. `trips.service.js` `createTrip` returned `{ trip, nearbyDrivers }` so the controller could reuse the already-computed nearby list.
 - **Now:**
   - New exported function `emitTripRequest(io, trip, radiusKm = 10)` added to `src/realtime/socket.js`. It calls `locationStore.getNearby(trip.pickupLat, trip.pickupLng, radiusKm, trip.serviceId ?? null)`, logs if no drivers found, and emits `trip.new_request` to each `driver:{driverId}` room.
-  - `trips.service.js` `createTrip` now returns just `trip` (the `nearbyCaptains` return value was removed).
+  - `trips.service.js` `createTrip` now returns just `trip` (the `nearbyDrivers` return value was removed).
   - `trips.controller.js` `createTrip` now calls `emitTripRequest(io, trip, 10)` instead of the inline forEach.
 - **Files changed:** `src/realtime/socket.js`, `src/modules/trips/trips.service.js`, `src/modules/trips/trips.controller.js`
 
@@ -281,7 +281,7 @@ Server was consuming excessive CPU and memory after deployment due to several is
 
 #### Fix 1 — Remove blocking `console.log` in locationStore (CRITICAL)
 - **File:** `src/realtime/locationStore.js`
-- **Previously:** `set()` called `console.log(store)` on every captain GPS update — synchronous I/O that serialized the entire Map and blocked the Node.js event loop
+- **Previously:** `set()` called `console.log(store)` on every driver GPS update — synchronous I/O that serialized the entire Map and blocked the Node.js event loop
 - **Now:** Line removed entirely
 - **Impact:** With 50+ online drivers, this was causing thousands of blocking I/O calls per minute
 
@@ -298,7 +298,7 @@ Server was consuming excessive CPU and memory after deployment due to several is
 #### Fix 3 — Deduplicate `getNearby()` call per trip creation
 - **Files:** `src/modules/trips/trips.service.js`, `src/modules/trips/trips.controller.js`
 - **Previously:** `locationStore.getNearby()` was called twice per trip — once in `createTrip()` (service) for FCM push, and again in the controller for Socket.io emission
-- **Now:** `createTrip()` returns `{ trip, nearbyCaptains }` instead of just `trip`; controller destructures and reuses the already-computed list for socket emission — one call per trip instead of two
+- **Now:** `createTrip()` returns `{ trip, nearbyDrivers }` instead of just `trip`; controller destructures and reuses the already-computed list for socket emission — one call per trip instead of two
 - **Current-state note (rev 5):** trip realtime dispatch is now centralized in `src/realtime/socket.js` via shared helpers, and non-location trip events send both socket emissions and push notifications together
 
 #### Fix 4 — TTL in-memory cache for active regions
@@ -374,9 +374,9 @@ Server was consuming excessive CPU and memory after deployment due to several is
 
 ### 2026-03-10 — API Endpoint Consolidation
 - **Removed duplicate trip lifecycle endpoints** from `/api/v1/trips/*` routes and Swagger docs
-- **Consolidated to captain-focused endpoints** at `/api/v1/captains/me/trips/*` for better API organization
+- **Consolidated to driver-focused endpoints** at `/api/v1/drivers/me/trips/*` for better API organization
 - **Affected endpoints:** `accept_trip`, `decline_trip`, `start_trip`, `end_trip` (cancel_trip was already removed)
-- **No functional changes:** Backend logic remains unchanged; captains routes delegate to trips controller
+- **No functional changes:** Backend logic remains unchanged; drivers routes delegate to trips controller
 - **Files modified:** `src/modules/trips/trips.routes.js`, `swagger/trips/paths.yaml`
 
 ---
@@ -472,7 +472,7 @@ Socket.io Events
   → locationStore (in-memory Map — driver GPS)
   → Emitters called from controllers to push events to rooms:
       emitTripRequest(io, trip, radiusKm)   — queries locationStore, emits trip.new_request to nearby drivers
-      emitCaptainMatched(io, userId, trip)  — notifies passenger of driver match
+      emitDriverMatched(io, userId, trip)  — notifies passenger of driver match
       emitTripStatusChanged(io, ...)        — broadcasts status change to trip room
       emitTripCancelled(io, ...)            — notifies both parties of cancellation
 ```
@@ -677,7 +677,7 @@ https://tovo-b.developteam.site/api/v1  (production)
 
 ### Authentication Flow
 1. User/Driver registers → password hashed with bcrypt → stored in single `users` table with appropriate role
-2. For **customer/driver** login: `POST /auth/login` with `identifier` (email or phone, auto-detected), `password`, and `role` (customer|driver)
+2. For **customer/driver** login: `POST /auth/login` with `identifier` (email or phone, auto-detected) and `password`; backend infers role from the matched user record
 3. For **admin** login: `POST /auth/admin/login` with `email`, `password` → looks up separate `admin_users` table
 4. Server issues `accessToken` (JWT, short-lived) + `refreshToken` (long-lived)
 5. All protected endpoints require `Authorization: Bearer <accessToken>`
@@ -693,7 +693,7 @@ https://tovo-b.developteam.site/api/v1  (production)
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
 | POST | `/register/user` | — | Register customer |
-| POST | `/register/captain` | — | Register driver |
+| POST | `/register/driver` | — | Register driver |
 | POST | `/login` | — | Login customer or driver (email or phone via `identifier` field) |
 | POST | `/admin/login` | — | Login admin account (separate AdminUser table) |
 | POST | `/logout` | Bearer | Invalidate refresh token |
@@ -755,10 +755,10 @@ Admin driver management is mounted under `/api/v1/admin/drivers` (list/get/creat
 | POST | `/:id/stops` | customer | Append trip stops before start |
 | POST | `/:id/share-link` | customer | Generate expiring share link token |
 | GET | `/share/:token` | public | Read shared trip live payload |
-| GET | `/nearby-captains` | authenticated | Nearby online drivers from `locationStore` |
-| GET | `/captain/requests` | driver | Open trip requests not yet declined |
-| GET | `/captain/trips` | driver | Driver trip history |
-| GET | `/captains/:captainId/ratings` | authenticated | Driver ratings |
+| GET | `/nearby-drivers` | authenticated | Nearby online drivers from `locationStore` |
+| GET | `/driver/requests` | driver | Open trip requests not yet declined |
+| GET | `/driver/trips` | driver | Driver trip history |
+| GET | `/drivers/:driverId/ratings` | authenticated | Driver ratings |
 | GET | `/:id` | customer/driver | Trip details |
 | PATCH | `/:id/cancel` | customer | Cancel trip |
 | POST | `/:id/rating` | customer | Rate driver (1–5 stars) |
@@ -1001,7 +1001,7 @@ This is a **backend-only repository**. No frontend code exists in this project.
 5. OTP phone verification can be triggered separately via `/auth/otp/send` and `/auth/otp/verify`
 
 ### Driver Registration Flow
-1. Register via `POST /auth/register/captain` with `name, email, phone, password, driving_license, vehicle_model, vin`
+1. Register via `POST /auth/register/driver` with `name, email, phone, password, driving_license, vehicle_model, vin`
 2. Driver account created as `User { role: driver, isVerified: false }`
 3. Driver-specific fields are stored in `DriverProfile` (`drivingLicense`, `isOnline`, `rating`, `totalTrips`, `serviceId`)
 4. Vehicle record created linked to the driver
@@ -1018,8 +1018,8 @@ This is a **backend-only repository**. No frontend code exists in this project.
 - Discounted trip completion credits a separate driver wallet transaction with reason `trip_coupon_reimbursement`
 - Non-location realtime events are centralized in `emitRealtimeEvent()` inside `src/realtime/socket.js`
 - Those events always emit Socket.io and send a matching FCM push with the same event name in the push payload
-- `trip.captain_location` is the only socket event intentionally excluded from push notifications
-- Private rider rooms are `user:{id}`; private driver rooms are `driver:{id}`; the availability broadcast room is `captains:available`
+- `trip.driver_location` is the only socket event intentionally excluded from push notifications
+- Private rider rooms are `user:{id}`; private driver rooms are `driver:{id}`; the availability broadcast room is `drivers:available`
 
 ### Ride Request Flow
 ```
@@ -1031,13 +1031,13 @@ This is a **backend-only repository**. No frontend code exists in this project.
    - Controller emits `emitTripRequest(io, trip, 10)` to nearby available drivers
 3. Driver receives `trip.new_request`
 4. Driver calls PATCH /drivers/me/trips/:id/accept → status `matched`
-   - Customer receives `trip.captain_matched`
+   - Customer receives `trip.driver_matched`
    - Other nearby drivers receive `trip.taken`
 5. Driver calls PATCH /drivers/me/trips/:id/start → status `in_progress`
    - Both customer and driver receive `trip.status_changed`
-6. During trip driver emits `captain.location_update`
+6. During trip driver emits `driver.location_update`
    - Stored in `locationStore` (no DB write)
-   - Forwarded as `trip.captain_location` to trip room subscribers
+   - Forwarded as `trip.driver_location` to trip room subscribers
 7. Driver calls PATCH /drivers/me/trips/:id/end → status `completed`
    - Driver stats/wallet settlement logic runs
    - Customer receives completion notification
@@ -1051,7 +1051,7 @@ Cancellation: Customer calls PATCH /trips/:id/cancel → status: cancelled
 ### Driver Decline Flow
 - Driver calls `PATCH /trips/:id/decline`
 - A `TripDecline` record is created for `(tripId, driverId)`
-- `GET /trips/captain/requests` filters out trips with this driver's decline
+- `GET /trips/driver/requests` filters out trips with this driver's decline
 - Other drivers still see the trip (upsert prevents duplicate declines)
 
 ### Region Management Flow
@@ -1169,17 +1169,17 @@ All flows create immutable `WalletTransaction` entries and update balances atomi
 
 ### Real-Time Location Tracking
 - Driver GPS is stored in `locationStore` — a Node.js `Map` in process memory
-- Updated via `captain.location_update` Socket.io event
+- Updated via `driver.location_update` Socket.io event
 - Entries older than `STALE_MS` (default 2 minutes) are lazily evicted on read and periodically cleaned every 30s
 - `locationStore.getNearby(lat, lng, radiusKm, serviceId)` uses a bounding-box pre-filter for performance
-- Used by realtime dispatch (`emitTripRequest`) and `GET /trips/nearby-captains`
+- Used by realtime dispatch (`emitTripRequest`) and `GET /trips/nearby-drivers`
 
 ### Real-Time Notifications
 - Existing non-location socket events are centralized in `emitRealtimeEvent()` in `src/realtime/socket.js`
 - The helper always emits the socket event first, then sends a matching FCM push notification without checking whether the recipient is connected
 - The push payload carries the same event name in both `event` and `type`, plus a serialized `payload`, so the Flutter client can suppress foreground notifications client-side
-- Current non-location events handled this way: `trip.new_request`, `trip.captain_matched`, `trip.status_changed`, `trip.cancelled`, `trip.taken`, `trip.removed`
-- `trip.captain_location` remains socket-only by design to avoid notification spam
+- Current non-location events handled this way: `trip.new_request`, `trip.driver_matched`, `trip.status_changed`, `trip.cancelled`, `trip.taken`, `trip.removed`
+- `trip.driver_location` remains socket-only by design to avoid notification spam
 
 ---
 
@@ -1288,7 +1288,7 @@ Example stored filename: `avatar-1741427600000-482910372.jpg`. Avatar URLs retur
 ### Designed for Scalability
 - **locationStore** can be replaced with Redis (same interface) for multi-instance deployments without code changes to the service layer
 - **Repository pattern** makes it straightforward to swap Prisma for another ORM or add caching
-- **Socket.io rooms** are already structured (`user:{id}`, `driver:{id}`, `trip:{id}`, `captains:available`) for easy migration to Redis adapter
+- **Socket.io rooms** are already structured (`user:{id}`, `driver:{id}`, `trip:{id}`, `drivers:available`) for easy migration to Redis adapter
 - **Module-per-feature** structure makes adding new domains (e.g., scheduled rides, surge pricing) isolated
 - **Commission rules** are fully DB-driven — new rule types can be added without code changes by extending the `config` JSON shape
 
@@ -1300,14 +1300,14 @@ Current-state overrides for rev 6:
 - Driver settlement is based on pre-discount pricing and may include `trip_coupon_reimbursement`
 - Driver-only schema fields live in `DriverProfile` (1:1 with `User`)
 - Public/driver route surface is centered on `/api/v1/drivers` (admin at `/api/v1/admin/drivers`)
-- Socket rooms are `user:{id}`, `driver:{id}`, `trip:{id}`, and `captains:available`
+- Socket rooms are `user:{id}`, `driver:{id}`, `trip:{id}`, and `drivers:available`
 - Existing non-location socket events now emit over Socket.io and send matching FCM pushes via `emitRealtimeEvent()`
-- `trip.captain_location` remains socket-only
+- `trip.driver_location` remains socket-only
 - Trip sharing is available through `POST /trips/:id/share-link` + `GET /trips/share/:token`
 
 Tovo is a Node.js/Express ride-hailing and package delivery backend using Prisma v5, MySQL, Socket.io, JWT auth, Firebase push notifications, Nodemailer, and Swagger at `/api/docs`. The codebase follows a Controller → Service → Repository structure, most features live in `src/modules/<name>/`, and auth sets `req.actor = { id, role }` for `customer`, `driver`, or `admin`.
 
 Current trip pricing uses `originalFare`, `discountAmount`, and `finalFare`, where `finalFare = originalFare - discountAmount`. Commission rules are DB-driven, `driverEarnings` and `commission` are calculated from the pre-discount fare, coupon application is handled through `POST /api/v1/promotions/coupons/apply`, and discounted trip completion may write an extra wallet transaction with reason `trip_coupon_reimbursement`.
 
-Realtime behavior uses `locationStore` for in-memory driver GPS and Socket.io rooms `user:{id}`, `driver:{id}`, `trip:{id}`, and `captains:available`. Non-location trip events are centralized in `src/realtime/socket.js` and now emit both Socket.io events and matching FCM pushes, while `trip.captain_location` remains socket-only. `PUBLIC_ENDPOINTS_DOCUMENTATION.md` is the best current quick reference for mounted non-admin routes.
+Realtime behavior uses `locationStore` for in-memory driver GPS and Socket.io rooms `user:{id}`, `driver:{id}`, `trip:{id}`, and `drivers:available`. Non-location trip events are centralized in `src/realtime/socket.js` and now emit both Socket.io events and matching FCM pushes, while `trip.driver_location` remains socket-only. `PUBLIC_ENDPOINTS_DOCUMENTATION.md` is the best current quick reference for mounted non-admin routes.
 

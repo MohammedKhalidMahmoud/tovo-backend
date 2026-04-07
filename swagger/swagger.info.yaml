@@ -52,7 +52,7 @@ tags:
     description: Vehicle model whitelist
 
   - name: Wallets
-    description: User & captain wallet management
+    description: User & driver wallet management
 
   - name: Payments
     description: Payment processing endpoints

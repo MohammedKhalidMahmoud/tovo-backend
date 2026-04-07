@@ -8,7 +8,7 @@
   "variable": [
     { "key": "baseUrl",      "value": "http://localhost:3000/api/v1", "type": "string" },
     { "key": "userToken",    "value": "",                             "type": "string" },
-    { "key": "captainToken", "value": "",                             "type": "string" },
+    { "key": "driverToken", "value": "",                             "type": "string" },
     { "key": "adminKey",     "value": "",                             "type": "string" }
   ],
   "item": [
@@ -30,15 +30,15 @@
           }
         },
         {
-          "name": "Register Captain",
+          "name": "Register Driver",
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "url": { "raw": "{{baseUrl}}/auth/register/captain", "host": ["{{baseUrl}}"], "path": ["auth","register","captain"] },
+            "url": { "raw": "{{baseUrl}}/auth/register/driver", "host": ["{{baseUrl}}"], "path": ["auth","register","driver"] },
             "body": {
               "mode": "raw",
               "options": { "raw": { "language": "json" } },
-              "raw": "{\n  \"name\": \"Mohamed Hassan\",\n  \"email\": \"captain@example.com\",\n  \"phone\": \"+201009876543\",\n  \"driving_license\": \"DL-12345678\",\n  \"password\": \"Password123\",\n  \"confirm_password\": \"Password123\",\n  \"vehicle_model\": \"Regular Car\",\n  \"vin\": \"1HGBH41JXMN109186\"\n}"
+              "raw": "{\n  \"name\": \"Mohamed Hassan\",\n  \"email\": \"driver@example.com\",\n  \"phone\": \"+201009876543\",\n  \"driving_license\": \"DL-12345678\",\n  \"password\": \"Password123\",\n  \"confirm_password\": \"Password123\",\n  \"vehicle_model\": \"Regular Car\",\n  \"vin\": \"1HGBH41JXMN109186\"\n}"
             }
           }
         },
@@ -52,7 +52,7 @@
                   "const res = pm.response.json();",
                   "if (res.data && res.data.accessToken) {",
                   "  if (pm.request.body.raw.includes('\"user\"')) pm.collectionVariables.set('userToken', res.data.accessToken);",
-                  "  else pm.collectionVariables.set('captainToken', res.data.accessToken);",
+                  "  else pm.collectionVariables.set('driverToken', res.data.accessToken);",
                   "}"
                 ],
                 "type": "text/javascript"
@@ -66,12 +66,12 @@
             "body": {
               "mode": "raw",
               "options": { "raw": { "language": "json" } },
-              "raw": "{\n  \"email\": \"ahmed@example.com\",\n  \"password\": \"Password123\",\n  \"role\": \"user\"\n}"
+              "raw": "{\n  \"identifier\": \"ahmed@example.com\",\n  \"password\": \"Password123\"\n}"
             }
           }
         },
         {
-          "name": "Login (Captain)",
+          "name": "Login (Driver)",
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
@@ -79,7 +79,7 @@
             "body": {
               "mode": "raw",
               "options": { "raw": { "language": "json" } },
-              "raw": "{\n  \"email\": \"captain@example.com\",\n  \"password\": \"Password123\",\n  \"role\": \"captain\"\n}"
+              "raw": "{\n  \"identifier\": \"driver@example.com\",\n  \"password\": \"Password123\"\n}"
             }
           }
         },
@@ -351,14 +351,14 @@
     },
 
     {
-      "name": "Captains",
+      "name": "Drivers",
       "item": [
         {
           "name": "Get My Profile",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{captainToken}}" }],
-            "url": { "raw": "{{baseUrl}}/captains/me", "host": ["{{baseUrl}}"], "path": ["captains","me"] }
+            "header": [{ "key": "Authorization", "value": "Bearer {{driverToken}}" }],
+            "url": { "raw": "{{baseUrl}}/drivers/me", "host": ["{{baseUrl}}"], "path": ["drivers","me"] }
           }
         },
         {
@@ -367,9 +367,9 @@
             "method": "PUT",
             "header": [
               { "key": "Content-Type",  "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{captainToken}}" }
+              { "key": "Authorization", "value": "Bearer {{driverToken}}" }
             ],
-            "url": { "raw": "{{baseUrl}}/captains/me", "host": ["{{baseUrl}}"], "path": ["captains","me"] },
+            "url": { "raw": "{{baseUrl}}/drivers/me", "host": ["{{baseUrl}}"], "path": ["drivers","me"] },
             "body": {
               "mode": "raw",
               "options": { "raw": { "language": "json" } },
@@ -381,8 +381,8 @@
           "name": "Upload Avatar",
           "request": {
             "method": "PATCH",
-            "header": [{ "key": "Authorization", "value": "Bearer {{captainToken}}" }],
-            "url": { "raw": "{{baseUrl}}/captains/me/avatar", "host": ["{{baseUrl}}"], "path": ["captains","me","avatar"] },
+            "header": [{ "key": "Authorization", "value": "Bearer {{driverToken}}" }],
+            "url": { "raw": "{{baseUrl}}/drivers/me/avatar", "host": ["{{baseUrl}}"], "path": ["drivers","me","avatar"] },
             "body": {
               "mode": "formdata",
               "formdata": [{ "key": "avatar", "type": "file", "src": "" }]
@@ -393,32 +393,32 @@
           "name": "Start Duty",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Authorization", "value": "Bearer {{captainToken}}" }],
-            "url": { "raw": "{{baseUrl}}/captains/me/duty/start", "host": ["{{baseUrl}}"], "path": ["captains","me","duty","start"] }
+            "header": [{ "key": "Authorization", "value": "Bearer {{driverToken}}" }],
+            "url": { "raw": "{{baseUrl}}/drivers/me/duty/start", "host": ["{{baseUrl}}"], "path": ["drivers","me","duty","start"] }
           }
         },
         {
           "name": "End Duty",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Authorization", "value": "Bearer {{captainToken}}" }],
-            "url": { "raw": "{{baseUrl}}/captains/me/duty/end", "host": ["{{baseUrl}}"], "path": ["captains","me","duty","end"] }
+            "header": [{ "key": "Authorization", "value": "Bearer {{driverToken}}" }],
+            "url": { "raw": "{{baseUrl}}/drivers/me/duty/end", "host": ["{{baseUrl}}"], "path": ["drivers","me","duty","end"] }
           }
         },
         {
           "name": "Get My Wallet",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{captainToken}}" }],
-            "url": { "raw": "{{baseUrl}}/captains/me/wallet", "host": ["{{baseUrl}}"], "path": ["captains","me","wallet"] }
+            "header": [{ "key": "Authorization", "value": "Bearer {{driverToken}}" }],
+            "url": { "raw": "{{baseUrl}}/drivers/me/wallet", "host": ["{{baseUrl}}"], "path": ["drivers","me","wallet"] }
           }
         },
         {
           "name": "Get Price Plans",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{captainToken}}" }],
-            "url": { "raw": "{{baseUrl}}/captains/me/price-plans", "host": ["{{baseUrl}}"], "path": ["captains","me","price-plans"] }
+            "header": [{ "key": "Authorization", "value": "Bearer {{driverToken}}" }],
+            "url": { "raw": "{{baseUrl}}/drivers/me/price-plans", "host": ["{{baseUrl}}"], "path": ["drivers","me","price-plans"] }
           }
         },
         {
@@ -427,9 +427,9 @@
             "method": "POST",
             "header": [
               { "key": "Content-Type",  "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{captainToken}}" }
+              { "key": "Authorization", "value": "Bearer {{driverToken}}" }
             ],
-            "url": { "raw": "{{baseUrl}}/captains/me/price-plans", "host": ["{{baseUrl}}"], "path": ["captains","me","price-plans"] },
+            "url": { "raw": "{{baseUrl}}/drivers/me/price-plans", "host": ["{{baseUrl}}"], "path": ["drivers","me","price-plans"] },
             "body": {
               "mode": "raw",
               "options": { "raw": { "language": "json" } },
@@ -441,48 +441,48 @@
           "name": "Get Insurance Cards",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{captainToken}}" }],
-            "url": { "raw": "{{baseUrl}}/captains/me/insurance", "host": ["{{baseUrl}}"], "path": ["captains","me","insurance"] }
+            "header": [{ "key": "Authorization", "value": "Bearer {{driverToken}}" }],
+            "url": { "raw": "{{baseUrl}}/drivers/me/insurance", "host": ["{{baseUrl}}"], "path": ["drivers","me","insurance"] }
           }
         },
         {
           "name": "Get My Trips",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{captainToken}}" }],
-            "url": { "raw": "{{baseUrl}}/captains/me/trips", "host": ["{{baseUrl}}"], "path": ["captains","me","trips"] }
+            "header": [{ "key": "Authorization", "value": "Bearer {{driverToken}}" }],
+            "url": { "raw": "{{baseUrl}}/drivers/me/trips", "host": ["{{baseUrl}}"], "path": ["drivers","me","trips"] }
           }
         },
         {
           "name": "Accept Trip",
           "request": {
             "method": "PATCH",
-            "header": [{ "key": "Authorization", "value": "Bearer {{captainToken}}" }],
-            "url": { "raw": "{{baseUrl}}/captains/me/trips/:id/accept", "host": ["{{baseUrl}}"], "path": ["captains","me","trips",":id","accept"], "variable": [{ "key": "id", "value": "<trip-uuid>" }] }
+            "header": [{ "key": "Authorization", "value": "Bearer {{driverToken}}" }],
+            "url": { "raw": "{{baseUrl}}/drivers/me/trips/:id/accept", "host": ["{{baseUrl}}"], "path": ["drivers","me","trips",":id","accept"], "variable": [{ "key": "id", "value": "<trip-uuid>" }] }
           }
         },
         {
           "name": "Decline Trip",
           "request": {
             "method": "PATCH",
-            "header": [{ "key": "Authorization", "value": "Bearer {{captainToken}}" }],
-            "url": { "raw": "{{baseUrl}}/captains/me/trips/:id/decline", "host": ["{{baseUrl}}"], "path": ["captains","me","trips",":id","decline"], "variable": [{ "key": "id", "value": "<trip-uuid>" }] }
+            "header": [{ "key": "Authorization", "value": "Bearer {{driverToken}}" }],
+            "url": { "raw": "{{baseUrl}}/drivers/me/trips/:id/decline", "host": ["{{baseUrl}}"], "path": ["drivers","me","trips",":id","decline"], "variable": [{ "key": "id", "value": "<trip-uuid>" }] }
           }
         },
         {
           "name": "Start Trip",
           "request": {
             "method": "PATCH",
-            "header": [{ "key": "Authorization", "value": "Bearer {{captainToken}}" }],
-            "url": { "raw": "{{baseUrl}}/captains/me/trips/:id/start", "host": ["{{baseUrl}}"], "path": ["captains","me","trips",":id","start"], "variable": [{ "key": "id", "value": "<trip-uuid>" }] }
+            "header": [{ "key": "Authorization", "value": "Bearer {{driverToken}}" }],
+            "url": { "raw": "{{baseUrl}}/drivers/me/trips/:id/start", "host": ["{{baseUrl}}"], "path": ["drivers","me","trips",":id","start"], "variable": [{ "key": "id", "value": "<trip-uuid>" }] }
           }
         },
         {
           "name": "End Trip",
           "request": {
             "method": "PATCH",
-            "header": [{ "key": "Authorization", "value": "Bearer {{captainToken}}" }],
-            "url": { "raw": "{{baseUrl}}/captains/me/trips/:id/end", "host": ["{{baseUrl}}"], "path": ["captains","me","trips",":id","end"], "variable": [{ "key": "id", "value": "<trip-uuid>" }] }
+            "header": [{ "key": "Authorization", "value": "Bearer {{driverToken}}" }],
+            "url": { "raw": "{{baseUrl}}/drivers/me/trips/:id/end", "host": ["{{baseUrl}}"], "path": ["drivers","me","trips",":id","end"], "variable": [{ "key": "id", "value": "<trip-uuid>" }] }
           }
         },
         {
@@ -491,9 +491,9 @@
             "method": "POST",
             "header": [
               { "key": "Content-Type",  "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{captainToken}}" }
+              { "key": "Authorization", "value": "Bearer {{driverToken}}" }
             ],
-            "url": { "raw": "{{baseUrl}}/captains/me/trips/:id/fare-offer", "host": ["{{baseUrl}}"], "path": ["captains","me","trips",":id","fare-offer"], "variable": [{ "key": "id", "value": "<trip-uuid>" }] },
+            "url": { "raw": "{{baseUrl}}/drivers/me/trips/:id/fare-offer", "host": ["{{baseUrl}}"], "path": ["drivers","me","trips",":id","fare-offer"], "variable": [{ "key": "id", "value": "<trip-uuid>" }] },
             "body": {
               "mode": "raw",
               "options": { "raw": { "language": "json" } },
@@ -590,60 +590,60 @@
           }
         },
         {
-          "name": "Get New Trip Requests (Captain)",
+          "name": "Get New Trip Requests (Driver)",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{captainToken}}" }],
-            "url": { "raw": "{{baseUrl}}/trips/captain/requests", "host": ["{{baseUrl}}"], "path": ["trips","captain","requests"] }
+            "header": [{ "key": "Authorization", "value": "Bearer {{driverToken}}" }],
+            "url": { "raw": "{{baseUrl}}/trips/driver/requests", "host": ["{{baseUrl}}"], "path": ["trips","driver","requests"] }
           }
         },
         {
-          "name": "Get Captain Trip History",
+          "name": "Get Driver Trip History",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{captainToken}}" }],
-            "url": { "raw": "{{baseUrl}}/trips/captain/trips", "host": ["{{baseUrl}}"], "path": ["trips","captain","trips"] }
+            "header": [{ "key": "Authorization", "value": "Bearer {{driverToken}}" }],
+            "url": { "raw": "{{baseUrl}}/trips/driver/trips", "host": ["{{baseUrl}}"], "path": ["trips","driver","trips"] }
           }
         },
         {
-          "name": "Accept Trip (Captain)",
+          "name": "Accept Trip (Driver)",
           "request": {
             "method": "PATCH",
-            "header": [{ "key": "Authorization", "value": "Bearer {{captainToken}}" }],
+            "header": [{ "key": "Authorization", "value": "Bearer {{driverToken}}" }],
             "url": { "raw": "{{baseUrl}}/trips/:id/accept", "host": ["{{baseUrl}}"], "path": ["trips",":id","accept"], "variable": [{ "key": "id", "value": "<trip-uuid>" }] }
           }
         },
         {
-          "name": "Decline Trip (Captain)",
+          "name": "Decline Trip (Driver)",
           "request": {
             "method": "PATCH",
-            "header": [{ "key": "Authorization", "value": "Bearer {{captainToken}}" }],
+            "header": [{ "key": "Authorization", "value": "Bearer {{driverToken}}" }],
             "url": { "raw": "{{baseUrl}}/trips/:id/decline", "host": ["{{baseUrl}}"], "path": ["trips",":id","decline"], "variable": [{ "key": "id", "value": "<trip-uuid>" }] }
           }
         },
         {
-          "name": "Start Trip (Captain)",
+          "name": "Start Trip (Driver)",
           "request": {
             "method": "PATCH",
-            "header": [{ "key": "Authorization", "value": "Bearer {{captainToken}}" }],
+            "header": [{ "key": "Authorization", "value": "Bearer {{driverToken}}" }],
             "url": { "raw": "{{baseUrl}}/trips/:id/start", "host": ["{{baseUrl}}"], "path": ["trips",":id","start"], "variable": [{ "key": "id", "value": "<trip-uuid>" }] }
           }
         },
         {
-          "name": "End Trip (Captain)",
+          "name": "End Trip (Driver)",
           "request": {
             "method": "PATCH",
-            "header": [{ "key": "Authorization", "value": "Bearer {{captainToken}}" }],
+            "header": [{ "key": "Authorization", "value": "Bearer {{driverToken}}" }],
             "url": { "raw": "{{baseUrl}}/trips/:id/end", "host": ["{{baseUrl}}"], "path": ["trips",":id","end"], "variable": [{ "key": "id", "value": "<trip-uuid>" }] }
           }
         },
         {
-          "name": "Submit Fare Offer (Captain)",
+          "name": "Submit Fare Offer (Driver)",
           "request": {
             "method": "POST",
             "header": [
               { "key": "Content-Type",  "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{captainToken}}" }
+              { "key": "Authorization", "value": "Bearer {{driverToken}}" }
             ],
             "url": { "raw": "{{baseUrl}}/trips/:id/fare-offer", "host": ["{{baseUrl}}"], "path": ["trips",":id","fare-offer"], "variable": [{ "key": "id", "value": "<trip-uuid>" }] },
             "body": {
@@ -654,11 +654,11 @@
           }
         },
         {
-          "name": "Get Captain Ratings",
+          "name": "Get Driver Ratings",
           "request": {
             "method": "GET",
             "header": [{ "key": "Authorization", "value": "Bearer {{userToken}}" }],
-            "url": { "raw": "{{baseUrl}}/trips/captains/:captainId/ratings", "host": ["{{baseUrl}}"], "path": ["trips","captains",":captainId","ratings"], "variable": [{ "key": "captainId", "value": "<captain-uuid>" }] }
+            "url": { "raw": "{{baseUrl}}/trips/drivers/:driverId/ratings", "host": ["{{baseUrl}}"], "path": ["trips","drivers",":driverId","ratings"], "variable": [{ "key": "driverId", "value": "<driver-uuid>" }] }
           }
         }
       ]
@@ -702,14 +702,14 @@
           }
         },
         {
-          "name": "Get Nearby Captains",
+          "name": "Get Nearby Drivers",
           "request": {
             "method": "GET",
             "header": [{ "key": "Authorization", "value": "Bearer {{userToken}}" }],
             "url": {
-              "raw": "{{baseUrl}}/locations/nearby-captains?lat=30.0444&lng=31.2357&radius_km=5",
+              "raw": "{{baseUrl}}/locations/nearby-drivers?lat=30.0444&lng=31.2357&radius_km=5",
               "host": ["{{baseUrl}}"],
-              "path": ["locations","nearby-captains"],
+              "path": ["locations","nearby-drivers"],
               "query": [
                 { "key": "lat",       "value": "30.0444" },
                 { "key": "lng",       "value": "31.2357" },
@@ -814,23 +814,23 @@
             "body": {
               "mode": "raw",
               "options": { "raw": { "language": "json" } },
-              "raw": "{\n  \"user_id\": \"<user-uuid>\",\n  \"title\": \"Your ride is arriving!\",\n  \"body\": \"Your captain is 2 minutes away.\",\n  \"data\": {\n    \"tripId\": \"<trip-uuid>\",\n    \"type\": \"trip_update\"\n  }\n}"
+              "raw": "{\n  \"user_id\": \"<user-uuid>\",\n  \"title\": \"Your ride is arriving!\",\n  \"body\": \"Your driver is 2 minutes away.\",\n  \"data\": {\n    \"tripId\": \"<trip-uuid>\",\n    \"type\": \"trip_update\"\n  }\n}"
             }
           }
         },
         {
-          "name": "Send Push to Captain (Admin)",
+          "name": "Send Push to Driver (Admin)",
           "request": {
             "method": "POST",
             "header": [
               { "key": "Content-Type", "value": "application/json" },
               { "key": "X-Admin-Key",  "value": "{{adminKey}}" }
             ],
-            "url": { "raw": "{{baseUrl}}/notifications/send-to-captain", "host": ["{{baseUrl}}"], "path": ["notifications","send-to-captain"] },
+            "url": { "raw": "{{baseUrl}}/notifications/send-to-driver", "host": ["{{baseUrl}}"], "path": ["notifications","send-to-driver"] },
             "body": {
               "mode": "raw",
               "options": { "raw": { "language": "json" } },
-              "raw": "{\n  \"captain_id\": \"<captain-uuid>\",\n  \"title\": \"New trip request!\",\n  \"body\": \"A user needs a ride near your location.\",\n  \"data\": {\n    \"tripId\": \"<trip-uuid>\",\n    \"type\": \"new_trip\"\n  }\n}"
+              "raw": "{\n  \"driver_id\": \"<driver-uuid>\",\n  \"title\": \"New trip request!\",\n  \"body\": \"A user needs a ride near your location.\",\n  \"data\": {\n    \"tripId\": \"<trip-uuid>\",\n    \"type\": \"new_trip\"\n  }\n}"
             }
           }
         }
