@@ -1,0 +1,11 @@
+TollGate:
+  type: object
+  properties:
+    id:        { type: string, format: uuid }
+    name:      { type: string, example: Ring Road Gate 1 }
+    lat:       { type: number, example: 30.0812 }
+    lng:       { type: number, example: 31.3421 }
+    fee:       { type: number, format: decimal, example: 25.50 }
+    isActive:  { type: boolean, example: true }
+    createdAt: { type: string, format: date-time }
+    updatedAt: { type: string, format: date-time }

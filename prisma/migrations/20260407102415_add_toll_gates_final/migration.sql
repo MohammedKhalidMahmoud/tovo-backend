@@ -1,0 +1,3 @@
+-- No-op migration.
+-- Index names are mapped explicitly in the Prisma schema to match the
+-- foreign-key-backed indexes already present in MySQL.

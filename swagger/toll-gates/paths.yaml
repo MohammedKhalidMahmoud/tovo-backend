@@ -1,0 +1,158 @@
+/admin/toll-gates:
+  get:
+    tags: [Toll Gates]
+    summary: List toll gates
+    description: Returns all toll gates for admin management with pagination.
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: page
+        in: query
+        schema: { type: integer, default: 1 }
+      - name: limit
+        in: query
+        schema: { type: integer, default: 20 }
+    responses:
+      '200':
+        description: Toll gates retrieved successfully
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success: { type: boolean, example: true }
+                message: { type: string, example: Toll gates retrieved successfully }
+                data:
+                  type: array
+                  items: { $ref: '#/components/schemas/TollGate' }
+                pagination:
+                  type: object
+                  properties:
+                    page: { type: integer, example: 1 }
+                    per_page: { type: integer, example: 20 }
+                    total: { type: integer, example: 3 }
+                    total_pages: { type: integer, example: 1 }
+      '401': { description: Unauthorized }
+      '403': { description: Forbidden }
+  post:
+    tags: [Toll Gates]
+    summary: Create a toll gate
+    description: Creates a new toll gate entry for admin use.
+    security: [{ BearerAuth: [] }]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [name, lat, lng, fee]
+            properties:
+              name:     { type: string, example: Ring Road Gate 1 }
+              lat:      { type: number, example: 30.0812 }
+              lng:      { type: number, example: 31.3421 }
+              fee:      { type: number, format: decimal, example: 25.50 }
+              isActive: { type: boolean, example: true, default: true }
+    responses:
+      '201':
+        description: Toll gate created successfully
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success: { type: boolean, example: true }
+                message: { type: string, example: Toll gate created successfully }
+                data:    { $ref: '#/components/schemas/TollGate' }
+      '400': { description: Validation error }
+      '401': { description: Unauthorized }
+      '403': { description: Forbidden }
+
+/admin/toll-gates/{id}:
+  get:
+    tags: [Toll Gates]
+    summary: Get a toll gate
+    description: Returns a single toll gate by ID.
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    responses:
+      '200':
+        description: Toll gate retrieved successfully
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success: { type: boolean, example: true }
+                message: { type: string, example: Toll gate retrieved successfully }
+                data:    { $ref: '#/components/schemas/TollGate' }
+      '401': { description: Unauthorized }
+      '403': { description: Forbidden }
+      '404': { description: Toll gate not found }
+  put:
+    tags: [Toll Gates]
+    summary: Update a toll gate
+    description: Updates any editable toll gate fields by ID.
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              name:     { type: string, example: Ring Road Gate 1A }
+              lat:      { type: number, example: 30.0815 }
+              lng:      { type: number, example: 31.3428 }
+              fee:      { type: number, format: decimal, example: 30.00 }
+              isActive: { type: boolean, example: false }
+    responses:
+      '200':
+        description: Toll gate updated successfully
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success: { type: boolean, example: true }
+                message: { type: string, example: Toll gate updated successfully }
+                data:    { $ref: '#/components/schemas/TollGate' }
+      '400': { description: Validation error }
+      '401': { description: Unauthorized }
+      '403': { description: Forbidden }
+      '404': { description: Toll gate not found }
+  delete:
+    tags: [Toll Gates]
+    summary: Delete a toll gate
+    description: Deletes a toll gate by ID. Requires `confirm=true`.
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - name: confirm
+        in: query
+        required: true
+        schema: { type: string, enum: ['true'] }
+    responses:
+      '200':
+        description: Toll gate deleted successfully
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success: { type: boolean, example: true }
+                message: { type: string, example: Toll gate deleted successfully }
+                data:    { nullable: true, example: null }
+      '401': { description: Unauthorized }
+      '403': { description: Forbidden }
+      '404': { description: Toll gate not found }

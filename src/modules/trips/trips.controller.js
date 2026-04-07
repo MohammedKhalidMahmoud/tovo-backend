@@ -83,6 +83,36 @@ const getTripById = async (req, res, next) => {
   }
 };
 
+const generateTripShareLink = async (req, res, next) => {
+  try {
+    const trip = await service.generateTripShareLink(req.params.id, req.actor.id);
+    const baseUrl =
+      process.env.TRIP_SHARE_BASE_URL ||
+      process.env.APP_BASE_URL ||
+      `${req.protocol}://${req.get('host')}`;
+    const shareUrl = new URL(`/api/v1/trips/share/${trip.shareToken}`, baseUrl).toString();
+
+    return success(res, {
+      shareToken: trip.shareToken,
+      shareTokenExpiresAt: trip.shareTokenExpiresAt,
+      shareUrl,
+    }, 'Trip share link generated');
+  } catch (err) {
+    if (err.status) return error(res, err.message, err.status);
+    next(err);
+  }
+};
+
+const getSharedTrip = async (req, res, next) => {
+  try {
+    const data = await service.getSharedTrip(req.params.token);
+    return success(res, data, 'Shared trip retrieved');
+  } catch (err) {
+    if (err.status) return error(res, err.message, err.status);
+    next(err);
+  }
+};
+
 const cancelTrip = async (req, res, next) => {
   try {
     const trip = await service.cancelTrip(req.params.id, req.actor.id);
@@ -218,5 +248,5 @@ const getNearbyCaptains = (req, res, next) => {
 module.exports = {
   estimateFare, getActiveRegions, createTrip, getUserTrips, addTripStops, getTripById, cancelTrip,
   getCaptainTrips, getNewRequests, acceptTrip, declineTrip, startTrip, endTrip, markStopArrived,
-  rateTrip, getCaptainRatings, getNearbyCaptains,
+  rateTrip, getCaptainRatings, getNearbyCaptains, generateTripShareLink, getSharedTrip,
 };

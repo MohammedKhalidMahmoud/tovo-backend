@@ -65,34 +65,23 @@ async function ensureTripCouponSchema() {
 }
 
 async function cleanup() {
-  await prisma.rating.deleteMany();
-  await prisma.tripDecline.deleteMany();
-  await prisma.commissionLog.deleteMany();
-  await prisma.walletTransaction.deleteMany();
-  await prisma.trip.deleteMany();
-  await prisma.vehicle.deleteMany();
-  await prisma.ticketMessage.deleteMany();
-  await prisma.supportTicket.deleteMany();
-  await prisma.notification.deleteMany();
-  await prisma.deviceToken.deleteMany();
-  await prisma.savedAddress.deleteMany();
-  await prisma.otp.deleteMany();
-  await prisma.refreshToken.deleteMany();
-  await prisma.passwordResetToken.deleteMany();
-  await prisma.insuranceCard.deleteMany();
-  await prisma.wallet.deleteMany();
-  await prisma.wishlistItem.deleteMany();
-  await prisma.sosAlert.deleteMany();
-  await prisma.coupon.deleteMany();
-  await prisma.promotion.deleteMany();
-  await prisma.faq.deleteMany();
-  await prisma.region.deleteMany();
-  await prisma.commissionRule.deleteMany();
-  await prisma.vehicleModel.deleteMany();
-  await prisma.user.deleteMany();
-  await prisma.adminUser.deleteMany();
-  await prisma.systemSetting.deleteMany();
-  await prisma.service.deleteMany();
+  const tables = await prisma.$queryRawUnsafe(`
+    SELECT TABLE_NAME
+    FROM INFORMATION_SCHEMA.TABLES
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_TYPE = 'BASE TABLE'
+      AND TABLE_NAME <> '_prisma_migrations'
+  `);
+
+  await prisma.$executeRawUnsafe('SET FOREIGN_KEY_CHECKS = 0');
+
+  try {
+    for (const { TABLE_NAME } of tables) {
+      await prisma.$executeRawUnsafe(`DELETE FROM \`${TABLE_NAME}\``);
+    }
+  } finally {
+    await prisma.$executeRawUnsafe('SET FOREIGN_KEY_CHECKS = 1');
+  }
 }
 
 async function main() {
@@ -373,6 +362,40 @@ async function main() {
     ],
   });
   console.log('Seeded regions');
+
+  await prisma.tollGate.createMany({
+    data: [
+      {
+        name: 'Cairo Ring Road Toll Gate',
+        lat: 30.1163,
+        lng: 31.3464,
+        fee: 15,
+        isActive: true,
+      },
+      {
+        name: 'Moneeb Toll Plaza',
+        lat: 29.9792,
+        lng: 31.2118,
+        fee: 10,
+        isActive: true,
+      },
+      {
+        name: 'October Bridge East Gate',
+        lat: 30.0561,
+        lng: 31.2489,
+        fee: 12.5,
+        isActive: true,
+      },
+      {
+        name: 'Cairo Alexandria Desert Road Gate',
+        lat: 30.1448,
+        lng: 30.9725,
+        fee: 20,
+        isActive: true,
+      },
+    ],
+  });
+  console.log('Seeded toll gates');
 
   const [globalRule, comfortRule, packageRule, motoRule] = await Promise.all([
     prisma.commissionRule.create({

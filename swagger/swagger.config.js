@@ -59,6 +59,7 @@ export function configureSwagger(app) {
   const ridesSchemas = YAML.load(path.resolve(__dirname, "./rides/schemas.yaml"));
   const servicesSchemas = YAML.load(path.resolve(__dirname, "./services/schemas.yaml"));
   const regionsSchemas = YAML.load(path.resolve(__dirname, "./regions/schemas.yaml"));
+  const tollGatesSchemas = YAML.load(path.resolve(__dirname, "./toll-gates/schemas.yaml"));
   const vehiclesSchemas = YAML.load(path.resolve(__dirname, "./vehicles/schemas.yaml"));
   const vehicleModelsSchemas = YAML.load(path.resolve(__dirname, "./vehicle-models/schemas.yaml"));
   const walletsSchemas = YAML.load(path.resolve(__dirname, "./wallets/schemas.yaml"));
@@ -84,6 +85,7 @@ export function configureSwagger(app) {
   const ridesPaths = YAML.load(path.resolve(__dirname, "./rides/paths.yaml"));
   const servicesPaths = YAML.load(path.resolve(__dirname, "./services/paths.yaml"));
   const regionsPaths = YAML.load(path.resolve(__dirname, "./regions/paths.yaml"));
+  const tollGatesPaths = YAML.load(path.resolve(__dirname, "./toll-gates/paths.yaml"));
   const vehiclesPaths = YAML.load(path.resolve(__dirname, "./vehicles/paths.yaml"));
   const vehicleModelsPaths = YAML.load(path.resolve(__dirname, "./vehicle-models/paths.yaml"));
   const walletsPaths = YAML.load(path.resolve(__dirname, "./wallets/paths.yaml"));
@@ -110,6 +112,7 @@ export function configureSwagger(app) {
     ...ridesSchemas,
     ...servicesSchemas,
     ...regionsSchemas,
+    ...tollGatesSchemas,
     ...vehiclesSchemas,
     ...vehicleModelsSchemas,
     ...walletsSchemas,
@@ -135,6 +138,7 @@ export function configureSwagger(app) {
     ...ridesPaths,
     ...servicesPaths,
     ...regionsPaths,
+    ...tollGatesPaths,
     ...vehiclesPaths,
     ...vehicleModelsPaths,
     ...walletsPaths,

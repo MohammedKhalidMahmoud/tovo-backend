@@ -3,6 +3,8 @@
 This directory contains the OpenAPI 3.0.3 specification for the **Tovo** ride-hailing API,
 split into one folder per feature module for easy maintenance.
 
+Recent addition: `swagger/toll-gates/` documents the admin CRUD endpoints for `/admin/toll-gates`.
+
 ## Structure
 
 ```

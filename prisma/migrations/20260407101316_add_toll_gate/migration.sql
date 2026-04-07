@@ -1,0 +1,3 @@
+-- No-op migration.
+-- The earlier toll-gates migration already creates the `toll_gates` table.
+-- This file is kept only to neutralize the previously failed generated migration.

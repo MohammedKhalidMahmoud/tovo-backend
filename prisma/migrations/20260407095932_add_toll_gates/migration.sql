@@ -1,0 +1,2 @@
+-- No-op migration.
+-- The actual TollGate table creation lives in 20260407095109_add_toll_gates.

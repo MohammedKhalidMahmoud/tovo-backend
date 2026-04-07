@@ -66,6 +66,9 @@ router.post('/:id/stops', ...userOnly, [
   body('stops.*.lng').isFloat(),
   body('stops.*.address').notEmpty(),
 ], validate, controller.addTripStops);
+router.post('/:id/share-link', ...userOnly, [
+  param('id').isUUID().withMessage('id must be a valid UUID'),
+], validate, controller.generateTripShareLink);
 
 // ── Nearby Captains (must be before /:id) ────────────────────────────────────
 router.get('/nearby-captains', authenticate, [
@@ -80,6 +83,10 @@ router.get('/captain/requests', ...captainOnly, controller.getNewRequests);
 router.get('/captain/trips',    ...captainOnly, controller.getCaptainTrips);
 
 // ── Captain Ratings (must be before /:id) ────────────────────────────────────
+router.get('/share/:token', [
+  param('token').isLength({ min: 48, max: 48 }).isHexadecimal().withMessage('token must be a valid share token'),
+], validate, controller.getSharedTrip);
+
 router.get('/captains/:captainId/ratings', authenticate, [
   param('captainId').isUUID().withMessage('captainId must be a valid UUID'),
 ], validate, controller.getCaptainRatings);

@@ -26,6 +26,21 @@ const createTrip = (data) =>
 const findTripById = (id) =>
   prisma.trip.findUnique({ where: { id }, include: TRIP_INCLUDE });
 
+const findTripByShareToken = (shareToken) =>
+  prisma.trip.findUnique({ where: { shareToken }, include: TRIP_INCLUDE });
+
+const findTripShareSocketContextByToken = (shareToken) =>
+  prisma.trip.findUnique({
+    where: { shareToken },
+    select: {
+      id: true,
+      driverId: true,
+      status: true,
+      shareToken: true,
+      shareTokenExpiresAt: true,
+    },
+  });
+
 const findTripsByUser = (userId, skip, take) =>
   Promise.all([
     prisma.trip.findMany({ where: { userId }, include: TRIP_INCLUDE, orderBy: { createdAt: 'desc' }, skip, take }),
@@ -80,4 +95,5 @@ module.exports = {
   createTrip, findTripById, findTripsByUser,
   findTripsByDriver, findNewRequests, updateTrip, recordDecline,
   updateTripStop, createRating, findRatingsByTrip, findDriverRatings,
+  findTripByShareToken, findTripShareSocketContextByToken,
 };

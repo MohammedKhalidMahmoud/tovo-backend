@@ -2,6 +2,7 @@ const { verifyAccessToken } = require('../utils/jwt');
 const logger = require('../config/logger');
 const locationStore = require('./locationStore');
 const notificationsService = require('../modules/notifications/notifications.service');
+const { resolveShareTokenSocketContext } = require('../modules/trips/trips.service');
 
 const emitSocketEvent = ({ io, event, payload, rooms = [], socket }) => {
   if (socket) {
@@ -126,8 +127,39 @@ const buildTripStatusNotification = (target, payload) => {
   };
 };
 
+const emitLastKnownCaptainLocation = ({ socket, tripId, driverId }) => {
+  const loc = locationStore.get(driverId);
+  if (!loc) return;
+
+  emitRealtimeEvent({
+    event: 'trip.captain_location',
+    payload: {
+      latitude: loc.lat,
+      longitude: loc.lng,
+      heading: loc.heading,
+      captainId: driverId,
+    },
+    socket,
+    skipPush: true,
+  });
+};
+
 const setupSocket = (io) => {
-  io.use((socket, next) => {
+  io.use(async (socket, next) => {
+    const shareToken = socket.handshake.query?.shareToken || socket.handshake.auth?.shareToken;
+    if (shareToken) {
+      try {
+        const trip = await resolveShareTokenSocketContext(String(shareToken));
+        if (!trip) return next(new Error('Invalid or expired share token'));
+
+        socket.actor = { id: trip.id, role: 'trip_share' };
+        socket.shareTrip = trip;
+        return next();
+      } catch {
+        return next(new Error('Invalid or expired share token'));
+      }
+    }
+
     const token = socket.handshake.auth?.token || socket.handshake.headers?.authorization?.split(' ')[1];
     if (!token) return next(new Error('Authentication required'));
 
@@ -146,8 +178,16 @@ const setupSocket = (io) => {
     const { id, role } = socket.actor;
     logger.info(`Socket connected: ${role}:${id} [${socket.id}]`);
 
-    const privateRoom = role === 'customer' ? `user:${id}` : `${role}:${id}`;
-    socket.join(privateRoom);
+    if (role === 'trip_share') {
+      const { id: tripId, driverId } = socket.shareTrip;
+      socket.join(`trip:${tripId}`);
+      logger.info(`trip_share:${tripId} joined trip room: trip:${tripId}`);
+
+      emitLastKnownCaptainLocation({ socket, tripId, driverId });
+    } else {
+      const privateRoom = role === 'customer' ? `user:${id}` : `${role}:${id}`;
+      socket.join(privateRoom);
+    }
 
     if (role === 'driver') {
       socket.join('captains:available');
@@ -183,6 +223,10 @@ const setupSocket = (io) => {
     });
 
     socket.on('trip.join', async ({ tripId }) => {
+      if (role === 'trip_share') {
+        if (tripId !== socket.shareTrip?.id) return;
+      }
+
       socket.join(`trip:${tripId}`);
       logger.info(`${role}:${id} joined trip room: trip:${tripId}`);
 
@@ -194,20 +238,7 @@ const setupSocket = (io) => {
         });
 
         if (trip?.driverId && ['matched', 'on_way', 'in_progress'].includes(trip.status)) {
-          const loc = locationStore.get(trip.driverId);
-          if (loc) {
-            emitRealtimeEvent({
-              event: 'trip.captain_location',
-              payload: {
-                latitude: loc.lat,
-                longitude: loc.lng,
-                heading: loc.heading,
-                captainId: trip.driverId,
-              },
-              socket,
-              skipPush: true,
-            });
-          }
+          emitLastKnownCaptainLocation({ socket, tripId, driverId: trip.driverId });
         }
       } catch (e) {
         logger.error('Failed to push last known location on trip.join', e);

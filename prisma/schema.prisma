@@ -190,6 +190,8 @@ model Trip {
   currency        String      @default("EGP")
   distanceKm      Float?
   durationMinutes Int?
+  shareToken      String?     @unique
+  shareTokenExpiresAt DateTime?
   senderConfirmationCode   String?
   receiverConfirmationCode String?
   startedAt       DateTime?
@@ -209,8 +211,8 @@ model Trip {
   walletTransactions  WalletTransaction[]
   commissionLog       CommissionLog?
 
-  @@index([userId])
-  @@index([driverId])
+  @@index([userId], map: "trips_userId_fkey")
+  @@index([driverId], map: "trips_driverId_fkey")
   @@index([couponId])
   @@index([status])
   @@map("trips")
@@ -260,7 +262,7 @@ model Rating {
   user      User      @relation("CustomerRatings", fields: [userId], references: [id])
   driver    User      @relation("DriverRatings", fields: [driverId], references: [id])
 
-  @@index([driverId])
+  @@index([driverId], map: "ratings_driverId_fkey")
   @@map("ratings")
 }
 
@@ -353,7 +355,7 @@ model Notification {
 
   user      User      @relation(fields: [userId], references: [id])
 
-  @@index([userId])
+  @@index([userId], map: "notifications_userId_fkey")
   @@map("notifications")
 }
 
@@ -389,7 +391,7 @@ model DeviceToken {
 
   user      User      @relation(fields: [userId], references: [id])
 
-  @@index([userId])
+  @@index([userId], map: "device_tokens_userId_fkey")
   @@map("device_tokens")
 }
 
@@ -537,6 +539,19 @@ model Region {
 // ─────────────────────────────────────────────
 //  SERVICE (ride/delivery type)
 // ─────────────────────────────────────────────
+
+model TollGate {
+  id        String   @id @default(uuid())
+  name      String
+  lat       Float
+  lng       Float
+  fee       Decimal  @db.Decimal(10, 2)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("toll_gates")
+}
 
 model Service {
   id                   String   @id @default(uuid())

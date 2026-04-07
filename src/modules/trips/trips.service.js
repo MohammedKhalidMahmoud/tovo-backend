@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const repo = require('./trips.repository');
 const prisma = require('../../config/prisma');
 const locationStore = require('../../realtime/locationStore');
@@ -32,6 +33,8 @@ const roundMoney = (value) => +Number(value).toFixed(2);
 const getFixedSurchargeAmount = (service) => roundMoney(service?.fixedSurcharge ?? 0);
 const getPerStopSurchargeAmount = (service) => roundMoney(service?.perStopSurcharge ?? 0);
 const ACTIVE_PRE_START_STATUSES = ['searching', 'matched', 'on_way'];
+const ACTIVE_SHAREABLE_STATUSES = ['matched', 'on_way', 'in_progress'];
+const DEFAULT_SHARE_TOKEN_DURATION_MINUTES = 120;
 
 const normalizeStops = (stops = [], startOrder = 1) =>
   stops.map((stop, index) => ({
@@ -136,6 +139,88 @@ const assertStopsCanBeModified = (trip, userId) => {
   if (trip.startedAt || !ACTIVE_PRE_START_STATUSES.includes(trip.status)) {
     throw { status: 422, message: 'Stops can only be added before the trip starts' };
   }
+};
+
+const isTripShareable = (trip) =>
+  Boolean(trip?.driverId) && ACTIVE_SHAREABLE_STATUSES.includes(trip.status);
+
+const isShareTokenExpired = (trip) =>
+  Boolean(trip?.shareTokenExpiresAt) && new Date(trip.shareTokenExpiresAt).getTime() <= Date.now();
+
+const resolveShareTokenExpiry = (trip) => {
+  if (trip?.endedAt) return new Date(trip.endedAt);
+  if (trip?.cancelledAt) return new Date(trip.cancelledAt);
+
+  const baseTime = trip?.startedAt ? new Date(trip.startedAt).getTime() : Date.now();
+  const durationMinutes = Number(trip?.durationMinutes);
+  const safeDurationMinutes =
+    Number.isFinite(durationMinutes) && durationMinutes > 0
+      ? durationMinutes
+      : DEFAULT_SHARE_TOKEN_DURATION_MINUTES;
+
+  return new Date(baseTime + safeDurationMinutes * 60 * 1000);
+};
+
+const getShareTrackingTarget = (trip) => {
+  if (!trip) return null;
+
+  if (trip.status === 'in_progress') {
+    const nextStop = trip.stops.find((stop) => !stop.arrivedAt);
+    if (nextStop) {
+      return { lat: Number(nextStop.lat), lng: Number(nextStop.lng) };
+    }
+
+    return { lat: Number(trip.dropoffLat), lng: Number(trip.dropoffLng) };
+  }
+
+  return { lat: Number(trip.pickupLat), lng: Number(trip.pickupLng) };
+};
+
+const estimateShareEtaMinutes = (trip, driverLocation) => {
+  if (driverLocation?.lat == null || driverLocation?.lng == null) {
+    return trip.durationMinutes ?? null;
+  }
+
+  const target = getShareTrackingTarget(trip);
+  if (!target) return trip.durationMinutes ?? null;
+
+  const remainingDistanceKm = haversineKm(
+    Number(driverLocation.lat),
+    Number(driverLocation.lng),
+    target.lat,
+    target.lng,
+  );
+
+  const averageSpeedKmPerMinute = 0.5; // Rough city-driving estimate (~30 km/h).
+  return Math.max(1, Math.round(remainingDistanceKm / averageSpeedKmPerMinute));
+};
+
+const buildPublicSharedTripPayload = (trip) => {
+  const driverLocation = trip.driverId ? locationStore.get(trip.driverId) : null;
+
+  return {
+    driverLocation: driverLocation
+      ? {
+          latitude: driverLocation.lat,
+          longitude: driverLocation.lng,
+          heading: driverLocation.heading ?? null,
+        }
+      : null,
+    pickupAddress: trip.pickupAddress,
+    dropoffAddress: trip.dropoffAddress,
+    status: trip.status,
+    etaMinutes: estimateShareEtaMinutes(trip, driverLocation),
+  };
+};
+
+const generateUniqueShareToken = async () => {
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const candidate = crypto.randomBytes(24).toString('hex');
+    const existing = await repo.findTripByShareToken(candidate);
+    if (!existing) return candidate;
+  }
+
+  throw { status: 500, message: 'Unable to generate a unique share token right now' };
 };
 
 const estimateFare = async ({ pickupLat, pickupLng, dropoffLat, dropoffLng, stops = [] }) => {
@@ -310,6 +395,38 @@ const addTripStops = async (tripId, userId, stops) => {
   });
 };
 
+const generateTripShareLink = async (tripId, userId) => {
+  const trip = await repo.findTripById(tripId);
+  if (!trip) throw { status: 404, message: 'Trip not found' };
+  if (trip.userId !== userId) throw { status: 403, message: 'Access denied' };
+  if (!isTripShareable(trip)) {
+    throw { status: 422, message: 'Trip sharing is only available for active trips with an assigned driver' };
+  }
+
+  const shareToken = await generateUniqueShareToken();
+  const shareTokenExpiresAt = resolveShareTokenExpiry(trip);
+
+  return repo.updateTrip(tripId, { shareToken, shareTokenExpiresAt });
+};
+
+const getSharedTrip = async (shareToken) => {
+  const trip = await repo.findTripByShareToken(shareToken);
+  if (!trip) throw { status: 404, message: 'Shared trip not found' };
+  if (isShareTokenExpired(trip)) throw { status: 410, message: 'This shared trip link has expired' };
+  if (!isTripShareable(trip)) throw { status: 410, message: 'This shared trip is no longer active' };
+
+  return buildPublicSharedTripPayload(trip);
+};
+
+const resolveShareTokenSocketContext = async (shareToken) => {
+  const trip = await repo.findTripShareSocketContextByToken(shareToken);
+  if (!trip || !trip.driverId) return null;
+  if (isShareTokenExpired(trip)) return null;
+  if (!ACTIVE_SHAREABLE_STATUSES.includes(trip.status)) return null;
+
+  return trip;
+};
+
 // ─────────────────────────────────────────────────────────────────────────────
 //  CANCEL TRIP (Customer)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -319,7 +436,13 @@ const cancelTrip = async (tripId, userId) => {
   if (trip.userId !== userId) throw { status: 403, message: 'Access denied' };
   if (['completed', 'cancelled'].includes(trip.status)) throw { status: 422, message: 'Trip cannot be cancelled' };
 
-  const updated = await repo.updateTrip(tripId, { status: 'cancelled', cancelledAt: new Date(), cancelledBy: userId });
+  const cancelledAt = new Date();
+  const updated = await repo.updateTrip(tripId, {
+    status: 'cancelled',
+    cancelledAt,
+    cancelledBy: userId,
+    shareTokenExpiresAt: cancelledAt,
+  });
 
   return updated;
 };
@@ -391,7 +514,12 @@ const endTrip = async (tripId, driverId) => {
 
   await prisma.user.update({ where: { id: driverId }, data: { totalTrips: { increment: 1 } } });
 
-  const completed = await repo.updateTrip(tripId, { status: 'completed', endedAt: new Date() });
+  const endedAt = new Date();
+  const completed = await repo.updateTrip(tripId, {
+    status: 'completed',
+    endedAt,
+    shareTokenExpiresAt: endedAt,
+  });
 
   if (trip.couponId) {
     await prisma.coupon.update({
@@ -469,5 +597,5 @@ const getCaptainRatings = async (driverId, page = 1, perPage = 20) => {
 module.exports = {
   estimateFare, getNearbyCaptains, createTrip, getTripById, getUserTrips, addTripStops, cancelTrip,
   getCaptainTrips, getNewRequests, acceptTrip, declineTrip, startTrip, markStopArrived, endTrip,
-  rateTrip, getCaptainRatings,
+  rateTrip, getCaptainRatings, generateTripShareLink, getSharedTrip, resolveShareTokenSocketContext,
 };
