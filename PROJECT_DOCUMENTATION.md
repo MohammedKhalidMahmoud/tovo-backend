@@ -19,6 +19,8 @@
 - Added toll gates module coverage (`/api/v1/admin/toll-gates`)
 - Updated schema documentation to include `DriverProfile` as the driver-only data model linked 1:1 with `User`
 - Corrected business-flow descriptions to match current service/controller logic
+- Added missing `GET /api/v1/vehicles/me` endpoint for drivers to retrieve their own vehicle details
+- Updated Swagger documentation to include the new vehicles endpoint
 
 ---
 ### 2026-03-25 (rev 5) â€” Fare Field Rename + Centralized Socket/Push Dispatch
@@ -852,6 +854,18 @@ Public routes served by `regions.public.routes.js`; admin routes by `regions.adm
 | POST | `/admin/regions` | admin | Create a region |
 | PUT | `/admin/regions/:id` | admin | Update a region |
 | DELETE | `/admin/regions/:id` | admin | Delete a region |
+
+#### Vehicles — `/api/v1/vehicles` and `/api/v1/admin/vehicles`
+Both paths served by the same router (`vehicles.routes.js`). Auth enforced per route inline.
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/vehicles/me` | driver | Get own vehicle details |
+| GET | `/admin/vehicles` | admin | List all vehicles (filterable by driverId, vehicleModelId) |
+| GET | `/admin/vehicles/:id` | admin | Single vehicle detail |
+| POST | `/admin/vehicles` | admin | Create vehicle for driver |
+| PUT | `/admin/vehicles/:id` | admin | Update vehicle |
+| DELETE | `/admin/vehicles/:id` | admin | Delete vehicle |
 
 #### Toll Gates — `/api/v1/admin/toll-gates`
 Admin routes served by `tollGates.admin.routes.js`.

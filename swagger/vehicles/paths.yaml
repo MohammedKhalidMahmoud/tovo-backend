@@ -1,3 +1,22 @@
+/vehicles/me:
+  get:
+    tags: [Vehicles]
+    summary: Get my vehicle
+    description: Get the vehicle assigned to the authenticated driver.
+    security: [{ BearerAuth: [] }]
+    responses:
+      '200':
+        description: Vehicle details
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/SuccessResponse'
+                - type: object
+                  properties:
+                    data: { $ref: '#/components/schemas/VehicleDetail' }
+      '404': { description: Vehicle not found }
+
 /admin/vehicles:
   get:
     tags: [Vehicles]

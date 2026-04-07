@@ -63,3 +63,9 @@ exports.deleteVehicle = async (id) => {
   await exports.getVehicle(id);
   await prisma.vehicle.delete({ where: { id } });
 };
+
+exports.getMyVehicle = async (userId) => {
+  const vehicle = await prisma.vehicle.findUnique({ where: { userId }, include: { vehicleModel: true } });
+  if (!vehicle) throw Object.assign(new Error('Vehicle not found'), { statusCode: 404 });
+  return vehicle;
+};

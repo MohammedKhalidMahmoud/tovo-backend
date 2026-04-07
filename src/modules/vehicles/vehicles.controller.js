@@ -42,3 +42,10 @@ exports.deleteVehicle = async (req, res, next) => {
     return success(res, null, 'Vehicle deleted successfully');
   } catch (err) { next(err); }
 };
+
+exports.getMyVehicle = async (req, res, next) => {
+  try {
+    const vehicle = await service.getMyVehicle(req.actor.id);
+    return success(res, vehicle, 'Vehicle retrieved successfully');
+  } catch (err) { next(err); }
+};

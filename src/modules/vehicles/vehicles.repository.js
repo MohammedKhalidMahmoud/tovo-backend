@@ -19,6 +19,7 @@ const create = (data) =>
 const update = (id, data) =>
   prisma.vehicle.update({ where: { id }, data, include: vehicleInclude });
 
-const remove = (id) => prisma.vehicle.delete({ where: { id } });
+const findByUserId = (userId) =>
+  prisma.vehicle.findUnique({ where: { userId }, include: { vehicleModel: true } });
 
-module.exports = { findAll, count, findById, create, update, remove };
+module.exports = { findAll, count, findById, findByUserId, create, update, remove };

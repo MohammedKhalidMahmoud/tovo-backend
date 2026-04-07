@@ -2,11 +2,15 @@ const router   = require('express').Router();
 const { body, param } = require('express-validator');
 const ctrl     = require('./vehicles.controller');
 const validate = require('../../middleware/validate.middleware');
+const { authenticate, authorize } = require('../../middleware/auth.middleware');
 
-router.get('/', ctrl.listVehicles);
+router.get('/me', authenticate, authorize('driver'), ctrl.getMyVehicle);
+
+router.get('/', authenticate, authorize('admin'), ctrl.listVehicles);
 
 router.post(
   '/',
+  authenticate, authorize('admin'),
   [
     body('captainId').isUUID().withMessage('captainId must be a valid UUID'),
     body('vehicleModelId').optional().isUUID().withMessage('vehicleModelId must be a valid UUID'),
@@ -16,10 +20,11 @@ router.post(
   ctrl.createVehicle
 );
 
-router.get('/:id',  [param('id').isUUID()], validate, ctrl.getVehicle);
+router.get('/:id', authenticate, authorize('admin'), [param('id').isUUID()], validate, ctrl.getVehicle);
 
 router.put(
   '/:id',
+  authenticate, authorize('admin'),
   [
     param('id').isUUID(),
     body('vehicleModelId').optional().isUUID().withMessage('vehicleModelId must be a valid UUID'),
@@ -29,6 +34,6 @@ router.put(
   ctrl.updateVehicle
 );
 
-router.delete('/:id', [param('id').isUUID()], validate, ctrl.deleteVehicle);
+router.delete('/:id', authenticate, authorize('admin'), [param('id').isUUID()], validate, ctrl.deleteVehicle);
 
 module.exports = router;
