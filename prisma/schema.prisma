@@ -199,6 +199,9 @@ model Trip {
   currency        String      @default("EGP")
   distanceKm      Float?
   durationMinutes Int?
+  routeEncodedPolyline String? @db.Text
+  routeDistanceMeters  Int?
+  routeDurationSeconds Int?
   shareToken      String?     @unique
   shareTokenExpiresAt DateTime?
   senderConfirmationCode   String?

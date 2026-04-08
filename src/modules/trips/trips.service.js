@@ -5,6 +5,7 @@ const locationStore = require('../../realtime/locationStore');
 const serviceRepo = require('../services/services.repository');
 const regionsService = require('../regions/regions.service');
 const locationUtils = require('../../utils/location');
+const googleRoutesProvider = require('../../providers/googleRoutes');
 const commissionService = require('../commission-rules/commission-rules.service');
 const commissionRepo = require('../earnings/earnings.repository');
 const walletsRepo = require('../wallets/wallets.repository');
@@ -35,6 +36,7 @@ const getPerStopSurchargeAmount = (service) => roundMoney(service?.perStopSurcha
 const ACTIVE_PRE_START_STATUSES = ['searching', 'matched', 'on_way'];
 const ACTIVE_SHAREABLE_STATUSES = ['matched', 'on_way', 'in_progress'];
 const DEFAULT_SHARE_TOKEN_DURATION_MINUTES = 120;
+const ROUTE_TOLL_PROXIMITY_KM = 0.15;
 
 const normalizeStops = (stops = [], startOrder = 1) =>
   stops.map((stop, index) => ({
@@ -49,60 +51,95 @@ const getTripTollFeesTotal = (trip) =>
     (trip?.tollGates || []).reduce((sum, toll) => sum + Number(toll.fee || 0), 0)
   );
 
-const resolveTollGatesWithFeeSnapshot = async (tollGateIds = []) => {
-  const normalizedIds = [...new Set((tollGateIds || []).map((id) => String(id).trim()).filter(Boolean))];
-  if (!normalizedIds.length) return [];
+const parseRouteDurationSeconds = (durationValue) => {
+  if (!durationValue || typeof durationValue !== 'string') {
+    return null;
+  }
 
-  const tollGates = await prisma.tollGate.findMany({
-    where: { id: { in: normalizedIds }, isActive: true },
-    select: { id: true, fee: true },
+  const durationMatch = /^([\d.]+)s$/.exec(durationValue);
+  if (!durationMatch) return null;
+
+  return Math.round(Number(durationMatch[1]));
+};
+
+const getTripWaypoints = ({ pickupLat, pickupLng, dropoffLat, dropoffLng, stops = [] }) => ({
+  origin: {
+    lat: Number(pickupLat),
+    lng: Number(pickupLng),
+  },
+  destination: {
+    lat: Number(dropoffLat),
+    lng: Number(dropoffLng),
+  },
+  intermediates: stops.map((stop) => ({
+    lat: Number(stop.lat),
+    lng: Number(stop.lng),
+  })),
+});
+
+const getActiveTollGates = () =>
+  prisma.tollGate.findMany({
+    where: { isActive: true },
+    select: {
+      id: true,
+      name: true,
+      lat: true,
+      lng: true,
+      fee: true,
+      isActive: true,
+    },
   });
 
-  if (tollGates.length !== normalizedIds.length) {
-    throw { status: 422, message: 'One or more toll gates are invalid or inactive' };
-  }
-
-  const tollGateMap = new Map(tollGates.map((gate) => [gate.id, gate]));
-  return normalizedIds.map((id) => tollGateMap.get(id));
-};
-
-const calculateRouteDistanceKm = ({ pickupLat, pickupLng, dropoffLat, dropoffLng, stops = [] }) => {
-  const routePoints = [
-    { lat: pickupLat, lng: pickupLng },
-    ...stops.map((stop) => ({ lat: Number(stop.lat), lng: Number(stop.lng) })),
-    { lat: dropoffLat, lng: dropoffLng },
-  ];
-
-  let totalDistanceKm = 0;
-  for (let i = 0; i < routePoints.length - 1; i += 1) {
-    totalDistanceKm += haversineKm(
-      routePoints[i].lat,
-      routePoints[i].lng,
-      routePoints[i + 1].lat,
-      routePoints[i + 1].lng,
-    );
-  }
-
-  return totalDistanceKm;
-};
-
-const calculateTripPricing = async ({
-  service,
+const resolveRouteData = async ({
   pickupLat,
   pickupLng,
   dropoffLat,
   dropoffLng,
   stops = [],
+}) => {
+  const routeResponse = await googleRoutesProvider.computeDrivingRoute(
+    getTripWaypoints({ pickupLat, pickupLng, dropoffLat, dropoffLng, stops })
+  );
+
+  const routeCoordinates = locationUtils.decodeEncodedPolyline(routeResponse.encodedPolyline);
+  if (!routeCoordinates.length) {
+    throw { status: 502, message: 'Unable to decode the route returned by Google Routes API' };
+  }
+
+  const activeTollGates = await getActiveTollGates();
+  const matchedTollGates = activeTollGates
+    .map((gate) => ({
+      ...gate,
+      distanceToRouteKm: locationUtils.distancePointToPolylineKm(
+        { lat: Number(gate.lat), lng: Number(gate.lng) },
+        routeCoordinates
+      ),
+    }))
+    .filter((gate) => gate.distanceToRouteKm <= ROUTE_TOLL_PROXIMITY_KM)
+    .sort((left, right) => left.distanceToRouteKm - right.distanceToRouteKm);
+
+  const routeDistanceMeters = Number(routeResponse.distanceMeters || 0);
+  const routeDurationSeconds = parseRouteDurationSeconds(routeResponse.duration);
+
+  return {
+    routeEncodedPolyline: routeResponse.encodedPolyline,
+    routeCoordinates,
+    routeDistanceMeters,
+    routeDurationSeconds,
+    distanceKm: routeDistanceMeters / 1000,
+    matchedTollGates,
+    tollFeesTotal: roundMoney(
+      matchedTollGates.reduce((sum, gate) => sum + Number(gate.fee || 0), 0)
+    ),
+  };
+};
+
+const calculateTripPricing = async ({
+  service,
+  distanceKm,
+  stops = [],
   tollFeesTotal = 0,
 }) => {
-  const distanceKm = calculateRouteDistanceKm({
-    pickupLat,
-    pickupLng,
-    dropoffLat,
-    dropoffLng,
-    stops,
-  });
-
   const driverEarnings = roundMoney(distanceKm * FARE_PER_KM);
   const { commission } = await commissionService.calculateCommission(driverEarnings);
   const fixedSurcharge = getFixedSurchargeAmount(service);
@@ -251,16 +288,22 @@ const generateUniqueShareToken = async () => {
 };
 
 const estimateFare = async ({ pickupLat, pickupLng, dropoffLat, dropoffLng, stops = [] }) => {
+  const normalizedStops = normalizeStops(stops);
+  const routeData = await resolveRouteData({
+    pickupLat,
+    pickupLng,
+    dropoffLat,
+    dropoffLng,
+    stops: normalizedStops,
+  });
   const services = await serviceRepo.findAll();
   const estimates = await Promise.all(
     services.map(async (service) => {
       const pricing = await calculateTripPricing({
         service,
-        pickupLat,
-        pickupLng,
-        dropoffLat,
-        dropoffLng,
-        stops,
+        distanceKm: routeData.distanceKm,
+        stops: normalizedStops,
+        tollFeesTotal: routeData.tollFeesTotal,
       });
 
       return {
@@ -270,7 +313,7 @@ const estimateFare = async ({ pickupLat, pickupLng, dropoffLat, dropoffLng, stop
         farePerKm:     FARE_PER_KM,
         fixedSurcharge: pricing.fixedSurcharge,
         perStopSurcharge: pricing.perStopSurcharge,
-        stopsCount: stops.length,
+        stopsCount: normalizedStops.length,
         stopsSurcharge: pricing.stopsSurcharge,
         tollFees: pricing.tollFeesTotal,
         originalFare: pricing.originalFare,
@@ -278,6 +321,9 @@ const estimateFare = async ({ pickupLat, pickupLng, dropoffLat, dropoffLng, stop
         discountAmount: pricing.discountAmount,
         commission: pricing.commission,
         driverEarnings: pricing.driverEarnings,
+        routeDistanceMeters: routeData.routeDistanceMeters,
+        routeDurationSeconds: routeData.routeDurationSeconds,
+        tollGatesCount: routeData.matchedTollGates.length,
         currency:      'EGP',
       };
     })
@@ -323,7 +369,6 @@ const createTrip = async (userId, body) => {
     dropoff_lng,
     dropoff_address,
     service_id,
-    toll_gate_ids = [],
     stops = [],
   } = body;
 
@@ -332,20 +377,19 @@ const createTrip = async (userId, body) => {
 
   await validatePickupInRegion(pickup_lat, pickup_lng);
 
-  const selectedTollGates = await resolveTollGatesWithFeeSnapshot(toll_gate_ids);
-  const tollFeesTotal = roundMoney(
-    selectedTollGates.reduce((sum, gate) => sum + Number(gate.fee || 0), 0)
-  );
-
   const normalizedStops = normalizeStops(stops);
-  const pricing = await calculateTripPricing({
-    service: svc,
+  const routeData = await resolveRouteData({
     pickupLat: pickup_lat,
     pickupLng: pickup_lng,
     dropoffLat: dropoff_lat,
     dropoffLng: dropoff_lng,
     stops: normalizedStops,
-    tollFeesTotal,
+  });
+  const pricing = await calculateTripPricing({
+    service: svc,
+    distanceKm: routeData.distanceKm,
+    stops: normalizedStops,
+    tollFeesTotal: routeData.tollFeesTotal,
   });
 
   const trip = await repo.createTrip({
@@ -357,7 +401,13 @@ const createTrip = async (userId, body) => {
     dropoffLat:     dropoff_lat,
     dropoffLng:     dropoff_lng,
     dropoffAddress: dropoff_address,
+    routeEncodedPolyline: routeData.routeEncodedPolyline,
+    routeDistanceMeters: routeData.routeDistanceMeters || null,
+    routeDurationSeconds: routeData.routeDurationSeconds,
     distanceKm:     +pricing.distanceKm.toFixed(2),
+    durationMinutes: routeData.routeDurationSeconds == null
+      ? null
+      : Math.max(1, Math.round(routeData.routeDurationSeconds / 60)),
     finalFare:      pricing.finalFare,
     originalFare:   pricing.originalFare,
     discountAmount: 0,
@@ -365,9 +415,9 @@ const createTrip = async (userId, body) => {
     driverEarnings: pricing.driverEarnings,
     paymentType:    'cash',
     status:         'searching',
-    tollGates: selectedTollGates.length
+    tollGates: routeData.matchedTollGates.length
       ? {
-          create: selectedTollGates.map((gate) => ({
+          create: routeData.matchedTollGates.map((gate) => ({
             tollGate: { connect: { id: gate.id } },
             fee: Number(gate.fee),
           })),
@@ -398,6 +448,50 @@ const getTripById = async (id, actorId) => {
   return trip;
 };
 
+const getTripRouteById = async (id, actorId) => {
+  const trip = await getTripById(id, actorId);
+
+  if (!trip.routeEncodedPolyline) {
+    throw { status: 404, message: 'Route data is not available for this trip' };
+  }
+
+  return {
+    id: trip.id,
+    status: trip.status,
+    service: trip.service,
+    pickup: {
+      lat: Number(trip.pickupLat),
+      lng: Number(trip.pickupLng),
+      address: trip.pickupAddress,
+    },
+    dropoff: {
+      lat: Number(trip.dropoffLat),
+      lng: Number(trip.dropoffLng),
+      address: trip.dropoffAddress,
+    },
+    stops: trip.stops.map((stop) => ({
+      id: stop.id,
+      order: stop.order,
+      lat: Number(stop.lat),
+      lng: Number(stop.lng),
+      address: stop.address,
+      arrivedAt: stop.arrivedAt,
+    })),
+    tollFeesTotal: getTripTollFeesTotal(trip),
+    tollGates: trip.tollGates,
+    finalFare: trip.finalFare,
+    originalFare: trip.originalFare,
+    distanceKm: trip.distanceKm,
+    durationMinutes: trip.durationMinutes,
+    route: {
+      encodedPolyline: trip.routeEncodedPolyline,
+      distanceMeters: trip.routeDistanceMeters,
+      durationSeconds: trip.routeDurationSeconds,
+      coordinates: locationUtils.decodeEncodedPolyline(trip.routeEncodedPolyline),
+    },
+  };
+};
+
 const getUserTrips = async (userId, page = 1, perPage = 20) => {
   const skip = (page - 1) * perPage;
   const [trips, total] = await repo.findTripsByUser(userId, skip, perPage);
@@ -410,25 +504,41 @@ const addTripStops = async (tripId, userId, stops) => {
 
   const newStops = normalizeStops(stops, trip.stops.length + 1);
   const allStops = [...trip.stops, ...newStops];
-  const tollFeesTotal = getTripTollFeesTotal(trip);
-  const pricing = await calculateTripPricing({
-    service: trip.service,
+  const routeData = await resolveRouteData({
     pickupLat: trip.pickupLat,
     pickupLng: trip.pickupLng,
     dropoffLat: trip.dropoffLat,
     dropoffLng: trip.dropoffLng,
     stops: allStops,
-    tollFeesTotal,
+  });
+  const pricing = await calculateTripPricing({
+    service: trip.service,
+    distanceKm: routeData.distanceKm,
+    stops: allStops,
+    tollFeesTotal: routeData.tollFeesTotal,
   });
   const fareData = await recalculateCouponFare(trip, pricing.originalFare);
 
   return repo.updateTrip(tripId, {
+    routeEncodedPolyline: routeData.routeEncodedPolyline,
+    routeDistanceMeters: routeData.routeDistanceMeters || null,
+    routeDurationSeconds: routeData.routeDurationSeconds,
     distanceKm: +pricing.distanceKm.toFixed(2),
+    durationMinutes: routeData.routeDurationSeconds == null
+      ? null
+      : Math.max(1, Math.round(routeData.routeDurationSeconds / 60)),
     originalFare: fareData.originalFare,
     finalFare: fareData.finalFare,
     discountAmount: fareData.discountAmount,
     commission: pricing.commission,
     driverEarnings: pricing.driverEarnings,
+    tollGates: {
+      deleteMany: {},
+      create: routeData.matchedTollGates.map((gate) => ({
+        tollGate: { connect: { id: gate.id } },
+        fee: Number(gate.fee),
+      })),
+    },
     stops: {
       create: newStops.map((stop) => ({
         order: stop.order,
@@ -649,7 +759,7 @@ const getDriverRatings = async (driverId, page = 1, perPage = 20) => {
 };
 
 module.exports = {
-  estimateFare, getNearbyDrivers, createTrip, getTripById, getUserTrips, addTripStops, cancelTrip,
+  estimateFare, getNearbyDrivers, createTrip, getTripById, getTripRouteById, getUserTrips, addTripStops, cancelTrip,
   getDriverTrips, getNewRequests, acceptTrip, declineTrip, startTrip, markStopArrived, endTrip,
   rateTrip, getDriverRatings, generateTripShareLink, getSharedTrip, resolveShareTokenSocketContext,
 };

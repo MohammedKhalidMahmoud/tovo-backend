@@ -83,6 +83,16 @@ const getTripById = async (req, res, next) => {
   }
 };
 
+const getTripRouteById = async (req, res, next) => {
+  try {
+    const data = await service.getTripRouteById(req.params.id, req.actor.id);
+    return success(res, data, 'Trip route retrieved');
+  } catch (err) {
+    if (err.status) return error(res, err.message, err.status);
+    next(err);
+  }
+};
+
 const generateTripShareLink = async (req, res, next) => {
   try {
     const trip = await service.generateTripShareLink(req.params.id, req.actor.id);
@@ -248,5 +258,5 @@ const getNearbyDrivers = (req, res, next) => {
 module.exports = {
   estimateFare, getActiveRegions, createTrip, getUserTrips, addTripStops, getTripById, cancelTrip,
   getDriverTrips, getNewRequests, acceptTrip, declineTrip, startTrip, endTrip, markStopArrived,
-  rateTrip, getDriverRatings, getNearbyDrivers, generateTripShareLink, getSharedTrip,
+  rateTrip, getDriverRatings, getNearbyDrivers, generateTripShareLink, getSharedTrip, getTripRouteById,
 };

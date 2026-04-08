@@ -46,8 +46,6 @@ router.post('/', ...userOnly, [
   body('service_id').notEmpty().isUUID().withMessage('service_id is required and must be a valid UUID'),
   body('payment_type').optional().equals('cash').withMessage('payment_type must be cash'),
   body('payment_method_id').not().exists().withMessage('payment_method_id is no longer supported'),
-  body('toll_gate_ids').optional().isArray().withMessage('toll_gate_ids must be an array'),
-  body('toll_gate_ids.*').optional().isUUID().withMessage('each toll_gate_ids item must be a valid UUID'),
   body('stops').optional().custom((value) => {
     if (!Array.isArray(value)) throw new Error('stops must be an array');
     value.forEach((stop) => {
@@ -93,6 +91,7 @@ router.get('/drivers/:driverId/ratings', authenticate, [
   param('driverId').isUUID().withMessage('driverId must be a valid UUID'),
 ], validate, controller.getDriverRatings);
 
+router.get('/:id/route', ...bothRoles, [param('id').isUUID()], validate, controller.getTripRouteById);
 router.get('/:id',          ...bothRoles,   [param('id').isUUID()], validate, controller.getTripById);
 router.patch('/:id/cancel', ...userOnly,    [param('id').isUUID()], validate, controller.cancelTrip);
 

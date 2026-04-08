@@ -62,8 +62,100 @@ const findPointInRegions = (pointLat, pointLng, regions) => {
   return null;
 };
 
+const decodeEncodedPolyline = (encodedPolyline) => {
+  if (!encodedPolyline || typeof encodedPolyline !== 'string') {
+    return [];
+  }
+
+  const coordinates = [];
+  let index = 0;
+  let latitude = 0;
+  let longitude = 0;
+
+  while (index < encodedPolyline.length) {
+    let shift = 0;
+    let result = 0;
+    let byte;
+
+    do {
+      byte = encodedPolyline.charCodeAt(index++) - 63;
+      result |= (byte & 0x1f) << shift;
+      shift += 5;
+    } while (byte >= 0x20 && index <= encodedPolyline.length);
+
+    latitude += (result & 1) ? ~(result >> 1) : (result >> 1);
+
+    shift = 0;
+    result = 0;
+
+    do {
+      byte = encodedPolyline.charCodeAt(index++) - 63;
+      result |= (byte & 0x1f) << shift;
+      shift += 5;
+    } while (byte >= 0x20 && index <= encodedPolyline.length);
+
+    longitude += (result & 1) ? ~(result >> 1) : (result >> 1);
+
+    coordinates.push({
+      lat: latitude / 1e5,
+      lng: longitude / 1e5,
+    });
+  }
+
+  return coordinates;
+};
+
+const distancePointToSegmentKm = (point, start, end) => {
+  const latScaleKm = 110.574;
+  const lngScaleKm = 111.320 * Math.cos((point.lat * Math.PI) / 180);
+
+  const startX = (start.lng - point.lng) * lngScaleKm;
+  const startY = (start.lat - point.lat) * latScaleKm;
+  const endX = (end.lng - point.lng) * lngScaleKm;
+  const endY = (end.lat - point.lat) * latScaleKm;
+  const segmentX = endX - startX;
+  const segmentY = endY - startY;
+  const segmentLengthSquared = segmentX ** 2 + segmentY ** 2;
+
+  if (segmentLengthSquared === 0) {
+    return Math.sqrt(startX ** 2 + startY ** 2);
+  }
+
+  const projection = Math.max(
+    0,
+    Math.min(1, -((startX * segmentX) + (startY * segmentY)) / segmentLengthSquared)
+  );
+  const closestX = startX + projection * segmentX;
+  const closestY = startY + projection * segmentY;
+
+  return Math.sqrt(closestX ** 2 + closestY ** 2);
+};
+
+const distancePointToPolylineKm = (point, polyline = []) => {
+  if (!Array.isArray(polyline) || polyline.length === 0) {
+    return Number.POSITIVE_INFINITY;
+  }
+
+  if (polyline.length === 1) {
+    return haversineKm(point.lat, point.lng, polyline[0].lat, polyline[0].lng);
+  }
+
+  let minDistanceKm = Number.POSITIVE_INFINITY;
+
+  for (let index = 0; index < polyline.length - 1; index += 1) {
+    minDistanceKm = Math.min(
+      minDistanceKm,
+      distancePointToSegmentKm(point, polyline[index], polyline[index + 1])
+    );
+  }
+
+  return minDistanceKm;
+};
+
 module.exports = {
   haversineKm,
   isPointInCircle,
   findPointInRegions,
+  decodeEncodedPolyline,
+  distancePointToPolylineKm,
 };

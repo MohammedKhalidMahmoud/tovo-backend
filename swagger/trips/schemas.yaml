@@ -27,6 +27,12 @@ TripTollGate:
         lng: { type: number }
         isActive: { type: boolean }
 
+RouteCoordinate:
+  type: object
+  properties:
+    lat: { type: number }
+    lng: { type: number }
+
 Rating:
   type: object
   properties:
@@ -65,6 +71,9 @@ Trip:
     currency: { type: string, example: EGP }
     distanceKm: { type: number, nullable: true }
     durationMinutes: { type: integer, nullable: true }
+    routeEncodedPolyline: { type: string, nullable: true }
+    routeDistanceMeters: { type: integer, nullable: true }
+    routeDurationSeconds: { type: integer, nullable: true }
     shareToken: { type: string, nullable: true }
     shareTokenExpiresAt: { type: string, format: date-time, nullable: true }
     senderConfirmationCode: { type: string, nullable: true }
@@ -122,3 +131,55 @@ Trip:
       allOf:
         - $ref: '#/components/schemas/Rating'
       nullable: true
+
+TripRouteDetails:
+  type: object
+  properties:
+    id: { type: string, format: uuid }
+    status:
+      type: string
+      enum: [searching, matched, on_way, in_progress, completed, cancelled]
+    service:
+      type: object
+      nullable: true
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        baseFare: { type: number }
+        fixedSurcharge: { type: number }
+        perStopSurcharge: { type: number }
+        requiresSenderCode: { type: boolean, nullable: true }
+        requiresReceiverCode: { type: boolean, nullable: true }
+        maxWeightKg: { type: number, nullable: true }
+    pickup:
+      type: object
+      properties:
+        lat: { type: number }
+        lng: { type: number }
+        address: { type: string }
+    dropoff:
+      type: object
+      properties:
+        lat: { type: number }
+        lng: { type: number }
+        address: { type: string }
+    stops:
+      type: array
+      items: { $ref: '#/components/schemas/TripStop' }
+    tollFeesTotal: { type: number }
+    tollGates:
+      type: array
+      items: { $ref: '#/components/schemas/TripTollGate' }
+    finalFare: { type: number, nullable: true }
+    originalFare: { type: number, nullable: true }
+    distanceKm: { type: number, nullable: true }
+    durationMinutes: { type: integer, nullable: true }
+    route:
+      type: object
+      properties:
+        encodedPolyline: { type: string }
+        distanceMeters: { type: integer, nullable: true }
+        durationSeconds: { type: integer, nullable: true }
+        coordinates:
+          type: array
+          items: { $ref: '#/components/schemas/RouteCoordinate' }
