@@ -3,12 +3,12 @@ const https = require('https');
 const repo = require('./auth.repository');
 const { generateAccessToken, generateRefreshToken, verifyRefreshToken } = require('../../utils/jwt');
 const prisma = require('../../config/prisma');
+const getAdmin = require('../../config/firebase');
 const mailer = require('../../config/mailer');
 const googleConfig = require('../../config/google');
-const appleConfig  = require('../../config/apple');
+const appleConfig = require('../../config/apple');
 
 const SALT_ROUNDS = 12;
-const OTP_EXPIRY_MINUTES = 5;
 const RESET_OTP_EXPIRY_MINUTES = 10;
 
 const assertActiveActor = async ({ id, role }) => {
@@ -37,9 +37,21 @@ const assertActiveActor = async ({ id, role }) => {
   return { id: user.id, role: user.role };
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  REGISTER CUSTOMER
-// ─────────────────────────────────────────────────────────────────────────────
+const issueUserTokens = async (user) => {
+  const payload = { id: user.id, role: user.role };
+  const accessToken = generateAccessToken(payload);
+  const refreshToken = generateRefreshToken(payload);
+
+  await repo.createRefreshToken({
+    token: refreshToken,
+    userId: user.id,
+    expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+  });
+
+  const { passwordHash: _, ...safeUser } = user;
+  return { accessToken, refreshToken, user: safeUser, role: user.role };
+};
+
 const registerUser = async ({ name, email, phone, password }) => {
   const existingEmail = await repo.findUserByEmail(email);
   if (existingEmail) throw { status: 409, message: 'Email already registered' };
@@ -56,9 +68,6 @@ const registerUser = async ({ name, email, phone, password }) => {
   return safeUser;
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  REGISTER DRIVER
-// ─────────────────────────────────────────────────────────────────────────────
 const registerDriver = async ({ name, email, phone, password, drivingLicense, vehicleModelName, vin }) => {
   const existingEmail = await repo.findUserByEmail(email);
   if (existingEmail) throw { status: 409, message: 'Email already registered' };
@@ -76,7 +85,7 @@ const registerDriver = async ({ name, email, phone, password, drivingLicense, ve
   if (!vehicleModel.isActive) throw { status: 400, message: 'This vehicle model is no longer accepted for registration.' };
 
   const vehicleModelId = vehicleModel.id;
-  const serviceId      = vehicleModel.serviceId ?? null;
+  const serviceId = vehicleModel.serviceId ?? null;
 
   const driver = await prisma.$transaction(async (tx) => {
     const newDriver = await tx.user.create({
@@ -108,11 +117,7 @@ const registerDriver = async ({ name, email, phone, password, drivingLicense, ve
   return safeDriver;
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  LOGIN
-// ─────────────────────────────────────────────────────────────────────────────
 const login = async ({ identifier, email: emailField, password }) => {
-  // Accept `identifier` (email or phone) or fall back to legacy `email` field
   const raw = (identifier ?? emailField ?? '').trim();
   const isEmail = raw.includes('@');
   const actor = isEmail
@@ -125,26 +130,9 @@ const login = async ({ identifier, email: emailField, password }) => {
   const isMatch = await bcrypt.compare(password, actor.passwordHash);
   if (!isMatch) throw { status: 401, message: 'Invalid credentials' };
 
-  const role = actor.role;
-  const payload = { id: actor.id, role };
-  const accessToken  = generateAccessToken(payload);
-  const refreshToken = generateRefreshToken(payload);
-
-  const tokenData = {
-    token:     refreshToken,
-    userId:    actor.id,
-    expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-  };
-
-  await repo.createRefreshToken(tokenData);
-
-  const { passwordHash: _, ...safeActor } = actor;
-  return { accessToken, refreshToken, user: safeActor, role };
+  return issueUserTokens(actor);
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  ADMIN LOGIN
-// ─────────────────────────────────────────────────────────────────────────────
 const adminLogin = async ({ email, password }) => {
   const actor = await repo.findAdminByEmail(email);
   if (!actor) throw { status: 401, message: 'Invalid credentials' };
@@ -154,7 +142,7 @@ const adminLogin = async ({ email, password }) => {
   if (!isMatch) throw { status: 401, message: 'Invalid credentials' };
 
   const payload = { id: actor.id, role: 'admin' };
-  const accessToken  = generateAccessToken(payload);
+  const accessToken = generateAccessToken(payload);
   const refreshToken = generateRefreshToken(payload);
 
   await repo.createRefreshToken({ token: refreshToken, expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) });
@@ -168,9 +156,6 @@ const adminLogin = async ({ email, password }) => {
   };
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  LOGOUT
-// ─────────────────────────────────────────────────────────────────────────────
 const logout = async (actor, refreshToken, fcmToken) => {
   if (refreshToken) {
     let decoded;
@@ -197,9 +182,6 @@ const logout = async (actor, refreshToken, fcmToken) => {
   return true;
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  REFRESH TOKEN
-// ─────────────────────────────────────────────────────────────────────────────
 const refreshToken = async (token) => {
   const stored = await repo.findRefreshToken(token);
   if (!stored || stored.expiresAt < new Date()) {
@@ -224,46 +206,62 @@ const refreshToken = async (token) => {
   return { accessToken: newAccessToken };
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  OTP
-// ─────────────────────────────────────────────────────────────────────────────
-const sendOtp = async (phone) => {
-  const code = Math.floor(100000 + Math.random() * 900000).toString();
-  const expiresAt = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
+const verifyOtp = async (idToken) => {
+  let adminAuth;
+  try {
+    adminAuth = getAdmin().auth();
+  } catch (err) {
+    throw { status: 500, message: 'Phone authentication is not configured' };
+  }
 
-  await repo.createOtp({ phone, code, expiresAt });
+  let decoded;
+  try {
+    decoded = await adminAuth.verifyIdToken(idToken);
+  } catch (err) {
+    throw { status: 401, message: 'Invalid or expired Firebase ID token' };
+  }
 
-  // TODO: integrate SMS provider (Firebase : you will find the credentials in the env file.)
+  if (decoded.firebase?.sign_in_provider !== 'phone') {
+    throw { status: 401, message: 'Firebase token is not a phone authentication token' };
+  }
 
-  return { message: 'OTP generated successfully. Delivery is handled out-of-band.' };
+  const phone = decoded.phone_number;
+  if (!phone) {
+    throw { status: 400, message: 'Phone number is missing from the Firebase token' };
+  }
+
+  const existingUser = await repo.findUserByPhone(phone);
+  if (!existingUser) {
+    return {
+      flow: 'register',
+      requiresRegistration: true,
+      verified: true,
+      phone,
+    };
+  }
+
+  const user = existingUser.isVerified
+    ? existingUser
+    : await prisma.user.update({
+        where: { id: existingUser.id },
+        data: { isVerified: true },
+      });
+
+  return {
+    flow: 'login',
+    verified: true,
+    ...(await issueUserTokens(user)),
+  };
 };
 
-const verifyOtp = async (phone, code) => {
-  const otp = await repo.findValidOtp(phone, code);
-  if (!otp) throw { status: 400, message: 'Invalid or expired OTP' };
-
-  await repo.markOtpUsed(otp.id);
-
-  // Mark matching user's phone as verified
-  await prisma.user.updateMany({ where: { phone }, data: { isVerified: true } });
-
-  return { verified: true };
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-//  FORGOT / RESET PASSWORD
-// ─────────────────────────────────────────────────────────────────────────────
 const forgotPassword = async (email) => {
   const user = await repo.findUserByEmail(email);
-  // Always return same message to prevent email enumeration
-  console.log("checkpoint#1");
   if (!user) return { message: 'If this email is registered, an OTP has been sent.' };
-  console.log("checkpoint#2");
+
   const code = Math.floor(100000 + Math.random() * 900000).toString();
   const expiresAt = new Date(Date.now() + RESET_OTP_EXPIRY_MINUTES * 60 * 1000);
 
   await repo.createPasswordResetToken({ email, code, expiresAt });
-  console.log("Email will be sent.")
   await mailer.sendMail({
     to: email,
     subject: 'Your Tovo Password Reset OTP',
@@ -277,8 +275,8 @@ const forgotPassword = async (email) => {
       </div>
     `,
   });
-  console.log("Email should be sent.")
-  // return { message: 'If this email is registered, an OTP has been sent.' };
+
+  return { message: 'If this email is registered, an OTP has been sent.' };
 };
 
 const resetPassword = async (email, otp, newPassword) => {
@@ -293,11 +291,6 @@ const resetPassword = async (email, otp, newPassword) => {
   return { message: 'Password updated successfully' };
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  SOCIAL AUTH HELPERS
-// ─────────────────────────────────────────────────────────────────────────────
-
-/** Verify a Google id_token and return { googleId, email, name } */
 const verifyGoogleToken = async (idToken) => {
   const ticket = await googleConfig.verifyIdToken(idToken);
   const payload = ticket.getPayload();
@@ -305,15 +298,12 @@ const verifyGoogleToken = async (idToken) => {
   return { googleId: payload.sub, email: payload.email, name: payload.name };
 };
 
-/** Verify an Apple identity_token (JWT) and return { appleId, email, name } */
 const verifyAppleToken = async (idToken) => {
   const payload = await appleConfig.verifyIdToken(idToken);
   if (!payload || !payload.sub) throw { status: 401, message: 'Invalid Apple token' };
-  // Apple only provides email + name on the first sign-in; subsequent logins omit them
   return { appleId: payload.sub, email: payload.email ?? null, name: null };
 };
 
-/** Verify a Facebook access_token via Graph API and return { facebookId, email, name } */
 const verifyFacebookToken = (accessToken) =>
   new Promise((resolve, reject) => {
     const url = `https://graph.facebook.com/me?fields=id,name,email&access_token=${encodeURIComponent(accessToken)}`;
@@ -323,35 +313,19 @@ const verifyFacebookToken = (accessToken) =>
       res.on('end', () => {
         const data = JSON.parse(raw);
         if (data.error) return reject({ status: 401, message: `Facebook: ${data.error.message}` });
-        if (!data.id)   return reject({ status: 401, message: 'Invalid Facebook token' });
+        if (!data.id) return reject({ status: 401, message: 'Invalid Facebook token' });
         resolve({ facebookId: data.id, email: data.email ?? null, name: data.name });
       });
     }).on('error', () => reject({ status: 502, message: 'Could not reach Facebook API' }));
   });
 
-/** Issue Tovo JWTs for a verified user */
-const issueSocialTokens = async (user) => {
-  const payload = { id: user.id, role: user.role };
-  const accessToken  = generateAccessToken(payload);
-  const refreshToken = generateRefreshToken(payload);
-  await repo.createRefreshToken({
-    token: refreshToken,
-    userId: user.id,
-    expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-  });
-  const { passwordHash: _, ...safeUser } = user;
-  return { accessToken, refreshToken, user: safeUser, role: user.role };
-};
-
 const SOCIAL_FINDERS = {
-  googleId:   (id) => repo.findUserByGoogleId(id),
+  googleId: (id) => repo.findUserByGoogleId(id),
   facebookId: (id) => repo.findUserByFacebookId(id),
-  appleId:    (id) => repo.findUserByAppleId(id),
+  appleId: (id) => repo.findUserByAppleId(id),
 };
 
-/** Find-or-create a user from verified social profile data */
 const findOrCreateSocialUser = async ({ idField, idValue, email, name, role }) => {
-  // 1. Look up by social ID
   let user = await SOCIAL_FINDERS[idField](idValue);
 
   if (user) {
@@ -359,18 +333,15 @@ const findOrCreateSocialUser = async ({ idField, idValue, email, name, role }) =
     return user;
   }
 
-  // 2. Look up by email (link social ID to existing account)
   if (email) {
     user = await repo.findUserByEmail(email);
     if (user) {
       if (user.role !== role) throw { status: 409, message: 'An account with this email exists under a different role' };
-      // Link social ID to the existing account
       user = await prisma.user.update({ where: { id: user.id }, data: { [idField]: idValue } });
       return user;
     }
   }
 
-  // 3. Create new user (no phone — social auth users may not provide one)
   return prisma.$transaction(async (tx) => {
     const newUser = await tx.user.create({
       data: { name: name ?? 'User', email, [idField]: idValue, role, isVerified: true },
@@ -380,9 +351,6 @@ const findOrCreateSocialUser = async ({ idField, idValue, email, name, role }) =
   });
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  SOCIAL AUTH
-// ─────────────────────────────────────────────────────────────────────────────
 const socialAuth = async ({ provider, access_token, role }) => {
   let profile;
 
@@ -403,11 +371,18 @@ const socialAuth = async ({ provider, access_token, role }) => {
   }
 
   const user = await findOrCreateSocialUser({ ...profile, role });
-  return issueSocialTokens(user);
+  return issueUserTokens(user);
 };
 
 module.exports = {
-  registerUser, registerDriver, login, adminLogin, logout,
-  refreshToken, sendOtp, verifyOtp,
-  forgotPassword, resetPassword, socialAuth,
+  registerUser,
+  registerDriver,
+  login,
+  adminLogin,
+  logout,
+  refreshToken,
+  verifyOtp,
+  forgotPassword,
+  resetPassword,
+  socialAuth,
 };

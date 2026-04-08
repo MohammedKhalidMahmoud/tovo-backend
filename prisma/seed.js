@@ -4,8 +4,6 @@ const bcrypt = require('bcryptjs');
 const prisma = new PrismaClient();
 
 const PASSWORD = 'password123';
-const OTP_AHMED = '123456';
-const OTP_YOUSSEF = '654321';
 
 const daysFromNow = (days) => new Date(Date.now() + days * 24 * 60 * 60 * 1000);
 const daysAgo = (days) => new Date(Date.now() - days * 24 * 60 * 60 * 1000);
@@ -956,26 +954,6 @@ async function main() {
   });
   console.log('Seeded support tickets and messages');
 
-  await prisma.otp.createMany({
-    data: [
-      {
-        userId: ahmed.id,
-        phone: ahmed.phone,
-        code: OTP_AHMED,
-        expiresAt: daysFromNow(1 / 24),
-        isUsed: false,
-      },
-      {
-        userId: driver3.id,
-        phone: driver3.phone,
-        code: OTP_YOUSSEF,
-        expiresAt: daysFromNow(1 / 24),
-        isUsed: false,
-      },
-    ],
-  });
-  console.log('Seeded OTPs');
-
   await prisma.refreshToken.createMany({
     data: [
       {
@@ -1045,8 +1023,6 @@ async function main() {
   console.log('Admin: admin@example.com');
   console.log('Customer: ahmed.hassan@example.com');
   console.log('Driver: mostafa.ali@example.com');
-  console.log(`OTP ${ahmed.phone}: ${OTP_AHMED}`);
-  console.log(`OTP ${driver3.phone}: ${OTP_YOUSSEF}`);
   console.log(`Commission rules created: ${[globalRule, comfortRule, packageRule, motoRule].length}`);
   console.log(`Vehicles created: ${[vehicle1, vehicle2, vehicle3].length}`);
 }

@@ -80,7 +80,6 @@ model User {
   notifications   Notification[]
   supportTickets  SupportTicket[]
   deviceTokens    DeviceToken[]
-  otps            Otp[]
   refreshTokens   RefreshToken[]
 
   @@map("users")
@@ -427,20 +426,6 @@ model TicketMessage {
 // ─────────────────────────────────────────────
 //  AUTH HELPERS
 // ─────────────────────────────────────────────
-
-model Otp {
-  id        String    @id @default(uuid())
-  userId    String?
-  phone     String
-  code      String
-  expiresAt DateTime
-  isUsed    Boolean   @default(false)
-  createdAt DateTime  @default(now())
-
-  user      User?     @relation(fields: [userId], references: [id])
-
-  @@map("otps")
-}
 
 model RefreshToken {
   id        String    @id @default(uuid())

@@ -172,38 +172,51 @@
                     accessToken: { type: string }
       '401': { description: Refresh token is invalid or expired }
 
-/auth/otp/send:
-  post:
-    tags: [Auth]
-    summary: Send OTP to phone
-    description: Generates a 6-digit OTP for the supplied phone number. The OTP is not returned in the API response.
-    requestBody:
-      required: true
-      content:
-        application/json:
-          schema:
-            required: [phone]
-            properties:
-              phone: { type: string }
-    responses:
-      '200': { description: OTP generated successfully }
-
 /auth/otp/verify:
   post:
     tags: [Auth]
-    summary: Verify 6-digit OTP
+    summary: Verify Firebase phone authentication
+    description: >
+      The client completes Firebase phone authentication and sends the resulting Firebase ID token
+      to this endpoint. The backend verifies the token with Firebase Admin SDK, extracts the phone
+      number, and either logs in the existing user or returns a registration-required response for
+      new phone numbers.
     requestBody:
       required: true
       content:
         application/json:
           schema:
-            required: [phone, otp_code]
+            required: [id_token]
             properties:
-              phone: { type: string }
-              otp_code: { type: string, minLength: 6, maxLength: 6, pattern: '^[0-9]{6}$' }
+              id_token:
+                type: string
+                description: Firebase Authentication ID token issued after successful client-side phone verification
     responses:
-      '200': { description: OTP verified }
-      '400': { description: Invalid or expired OTP }
+      '200':
+        description: Existing user logged in or new phone verified for registration
+        content:
+          application/json:
+            schema:
+              properties:
+                data:
+                  oneOf:
+                    - type: object
+                      properties:
+                        flow: { type: string, example: login }
+                        verified: { type: boolean, example: true }
+                        accessToken: { type: string }
+                        refreshToken: { type: string }
+                        role: { type: string, enum: [customer, driver] }
+                        user: { $ref: '#/components/schemas/User' }
+                    - type: object
+                      properties:
+                        flow: { type: string, example: register }
+                        requiresRegistration: { type: boolean, example: true }
+                        verified: { type: boolean, example: true }
+                        phone: { type: string, example: '+201012345678' }
+      '400': { description: Validation failed or phone number missing from token }
+      '401': { description: Invalid or expired Firebase ID token }
+      '500': { description: Phone authentication is not configured }
 
 /auth/forgot-password:
   post:

@@ -25,11 +25,6 @@ const prismaMock = {
     findFirst: jest.fn(),
     deleteMany: jest.fn(),
   },
-  otp: {
-    create: jest.fn(),
-    findFirst: jest.fn(),
-    update: jest.fn(),
-  },
   passwordResetToken: {
     create: jest.fn(),
     findFirst: jest.fn(),

@@ -69,20 +69,10 @@ const refreshToken = async (req, res, next) => {
   }
 };
 
-const sendOtp = async (req, res, next) => {
-  try {
-    const data = await authService.sendOtp(req.body.phone);
-    return success(res, data, 'OTP sent');
-  } catch (err) {
-    if (err.status) return error(res, err.message, err.status);
-    next(err);
-  }
-};
-
 const verifyOtp = async (req, res, next) => {
   try {
-    const data = await authService.verifyOtp(req.body.phone, req.body.otp_code);
-    return success(res, data, 'OTP verified');
+    const data = await authService.verifyOtp(req.body.id_token);
+    return success(res, data, 'Phone verified successfully');
   } catch (err) {
     if (err.status) return error(res, err.message, err.status);
     next(err);
@@ -120,7 +110,14 @@ const socialAuth = async (req, res, next) => {
 };
 
 module.exports = {
-  registerUser, registerDriver, login, adminLogin, logout,
-  refreshToken, sendOtp, verifyOtp,
-  forgotPassword, resetPassword, socialAuth,
+  registerUser,
+  registerDriver,
+  login,
+  adminLogin,
+  logout,
+  refreshToken,
+  verifyOtp,
+  forgotPassword,
+  resetPassword,
+  socialAuth,
 };

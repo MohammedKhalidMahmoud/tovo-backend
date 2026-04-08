@@ -5,6 +5,7 @@ const jwt = require('jsonwebtoken');
 const app = require('../../helpers/testApp');
 const prisma = require('../../../src/config/prisma');
 const mailer = require('../../../src/config/mailer');
+const getAdmin = require('../../../src/config/firebase');
 
 describe('Auth Module Integration (mocked DB)', () => {
   describe('POST /api/v1/auth/register/user', () => {
@@ -143,72 +144,75 @@ describe('Auth Module Integration (mocked DB)', () => {
     });
   });
 
-  describe('POST /api/v1/auth/otp/send', () => {
-    it('creates OTP successfully', async () => {
-      prisma.otp.create.mockResolvedValueOnce({ id: 'otp-1' });
-
-      const res = await request(app)
-        .post('/api/v1/auth/otp/send')
-        .send({ phone: '01000000000' });
-
-      expect(res.status).toBe(200);
-      expect(res.body.success).toBe(true);
-      expect(res.body.message).toBe('OTP sent');
-      expect(res.body.data.message).toBe('OTP generated successfully. Delivery is handled out-of-band.');
-      expect(prisma.otp.create).toHaveBeenCalledTimes(1);
-    });
-
-    it('returns validation error when phone is missing', async () => {
-      const res = await request(app)
-        .post('/api/v1/auth/otp/send')
-        .send({});
-
-      expect(res.status).toBe(400);
-      expect(res.body.success).toBe(false);
-      expect(res.body.message).toBe('Validation failed');
-    });
-  });
-
   describe('POST /api/v1/auth/otp/verify', () => {
-    it('verifies OTP successfully', async () => {
-      prisma.otp.findFirst.mockResolvedValueOnce({
-        id: 'otp-1',
-        phone: '01000000000',
-        code: '123456',
+    it('logs in an existing user with a verified Firebase phone token', async () => {
+      getAdmin.__mockVerifyIdToken.mockResolvedValueOnce({
+        phone_number: '+201000000000',
+        firebase: { sign_in_provider: 'phone' },
       });
-      prisma.otp.update.mockResolvedValueOnce({ id: 'otp-1', isUsed: true });
-      prisma.user.updateMany.mockResolvedValueOnce({ count: 1 });
+      prisma.user.findUnique.mockResolvedValueOnce({
+        id: 'user-1',
+        name: 'John Doe',
+        email: 'john@example.com',
+        phone: '+201000000000',
+        role: 'customer',
+        isVerified: true,
+        passwordHash: 'hashed-password',
+      });
+      prisma.refreshToken.create.mockResolvedValueOnce({ id: 'rt-1' });
 
       const res = await request(app)
         .post('/api/v1/auth/otp/verify')
-        .send({ phone: '01000000000', otp_code: '123456' });
+        .send({ id_token: 'firebase-id-token' });
 
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
-      expect(res.body.message).toBe('OTP verified');
+      expect(res.body.message).toBe('Phone verified successfully');
+      expect(res.body.data.flow).toBe('login');
       expect(res.body.data.verified).toBe(true);
-      expect(prisma.user.updateMany).toHaveBeenCalledWith({
-        where: { phone: '01000000000' },
-        data: { isVerified: true },
+      expect(res.body.data.accessToken).toEqual(expect.any(String));
+      expect(res.body.data.refreshToken).toEqual(expect.any(String));
+      expect(res.body.data.user.phone).toBe('+201000000000');
+    });
+
+    it('returns registration flow data when the phone number is not found', async () => {
+      getAdmin.__mockVerifyIdToken.mockResolvedValueOnce({
+        phone_number: '+201000000001',
+        firebase: { sign_in_provider: 'phone' },
       });
-    });
-
-    it('returns error for invalid or expired OTP', async () => {
-      prisma.otp.findFirst.mockResolvedValueOnce(null);
+      prisma.user.findUnique.mockResolvedValueOnce(null);
 
       const res = await request(app)
         .post('/api/v1/auth/otp/verify')
-        .send({ phone: '01000000000', otp_code: '123456' });
+        .send({ id_token: 'firebase-id-token' });
 
-      expect(res.status).toBe(400);
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data).toEqual({
+        flow: 'register',
+        requiresRegistration: true,
+        verified: true,
+        phone: '+201000000001',
+      });
+      expect(prisma.refreshToken.create).not.toHaveBeenCalled();
+    });
+
+    it('returns unauthorized for an invalid Firebase token', async () => {
+      getAdmin.__mockVerifyIdToken.mockRejectedValueOnce(new Error('invalid token'));
+
+      const res = await request(app)
+        .post('/api/v1/auth/otp/verify')
+        .send({ id_token: 'bad-token' });
+
+      expect(res.status).toBe(401);
       expect(res.body.success).toBe(false);
-      expect(res.body.message).toBe('Invalid or expired OTP');
+      expect(res.body.message).toBe('Invalid or expired Firebase ID token');
     });
 
-    it('returns validation error for missing fields', async () => {
+    it('returns validation error when id_token is missing', async () => {
       const res = await request(app)
         .post('/api/v1/auth/otp/verify')
-        .send({ phone: '01000000000' });
+        .send({});
 
       expect(res.status).toBe(400);
       expect(res.body.success).toBe(false);

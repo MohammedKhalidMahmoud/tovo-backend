@@ -8,6 +8,16 @@ jest.mock('../../src/config/prisma', () => require('./prisma.mock'));
 jest.mock('../../src/config/mailer', () => ({
   sendMail: jest.fn().mockResolvedValue({ messageId: 'mocked-message-id' }),
 }));
+jest.mock('../../src/config/firebase', () => {
+  const verifyIdToken = jest.fn();
+  const getAdmin = jest.fn(() => ({
+    auth: () => ({
+      verifyIdToken,
+    }),
+  }));
+  getAdmin.__mockVerifyIdToken = verifyIdToken;
+  return getAdmin;
+});
 
 beforeEach(() => {
   jest.clearAllMocks();
