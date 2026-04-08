@@ -1,11 +1,27 @@
 # Tovo Backend — Project Documentation
 
-> Last updated: 2026-04-07 (rev 6)
+> Last updated: 2026-04-08 (rev 7)
 > Purpose: Persistent technical reference for developers and AI assistants continuing development across sessions.
 
 ---
 
 ## Changelog
+### 2026-04-08 (rev 7) - Firebase Client-Side Phone Auth Migration
+
+#### Problem
+The documentation still described a backend-owned phone OTP flow with `POST /auth/otp/send`, database-stored OTP codes, and a server-side `otps` table. The backend has now been migrated to Firebase client-side phone authentication instead.
+
+#### Solution
+- Removed documentation for `POST /auth/otp/send`
+- Updated `POST /auth/otp/verify` to document Firebase ID token verification instead of `{ phone, otp_code }`
+- Documented the two backend outcomes of phone verification:
+  - existing phone number -> login response with JWTs
+  - new phone number -> `requiresRegistration: true` response with the verified phone number
+- Removed `Otp` / `otps` from the schema documentation
+- Updated registration/auth flow notes to reflect client-side Firebase phone verification
+- Updated environment-variable notes so `FIREBASE_*` credentials are documented as required for both push notifications and phone-auth token verification
+
+---
 ### 2026-04-07 (rev 6) - Documentation Sync With Current Backend Surface
 
 #### Problem
@@ -387,7 +403,7 @@ Server was consuming excessive CPU and memory after deployment due to several is
 Tovo is a **ride-hailing and package delivery** REST API backend. It connects riders (customers) with drivers in real time, handles the full trip lifecycle, processes cash-trip settlement, and provides an admin interface for operations management.
 
 ### Main Features
-- Customer and driver registration, authentication (JWT + OTP)
+- Customer and driver registration, authentication (JWT + Firebase phone verification)
 - **Email OTP-based forgot password / reset password** via nodemailer
 - Real-time trip matching via Socket.io
 - Fare estimation using haversine distance formula
@@ -603,7 +619,6 @@ Prisma v5 with MySQL. Schema at `prisma/schema.prisma`.
 | `TicketMessage` | `ticket_messages` | Threaded messages inside a ticket |
 | `Notification` | `notifications` | In-app notifications per user |
 | `DeviceToken` | `device_tokens` | Firebase push tokens for users/drivers |
-| `Otp` | `otps` | OTP codes for phone verification |
 | `PasswordResetToken` | `password_reset_tokens` | Email OTP codes for password reset. Fields: `email`, `code`, `expiresAt` (10 min), `isUsed`. No FK to User — matched by email only |
 | `RefreshToken` | `refresh_tokens` | Long-lived JWT refresh tokens |
 | `Region` | `regions` | Circular service areas (lat, lng, radius in km) |
@@ -698,8 +713,7 @@ https://tovo-b.developteam.site/api/v1  (production)
 | POST | `/admin/login` | — | Login admin account (separate AdminUser table) |
 | POST | `/logout` | Bearer | Invalidate refresh token |
 | POST | `/token/refresh` | — | Exchange refresh token for new access token |
-| POST | `/otp/send` | — | Send OTP to phone |
-| POST | `/otp/verify` | — | Verify OTP and mark user as verified |
+| POST | `/otp/verify` | — | Verify Firebase phone-auth ID token. Existing phone -> login response; new phone -> registration-required response |
 | POST | `/forgot-password` | — | Send 6-digit OTP to user's email. Body: `{ email }`. Always returns same message (prevents enumeration) |
 | POST | `/reset-password` | — | Verify OTP + set new password. Body: `{ email, otp, new_password }` |
 | POST | `/social` | — | Social auth — `provider: google \| facebook \| apple` |
@@ -998,7 +1012,10 @@ This is a **backend-only repository**. No frontend code exists in this project.
 2. Password hashed with bcrypt
 3. `User` record created with `role: customer`
 4. Wallet auto-created for the customer
-5. OTP phone verification can be triggered separately via `/auth/otp/send` and `/auth/otp/verify`
+5. Phone verification is handled client-side with Firebase Phone Auth
+6. Client sends Firebase `id_token` to `POST /auth/otp/verify`
+7. Existing phone number -> backend logs the user in
+8. New phone number -> backend returns `requiresRegistration: true` with the verified phone number
 
 ### Driver Registration Flow
 1. Register via `POST /auth/register/driver` with `name, email, phone, password, driving_license, vehicle_model, vin`
@@ -1167,6 +1184,21 @@ All flows create immutable `WalletTransaction` entries and update balances atomi
 - OTP reuse prevented by `isUsed: false` filter; token marked used before password update
 - Email enumeration prevented — forgot-password always returns `200` regardless of whether email exists
 
+### Phone Verification Flow
+1. Client completes Firebase Phone Authentication and receives a Firebase ID token
+2. Client calls `POST /auth/otp/verify` with body: `{ id_token }`
+3. Backend verifies the ID token using Firebase Admin SDK (`FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`)
+4. Backend ensures the token came from Firebase phone auth and extracts `phone_number`
+5. If the phone number already exists:
+   - backend marks the user verified if needed
+   - backend issues Tovo `accessToken` + `refreshToken`
+   - response includes `flow: "login"`
+6. If the phone number does not exist:
+   - backend does not create a user automatically
+   - response includes `flow: "register"`, `requiresRegistration: true`, and the verified `phone`
+
+**Important:** the backend no longer generates, stores, or sends SMS OTP codes for phone verification.
+
 ### Real-Time Location Tracking
 - Driver GPS is stored in `locationStore` — a Node.js `Map` in process memory
 - Updated via `driver.location_update` Socket.io event
@@ -1199,9 +1231,9 @@ All flows create immutable `WalletTransaction` entries and update balances atomi
 | `RATE_LIMIT_DISABLED` | Set `true` to disable rate limiter | `false` |
 | `RATE_LIMIT_WINDOW_MINUTES` | Rate limit window | `15` |
 | `RATE_LIMIT_MAX` | Max requests per window | `100` |
-| `FIREBASE_PROJECT_ID` | Firebase project ID | — (required for push) |
-| `FIREBASE_CLIENT_EMAIL` | Firebase service account email | — (required for push) |
-| `FIREBASE_PRIVATE_KEY` | Firebase private key (escaped `\n`) | — (required for push) |
+| `FIREBASE_PROJECT_ID` | Firebase project ID | — (required for push + phone auth token verification) |
+| `FIREBASE_CLIENT_EMAIL` | Firebase service account email | — (required for push + phone auth token verification) |
+| `FIREBASE_PRIVATE_KEY` | Firebase private key (escaped `\n`) | — (required for push + phone auth token verification) |
 | `SMTP_HOST` | SMTP server hostname | — (required for email) |
 | `SMTP_PORT` | SMTP server port | `587` |
 | `SMTP_SECURE` | Use TLS (`true`/`false`) | `false` |
@@ -1283,7 +1315,7 @@ Example stored filename: `avatar-1741427600000-482910372.jpg`. Avatar URLs retur
 - **Admin authentication**: The admin module uses `authorize('admin')` but the JWT payload role needs to match. Admin login flow should be verified end-to-end.
 - **Wallet top-up / driver withdrawal**: No endpoint exists for users to top up their wallet or drivers to request a payout. Requires payment gateway integration.
 - **Prisma client regeneration required**: After the `PasswordResetToken` migration (`20260310171943_add_password_reset_tokens`) and previous `WalletTransaction` migration, run `npx prisma generate` with the server stopped to sync the generated client. Skipping this causes runtime errors on `prisma.passwordResetToken.*` / `prisma.walletTransaction.*` calls.
-- **Phone OTP SMS not integrated**: `sendOtp()` now generates random 6-digit codes, but SMS delivery provider integration (Twilio, Vonage, etc.) is still not wired up.
+- **Client-side phone auth dependency**: mobile/web clients must complete Firebase Phone Authentication before calling `POST /auth/otp/verify`; the backend no longer sends SMS OTPs itself.
 
 ### Designed for Scalability
 - **locationStore** can be replaced with Redis (same interface) for multi-instance deployments without code changes to the service layer
@@ -1304,6 +1336,7 @@ Current-state overrides for rev 6:
 - Existing non-location socket events now emit over Socket.io and send matching FCM pushes via `emitRealtimeEvent()`
 - `trip.driver_location` remains socket-only
 - Trip sharing is available through `POST /trips/:id/share-link` + `GET /trips/share/:token`
+- Phone verification is now Firebase client-side; backend phone auth entrypoint is `POST /auth/otp/verify` with `{ id_token }`
 
 Tovo is a Node.js/Express ride-hailing and package delivery backend using Prisma v5, MySQL, Socket.io, JWT auth, Firebase push notifications, Nodemailer, and Swagger at `/api/docs`. The codebase follows a Controller → Service → Repository structure, most features live in `src/modules/<name>/`, and auth sets `req.actor = { id, role }` for `customer`, `driver`, or `admin`.
 
