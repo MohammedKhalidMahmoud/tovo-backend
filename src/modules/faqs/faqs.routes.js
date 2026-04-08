@@ -1,10 +1,9 @@
 const router = require('express').Router();
-const ctrl   = require('./faqs.controller');
+const { param } = require('express-validator');
+const controller = require('./faqs.controller');
+const validate = require('../../middleware/validate.middleware');
 
-// GET /api/v1/faqs — list active FAQs (public)
-router.get('/', (req, res, next) => {
-  req.query.isActive = 'true';
-  return ctrl.listFaqs(req, res, next);
-});
+router.get('/', controller.listActiveFaqs);
+router.get('/:id', [param('id').isUUID()], validate, controller.getActiveFaq);
 
 module.exports = router;
