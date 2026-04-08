@@ -134,6 +134,28 @@ const resolveRouteData = async ({
   };
 };
 
+const buildTripTollGatesCreate = (matchedTollGates = []) =>
+  matchedTollGates.length
+    ? {
+        create: matchedTollGates.map((gate) => ({
+          tollGate: { connect: { id: gate.id } },
+          fee: Number(gate.fee),
+        })),
+      }
+    : undefined;
+
+const buildTripTollGatesUpdate = (matchedTollGates = []) => ({
+  deleteMany: {},
+  ...(matchedTollGates.length
+    ? {
+        create: matchedTollGates.map((gate) => ({
+          tollGate: { connect: { id: gate.id } },
+          fee: Number(gate.fee),
+        })),
+      }
+    : {}),
+});
+
 const calculateTripPricing = async ({
   service,
   distanceKm,
@@ -415,14 +437,7 @@ const createTrip = async (userId, body) => {
     driverEarnings: pricing.driverEarnings,
     paymentType:    'cash',
     status:         'searching',
-    tollGates: routeData.matchedTollGates.length
-      ? {
-          create: routeData.matchedTollGates.map((gate) => ({
-            tollGate: { connect: { id: gate.id } },
-            fee: Number(gate.fee),
-          })),
-        }
-      : undefined,
+    tollGates: buildTripTollGatesCreate(routeData.matchedTollGates),
     stops: normalizedStops.length
       ? {
           create: normalizedStops.map((stop) => ({
@@ -532,13 +547,7 @@ const addTripStops = async (tripId, userId, stops) => {
     discountAmount: fareData.discountAmount,
     commission: pricing.commission,
     driverEarnings: pricing.driverEarnings,
-    tollGates: {
-      deleteMany: {},
-      create: routeData.matchedTollGates.map((gate) => ({
-        tollGate: { connect: { id: gate.id } },
-        fee: Number(gate.fee),
-      })),
-    },
+    tollGates: buildTripTollGatesUpdate(routeData.matchedTollGates),
     stops: {
       create: newStops.map((stop) => ({
         order: stop.order,
