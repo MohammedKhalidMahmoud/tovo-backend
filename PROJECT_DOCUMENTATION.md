@@ -1,11 +1,39 @@
 # Tovo Backend — Project Documentation
 
-> Last updated: 2026-04-08 (rev 7)
+> Last updated: 2026-04-08 (rev 9)
 > Purpose: Persistent technical reference for developers and AI assistants continuing development across sessions.
 
 ---
 
 ## Changelog
+### 2026-04-08 (rev 9) - Dashboard Module Removed
+
+#### Problem
+The `dashboard` module no longer added enough value to justify a dedicated module. Its remaining summary logic had already been moved into analytics, while the dashboard route/module/doc surface still existed as leftover compatibility code.
+
+#### Solution
+- Removed the dashboard module from the runtime application
+- Removed dashboard Swagger loading and dashboard-specific Swagger files from the current API surface
+- Kept the summary aggregation logic in `src/modules/analytics/analytics.service.js`
+- Updated current-state documentation so the backend no longer advertises `/api/v1/dashboard`
+
+---
+### 2026-04-08 (rev 8) - FAQ Module Normalization + Dashboard Simplification
+
+#### Problem
+The documentation had fallen behind two backend cleanups completed on 2026-04-08. The FAQ module had been normalized to follow the project’s public/admin module split, but the doc still said admin FAQ routes were not mounted. The dashboard module had also been reduced to a single admin summary endpoint, while the doc still listed legacy ride-request and upcoming-ride endpoints.
+
+#### Solution
+- Updated FAQ documentation to reflect the current module structure:
+  - public FAQ endpoints remain mounted at `/api/v1/faqs`
+  - admin FAQ CRUD is now mounted at `/api/v1/admin/faqs`
+  - public FAQ detail endpoint `GET /faqs/:id` is documented
+- Updated dashboard documentation to reflect the simplified surface:
+  - only `GET /api/v1/dashboard/statistics` remains
+  - dashboard summary logic now lives in `src/modules/analytics/analytics.service.js`
+  - legacy dashboard alias/list endpoints were removed from the current-state docs
+
+---
 ### 2026-04-08 (rev 7) - Firebase Client-Side Phone Auth Migration
 
 #### Problem
@@ -152,7 +180,7 @@ Commission per trip was stored only in the `trips.commission` field. For cash tr
 - Query params: `dateFrom`, `dateTo`, `paymentType` (`cash`|`card`), `serviceId`, `page`, `perPage`
 - Returns paginated `logs` array + `totalEarned` (all-time sum)
 
-**Dashboard update** — `GET /api/v1/dashboard` now includes two new fields:
+**Dashboard update** — the admin dashboard summary now includes two new fields:
 - `totalCommission` — all-time platform commission from `commission_logs`
 - `todayCommission` — today's platform commission
 
@@ -164,7 +192,7 @@ Commission per trip was stored only in the `trips.commission` field. For cash tr
 - `src/modules/trips/trips.service.js` — imports `commissionRepo`; `endTrip()` writes log after wallet settlement
 - `src/modules/earnings/earnings.controller.js` — `listEarnings` handler (file path updated in rev 2)
 - `src/modules/earnings/earnings.routes.js` — `GET /` route (file path updated in rev 2)
-- `src/modules/dashboard/dashboard.service.js` — imports `commissionRepo`; `adminDashboard()` returns `totalCommission` + `todayCommission`
+- `src/modules/analytics/analytics.service.js` — `dashboardStatistics()` returns `totalCommission` + `todayCommission`
 
 ---
 
@@ -420,7 +448,7 @@ Tovo is a **ride-hailing and package delivery** REST API backend. It connects ri
 - Support ticket system with threaded messages
 - FAQ management
 - Coupon/promotion system
-- Admin analytics and dashboard
+- Admin analytics/reporting
 - Toll-gates admin management module
 - Swagger/OpenAPI 3 documentation at `/api/docs`
 
@@ -544,7 +572,7 @@ tovo-backend/
 │       ├── sos/
 │       ├── analytics/
 │       ├── settings/
-│       └── dashboard/
+│       └── analytics/
 └── swagger/
     ├── swagger.config.js      # Loads and merges all YAML files into one spec
     ├── swagger.info.yaml      # API title, version, servers, securitySchemes
@@ -948,7 +976,8 @@ Wallet endpoints are split between `wallets.public.routes.js` and `wallets.admin
 
 #### FAQs — `/api/v1/faqs`
 - `GET /` — Public list
-- Admin CRUD at `/api/v1/admin/faqs` (not yet mounted in app.js — pending)
+- `GET /:id` — Public active FAQ detail
+- Admin CRUD at `/api/v1/admin/faqs`
 
 #### Coupons — `/api/v1/promotions`
 - `GET /` — Active promotions (public)
@@ -959,11 +988,6 @@ Wallet endpoints are split between `wallets.public.routes.js` and `wallets.admin
 #### SOS — `/api/v1/sos`
 - `POST /` — Submit SOS alert
 - Admin SOS routes exist in `src/modules/sos/sos.admin.routes.js` but are not mounted in `src/app.js` currently.
-
-#### Dashboard — `/api/v1/dashboard`
-- `GET /statistics`: Admin-only dashboard summary
-- `GET /ride-requests`: Publicly mounted dashboard ride request list
-- `GET /rides/upcoming`: Publicly mounted upcoming rides list
 
 #### Reports — `/api/v1/admin/reports`
 - Ride stats, driver performance, user activity reports

@@ -22,7 +22,6 @@ Then it merges them into one `paths` object and one `components.schemas` object.
 - `auth`
 - `commission-rules`
 - `coupons`
-- `dashboard`
 - `drivers`
 - `earnings`
 - `faqs`

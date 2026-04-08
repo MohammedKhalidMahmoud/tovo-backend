@@ -71,7 +71,7 @@ tags:
     description: Frequently asked questions
 
   - name: Dashboard
-    description: Public & admin dashboard metrics
+    description: Public and admin analytics/reporting endpoints
 
   - name: Reports
     description: Reporting and analytics endpoints

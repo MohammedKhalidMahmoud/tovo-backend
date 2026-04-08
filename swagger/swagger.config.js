@@ -6,8 +6,6 @@ import { fileURLToPath } from "url";
 
 const ADMIN_PATH_SEGMENT = "/admin/";
 const ADMIN_ONLY_PATHS = new Set([
-  "/dashboard/statistics",
-  "/dashboard/admin-dashboard",
   "/notifications/send-to-user",
   "/notifications/send-to-driver",
   "/notifications/send-to-audience",
@@ -69,7 +67,6 @@ export function configureSwagger(app) {
   const notificationsSchemas = YAML.load(path.resolve(__dirname, "./notifications/schemas.yaml"));
   const supportSchemas = YAML.load(path.resolve(__dirname, "./support/schemas.yaml"));
   const faqsSchemas = YAML.load(path.resolve(__dirname, "./faqs/schemas.yaml"));
-  const dashboardSchemas = YAML.load(path.resolve(__dirname, "./dashboard/schemas.yaml"));
   const analyticsSchemas = YAML.load(path.resolve(__dirname, "./analytics/schemas.yaml"));
   
   const settingsSchemas = YAML.load(path.resolve(__dirname, "./settings/schemas.yaml"));
@@ -93,7 +90,6 @@ export function configureSwagger(app) {
   const notificationsPaths = YAML.load(path.resolve(__dirname, "./notifications/paths.yaml"));
   const supportPaths = YAML.load(path.resolve(__dirname, "./support/paths.yaml"));
   const faqsPaths = YAML.load(path.resolve(__dirname, "./faqs/paths.yaml"));
-  const dashboardPaths = YAML.load(path.resolve(__dirname, "./dashboard/paths.yaml"));
   const analyticsPaths = YAML.load(path.resolve(__dirname, "./analytics/paths.yaml"));
   
   const settingsPaths = YAML.load(path.resolve(__dirname, "./settings/paths.yaml"));
@@ -116,7 +112,6 @@ export function configureSwagger(app) {
     ...notificationsSchemas,
     ...supportSchemas,
     ...faqsSchemas,
-    ...dashboardSchemas,
     ...analyticsSchemas,
     ...settingsSchemas,
     ...commissionRulesSchemas,
@@ -139,7 +134,6 @@ export function configureSwagger(app) {
     ...notificationsPaths,
     ...supportPaths,
     ...faqsPaths,
-    ...dashboardPaths,
     ...analyticsPaths,
     ...settingsPaths,
     ...commissionRulesPaths,
