@@ -1,11 +1,25 @@
-# Tovo Backend — Project Documentation
+# Tovo Backend - Project Documentation
 
-> Last updated: 2026-04-08 (rev 9)
+> Last updated: 2026-04-08 (rev 10)
 > Purpose: Persistent technical reference for developers and AI assistants continuing development across sessions.
 
 ---
 
 ## Changelog
+### 2026-04-08 (rev 10) - Current-State Documentation Sync
+
+#### Problem
+The long-form project doc and the dedicated public/admin API docs had drifted from the actual mounted backend surface after recent backend work. They still contained stale references to the removed dashboard module, the old backend-owned OTP flow, unmounted SOS endpoints, outdated env var names, and missing newer endpoints such as email change verification and trip route retrieval.
+
+#### Solution
+- Synced the documentation with the routes mounted in `src/app.js`
+- Removed current-state references to the deleted dashboard module and unmounted SOS routes
+- Updated auth documentation to reflect Firebase ID-token verification at `POST /auth/otp/verify`
+- Documented newer user and trip endpoints such as email change verification, password change, trip route retrieval, trip stops, and trip share links
+- Updated environment variable documentation to match the env vars actually read by the codebase, including Google Routes and email-change settings
+- Aligned `PROJECT_DOCUMENTATION.md`, `PUBLIC_ENDPOINTS_DOCUMENTATION.md`, and `ADMIN_API_DESIGN.md` with the same current backend surface
+
+---
 ### 2026-04-08 (rev 9) - Dashboard Module Removed
 
 #### Problem
@@ -546,11 +560,12 @@ tovo-backend/
 │   │   ├── socket.js          # Socket.io setup, event handlers, server emitters
 │   │   └── locationStore.js   # In-memory Map for driver GPS (non-persistent)
 │   ├── providers/
-│   │   └── fcm.js             # FCM sendMulticast wrapper — handles invalid token cleanup
+│   │   ├── fcm.js             # FCM sendMulticast wrapper — handles invalid token cleanup
+│   │   └── googleRoutes.js    # Google Routes API client wrapper
 │   ├── utils/
 │   │   ├── response.js        # success, created, error, notFound, paginate helpers
 │   │   ├── jwt.js             # signAccessToken, signRefreshToken, verifyAccessToken
-│   │   └── location.js        # findPointInRegions (haversine region check)
+│   │   └── location.js        # Region checks, polyline decode, and route proximity helpers
 │   └── modules/
 │       ├── auth/
 │       ├── users/
@@ -572,7 +587,6 @@ tovo-backend/
 │       ├── sos/
 │       ├── analytics/
 │       ├── settings/
-│       └── analytics/
 └── swagger/
     ├── swagger.config.js      # Loads and merges all YAML files into one spec
     ├── swagger.info.yaml      # API title, version, servers, securitySchemes
@@ -613,7 +627,7 @@ app.use((req, res, next) => {
 ### Utilities
 - **`response.js`** — All controllers use these helpers: `success(res, data, msg, statusCode, pagination)`, `created(res, data, msg)`, `error(res, msg, statusCode)`, `notFound(res, msg)`, `paginate(page, perPage, total)`.
 - **`jwt.js`** — Issues and verifies access tokens (short-lived) and refresh tokens (long-lived).
-- **`location.js`** — `findPointInRegions(lat, lng, regions[])` — checks if a coordinate falls within any active service region using haversine formula.
+- **`location.js`** — contains region checks, Google polyline decoding, and route proximity helpers used for nearby-driver checks and toll-gate matching.
 
 ---
 
@@ -633,9 +647,10 @@ Prisma v5 with MySQL. Schema at `prisma/schema.prisma`.
 | `VehicleModel` | `vehicle_models` | Make/model catalogue, linked to a Service |
 | `Service` | `services` | Ride categories (e.g. Normal, Comfort, Motorcycle, Packages) and surcharge config |
 | `TollGate` | `toll_gates` | Configurable toll gates with coordinates, fee, and active flag (admin-managed) |
-| `Trip` | `trips` | Core trip record with lifecycle state, pricing fields, optional coupon snapshot, and share-link token fields (`shareToken`, `shareTokenExpiresAt`) |
+| `Trip` | `trips` | Core trip record with lifecycle state, pricing fields, optional coupon snapshot, share-link fields, and route metadata (`routeEncodedPolyline`, `routeDistanceMeters`, `routeDurationSeconds`) |
 | `TripStop` | `trip_stops` | Ordered multi-stop waypoints per trip (`order`, `lat`, `lng`, `address`, `arrivedAt`) |
 | `TripDecline` | `trip_declines` | Composite key `(tripId, driverId)` — tracks which drivers declined |
+| `TripTollGate` | `trip_toll_gates` | Snapshot of toll gates matched to a trip route, including the fee charged at booking time |
 | `Rating` | `ratings` | One per trip, customer rates driver (1–5 stars) |
 | `Wallet` | `wallets` | Balance for customer or driver. Credited/debited automatically on trip completion |
 | `WalletTransaction` | `wallet_transactions` | Immutable log of every credit/debit on a wallet. Created atomically with every balance change |
@@ -985,9 +1000,10 @@ Wallet endpoints are split between `wallets.public.routes.js` and `wallets.admin
 - `POST /coupons/apply`: Apply a coupon to a searching customer trip
 - Admin CRUD at `/api/v1/admin/promotions/coupons`
 
-#### SOS — `/api/v1/sos`
-- `POST /` — Submit SOS alert
-- Admin SOS routes exist in `src/modules/sos/sos.admin.routes.js` but are not mounted in `src/app.js` currently.
+#### SOS — Unmounted
+- No SOS endpoint is mounted at this path right now.
+- `src/modules/sos/` still exists in the repository, but no SOS route is mounted in `src/app.js` right now.
+- The backend does not currently expose `/api/v1/sos` or `/api/v1/admin/sos`.
 
 #### Reports — `/api/v1/admin/reports`
 - Ride stats, driver performance, user activity reports
@@ -1246,18 +1262,23 @@ All flows create immutable `WalletTransaction` entries and update balances atomi
 |----------|-------------|---------|
 | `DATABASE_URL` | MySQL connection string | — (required) |
 | `PORT` | HTTP server port | — (required) |
-| `JWT_ACCESS_SECRET` | Access token signing secret | — (required) |
+| `JWT_SECRET` | Access token signing secret | — (required) |
 | `JWT_REFRESH_SECRET` | Refresh token signing secret | — (required) |
-| `JWT_ACCESS_EXPIRES_IN` | Access token TTL | e.g. `15m` |
+| `JWT_EXPIRES_IN` | Access token TTL | e.g. `15m` |
 | `JWT_REFRESH_EXPIRES_IN` | Refresh token TTL | e.g. `7d` |
 | `FARE_PER_KM` | Fare multiplier per kilometre | `5.0` |
 | `COMMISSION_PCT` | Fallback commission % (used only when no active DB rule exists) | `15` |
 | `RATE_LIMIT_DISABLED` | Set `true` to disable rate limiter | `false` |
 | `RATE_LIMIT_WINDOW_MINUTES` | Rate limit window | `15` |
 | `RATE_LIMIT_MAX` | Max requests per window | `100` |
+| `APP_BASE_URL` | Base URL used in generated links when a request host is not suitable | — |
+| `TRIP_SHARE_BASE_URL` | Optional override for customer trip-share links | falls back to `APP_BASE_URL` |
+| `EMAIL_CHANGE_SECRET` | Signing secret for pending email-change verification links | falls back to `JWT_SECRET` |
+| `EMAIL_CHANGE_TOKEN_EXPIRES_IN` | TTL for email-change verification links | `1h` |
 | `FIREBASE_PROJECT_ID` | Firebase project ID | — (required for push + phone auth token verification) |
 | `FIREBASE_CLIENT_EMAIL` | Firebase service account email | — (required for push + phone auth token verification) |
 | `FIREBASE_PRIVATE_KEY` | Firebase private key (escaped `\n`) | — (required for push + phone auth token verification) |
+| `GOOGLE_ROUTES_API_KEY` | API key for Google Routes route generation and toll-gate matching | — (required for route-aware trip pricing) |
 | `SMTP_HOST` | SMTP server hostname | — (required for email) |
 | `SMTP_PORT` | SMTP server port | `587` |
 | `SMTP_SECURE` | Use TLS (`true`/`false`) | `false` |
@@ -1351,7 +1372,7 @@ Example stored filename: `avatar-1741427600000-482910372.jpg`. Avatar URLs retur
 ---
 
 ## Context Summary for AI Assistants
-Current-state overrides for rev 6:
+Current-state overrides for rev 10:
 - Trip pricing field names are `originalFare`, `discountAmount`, and `finalFare`
 - Driver settlement is based on pre-discount pricing and may include `trip_coupon_reimbursement`
 - Driver-only schema fields live in `DriverProfile` (1:1 with `User`)
@@ -1361,10 +1382,13 @@ Current-state overrides for rev 6:
 - `trip.driver_location` remains socket-only
 - Trip sharing is available through `POST /trips/:id/share-link` + `GET /trips/share/:token`
 - Phone verification is now Firebase client-side; backend phone auth entrypoint is `POST /auth/otp/verify` with `{ id_token }`
+- Trip creation now stores Google Routes metadata and toll-gate matches, and route rendering data is available at `GET /trips/:id/route`
+- FAQ admin CRUD is mounted at `/api/v1/admin/faqs`
+- The dashboard module has been removed from the mounted API surface
 
 Tovo is a Node.js/Express ride-hailing and package delivery backend using Prisma v5, MySQL, Socket.io, JWT auth, Firebase push notifications, Nodemailer, and Swagger at `/api/docs`. The codebase follows a Controller → Service → Repository structure, most features live in `src/modules/<name>/`, and auth sets `req.actor = { id, role }` for `customer`, `driver`, or `admin`.
 
 Current trip pricing uses `originalFare`, `discountAmount`, and `finalFare`, where `finalFare = originalFare - discountAmount`. Commission rules are DB-driven, `driverEarnings` and `commission` are calculated from the pre-discount fare, coupon application is handled through `POST /api/v1/promotions/coupons/apply`, and discounted trip completion may write an extra wallet transaction with reason `trip_coupon_reimbursement`.
 
-Realtime behavior uses `locationStore` for in-memory driver GPS and Socket.io rooms `user:{id}`, `driver:{id}`, `trip:{id}`, and `drivers:available`. Non-location trip events are centralized in `src/realtime/socket.js` and now emit both Socket.io events and matching FCM pushes, while `trip.driver_location` remains socket-only. `PUBLIC_ENDPOINTS_DOCUMENTATION.md` is the best current quick reference for mounted non-admin routes.
+Realtime behavior uses `locationStore` for in-memory driver GPS and Socket.io rooms `user:{id}`, `driver:{id}`, `trip:{id}`, and `drivers:available`. Non-location trip events are centralized in `src/realtime/socket.js` and now emit both Socket.io events and matching FCM pushes, while `trip.driver_location` remains socket-only. `PUBLIC_ENDPOINTS_DOCUMENTATION.md` and `ADMIN_API_DESIGN.md` are the quickest current references for the mounted API surface.
 

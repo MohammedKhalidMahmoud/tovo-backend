@@ -1,22 +1,21 @@
 # Tovo Backend Admin API Design
 
 ## Purpose
-This document is the current-state reference for admin-facing endpoints that are actually mounted in the backend as of 2026-03-25.
+This document is the current-state reference for admin-facing endpoints mounted by the backend as of 2026-04-08.
 
-It replaces the older future-state admin panel spec with the endpoints that exist today in `src/app.js` and the route files mounted from there.
+It reflects the routes actually wired in `src/app.js`, not older dashboard-era or future-state plans.
 
 ## Scope
 - Primary admin base path: `/api/v1/admin`
 - Admin auth entry point: `POST /api/v1/auth/admin/login`
-- Extra admin-only endpoints also exist outside `/api/v1/admin`
+- A few admin-only endpoints also exist outside `/api/v1/admin`
 
 ## Authentication
 - Standard admin endpoints use `Authorization: Bearer <admin_token>`
 - Admin login endpoint:
   - `POST /api/v1/auth/admin/login`
-- Most admin routes are protected with `authenticate + authorize('admin')`
-- Important current exceptions:
-  - `src/modules/vehicles/vehicles.routes.js` is mounted under both `/api/v1/vehicles` and `/api/v1/admin/vehicles` and currently does not apply auth middleware in the route file
+- Mounted admin routes are protected with `authenticate + authorize('admin')`
+- Some routers are dual-mounted on both public and admin prefixes, but the route-level auth still enforces admin access where appropriate
 
 ## Response Shape
 The codebase generally uses the shared response helpers in `src/utils/response.js`. In practice, successful responses commonly follow:
@@ -75,7 +74,7 @@ Mounted at `/api/v1/admin/drivers` via `src/modules/drivers/drivers.admin.routes
 | `POST` | `/api/v1/admin/drivers/:driverId/approve` | Approve driver |
 | `POST` | `/api/v1/admin/drivers/:driverId/reject` | Reject driver |
 | `POST` | `/api/v1/admin/drivers/:driverId/suspend` | Suspend or unsuspend driver |
-| `POST` | `/api/v1/admin/drivers/:driverId/refund` | Refund to driver |
+| `POST` | `/api/v1/admin/drivers/:driverId/refund` | Refund to driver wallet |
 | `POST` | `/api/v1/admin/drivers/:driverId/reset-password` | Reset driver password |
 | `DELETE` | `/api/v1/admin/drivers/:driverId?confirm=true` | Delete driver |
 
@@ -85,25 +84,22 @@ Mounted at `/api/v1/admin/support` via `src/modules/support/support.admin.routes
 
 | Method | Path | Notes |
 |---|---|---|
-| `GET` | `/api/v1/admin/support` | List complaints/tickets. Query: `page`, `limit`, `status`, `type`, `search` |
-| `GET` | `/api/v1/admin/support/:id` | Get complaint/ticket detail |
-| `POST` | `/api/v1/admin/support/:id/respond` | Respond to complaint |
-| `PATCH` | `/api/v1/admin/support/:id/resolve` | Resolve complaint |
+| `GET` | `/api/v1/admin/support` | List tickets. Query: `page`, `limit`, `status`, `type`, `search` |
+| `GET` | `/api/v1/admin/support/:id` | Get ticket detail |
+| `POST` | `/api/v1/admin/support/:id/respond` | Respond to ticket |
+| `PATCH` | `/api/v1/admin/support/:id/resolve` | Resolve ticket |
 
-### 5. Complaints
+### 5. FAQs
 
-Mounted at `/api/v1/admin/complaints` via `src/modules/complaints/complaints.routes.js`.
-
-This complaints module operates on the same underlying `SupportTicket` data, but exposes a complaints-specific admin path used by existing Swagger/docs and clients.
+Mounted at `/api/v1/admin/faqs` via `src/modules/faqs/faqs.admin.routes.js`.
 
 | Method | Path | Notes |
 |---|---|---|
-| `GET` | `/api/v1/admin/complaints` | List complaints. Query: `page`, `limit`, `status` |
-| `GET` | `/api/v1/admin/complaints/:id` | Get complaint detail |
-| `POST` | `/api/v1/admin/complaints/:id/respond` | Respond to complaint |
-| `PATCH` | `/api/v1/admin/complaints/:id` | Update complaint status |
-| `POST` | `/api/v1/admin/complaints/:id/resolve` | Mark complaint as resolved |
-| `DELETE` | `/api/v1/admin/complaints/:id` | Delete complaint |
+| `GET` | `/api/v1/admin/faqs` | List FAQs. Query: `page`, `limit`, `isActive`, `search` |
+| `POST` | `/api/v1/admin/faqs` | Create FAQ |
+| `GET` | `/api/v1/admin/faqs/:id` | Get FAQ detail |
+| `PUT` | `/api/v1/admin/faqs/:id` | Update FAQ |
+| `DELETE` | `/api/v1/admin/faqs/:id` | Delete FAQ |
 
 ### 6. Vehicle Models
 
@@ -115,7 +111,7 @@ Mounted at `/api/v1/admin/vehicle-models` via `src/modules/vehicle-models/vehicl
 | `GET` | `/api/v1/admin/vehicle-models/:id` | Get model detail |
 | `POST` | `/api/v1/admin/vehicle-models` | Create model |
 | `PUT` | `/api/v1/admin/vehicle-models/:id` | Update model |
-| `DELETE` | `/api/v1/admin/vehicle-models/:id?confirm=true` | Delete model |
+| `DELETE` | `/api/v1/admin/vehicle-models/:id` | Delete model |
 
 ### 7. Regions
 
@@ -142,7 +138,19 @@ Mounted at `/api/v1/admin/services` via `src/modules/services/services.routes.js
 | `PATCH` | `/api/v1/admin/services/:id/image` | Update service image. Multipart field: `image` |
 | `DELETE` | `/api/v1/admin/services/:id` | Delete service |
 
-### 9. Payments
+### 9. Toll Gates
+
+Mounted at `/api/v1/admin/toll-gates` via `src/modules/toll-gates/tollGates.admin.routes.js`.
+
+| Method | Path | Notes |
+|---|---|---|
+| `GET` | `/api/v1/admin/toll-gates` | List toll gates |
+| `GET` | `/api/v1/admin/toll-gates/:id` | Get toll gate detail |
+| `POST` | `/api/v1/admin/toll-gates` | Create toll gate |
+| `PUT` | `/api/v1/admin/toll-gates/:id` | Update toll gate |
+| `DELETE` | `/api/v1/admin/toll-gates/:id?confirm=true` | Delete toll gate |
+
+### 10. Payments
 
 Mounted at `/api/v1/admin/payments` via `src/modules/payments/payments.routes.js`.
 
@@ -150,9 +158,8 @@ Mounted at `/api/v1/admin/payments` via `src/modules/payments/payments.routes.js
 |---|---|---|
 | `GET` | `/api/v1/admin/payments` | List payments. Query: `page`, `limit`, `status`, `userId`, `driverId`, `paymentType`, `dateFrom`, `dateTo` |
 | `GET` | `/api/v1/admin/payments/:id` | Get payment detail |
-| `POST` | `/api/v1/admin/payments/:id/refund` | Refund card payment |
 
-### 10. Promotions And Coupons
+### 11. Promotions And Coupons
 
 Mounted at `/api/v1/admin/promotions/coupons` via `src/modules/coupons/coupons.admin.routes.js`.
 
@@ -170,11 +177,9 @@ Related public coupon flow:
 - `used_count` is incremented when the discounted trip completes
 - Once a coupon is attached to a trip it cannot be replaced; a second apply attempt returns `422`
 
-### 11. Commission Rules
+### 12. Commission Rules
 
 Mounted at `/api/v1/admin/commission-rules` via `src/modules/commission-rules/commission-rules.routes.js`.
-
-This is the current replacement for the old `/api/v1/admin/commissions` rules endpoints.
 
 | Method | Path | Notes |
 |---|---|---|
@@ -182,7 +187,7 @@ This is the current replacement for the old `/api/v1/admin/commissions` rules en
 | `GET` | `/api/v1/admin/commission-rules/:id` | Get rule detail |
 | `POST` | `/api/v1/admin/commission-rules` | Create rule |
 | `PATCH` | `/api/v1/admin/commission-rules/:id` | Update rule |
-| `PATCH` | `/api/v1/admin/commission-rules/:id/activate` | Activate rule and atomically deactivate the previous active rule |
+| `PATCH` | `/api/v1/admin/commission-rules/:id/activate` | Activate rule and deactivate any previously active rule |
 | `DELETE` | `/api/v1/admin/commission-rules/:id` | Delete rule |
 
 Supported rule types:
@@ -191,21 +196,27 @@ Supported rule types:
 - `tiered_fixed`
 - `tiered_percentage`
 
-### 12. Earnings
+### 13. Earnings
 
 Mounted at `/api/v1/admin/earnings` via `src/modules/earnings/earnings.routes.js`.
 
-This is the current replacement for the old `/api/v1/admin/commissions/earnings` endpoint.
+| Method | Path | Notes |
+|---|---|---|
+| `GET` | `/api/v1/admin/earnings` | List platform commission logs. Filters include `dateFrom`, `dateTo`, `paymentType`, `serviceId`, `page`, `perPage` |
+
+### 14. Reports
+
+Mounted at `/api/v1/admin/reports` via `src/modules/analytics/analytics.routes.js`.
 
 | Method | Path | Notes |
 |---|---|---|
-| `GET` | `/api/v1/admin/earnings` | List platform commission logs. Common filters: `dateFrom`, `dateTo`, `paymentType`, `serviceId`, `page`, `perPage` |
+| `GET` | `/api/v1/admin/reports/rides` | Ride statistics report |
+| `GET` | `/api/v1/admin/reports/drivers` | Driver performance report |
+| `GET` | `/api/v1/admin/reports/users` | User activity report |
 
-### 13. Settings
+### 15. Settings
 
 Mounted at `/api/v1/admin/settings` via `src/modules/settings/settings.routes.js`.
-
-The same router is also mounted publicly at `/api/v1/settings`, but only the admin-only paths below are relevant for admin use.
 
 | Method | Path | Notes |
 |---|---|---|
@@ -218,7 +229,7 @@ Validation notes:
 - `key` must match `^[a-z0-9_.]+$`
 - `id` is a UUID
 
-### 14. Wallets
+### 16. Wallets
 
 Mounted at `/api/v1/admin/wallets` via `src/modules/wallets/wallets.admin.routes.js`.
 
@@ -229,11 +240,11 @@ Mounted at `/api/v1/admin/wallets` via `src/modules/wallets/wallets.admin.routes
 | `GET` | `/api/v1/admin/wallets/:id/transactions` | Get wallet transactions |
 | `POST` | `/api/v1/admin/wallets/:id/adjust` | Manual wallet adjustment |
 
-### 15. Vehicles
+### 17. Vehicles
 
 Mounted at `/api/v1/admin/vehicles` via `src/modules/vehicles/vehicles.routes.js`.
 
-Current implementation note: this route file is also mounted publicly at `/api/v1/vehicles`, and it currently does not apply auth middleware in the route file.
+This router is also mounted at `/api/v1/vehicles`, but admin CRUD routes still require admin auth at the route level.
 
 | Method | Path | Notes |
 |---|---|---|
@@ -245,66 +256,44 @@ Current implementation note: this route file is also mounted publicly at `/api/v
 
 ## Admin-Only Endpoints Outside `/api/v1/admin`
 
-### Dashboard
-
-Mounted at `/api/v1/dashboard` via `src/modules/dashboard/dashboard.routes.js`.
-
-| Method | Path | Notes |
-|---|---|---|
-| `GET` | `/api/v1/dashboard/statistics` | Admin dashboard summary. Protected by `authenticate + authorize('admin')` |
-
-Implementation note:
-- `GET /api/v1/dashboard/ride-requests`
-- `GET /api/v1/dashboard/rides/upcoming`
-
-These dashboard routes also exist, but they are not currently admin-protected in the route file.
-
 ### Notifications
 
 Mounted at `/api/v1/notifications` via `src/modules/notifications/notifications.routes.js`.
 
 | Method | Path | Notes |
 |---|---|---|
-| `POST` | `/api/v1/notifications/send-to-user` | Manual push notification to a user. Admin-only |
-| `POST` | `/api/v1/notifications/send-to-driver` | Manual push notification to a driver. Admin-only |
-
-### Reports
-
-Mounted at `/api/v1/admin/reports` via `src/modules/analytics/analytics.routes.js`.
-
-| Method | Path | Notes |
-|---|---|---|
-| `GET` | `/api/v1/admin/reports/rides` | Ride statistics report. Protected by `authenticate + authorize('admin')` |
-| `GET` | `/api/v1/admin/reports/drivers` | Driver performance report. Protected by `authenticate + authorize('admin')` |
-| `GET` | `/api/v1/admin/reports/users` | User activity report. Protected by `authenticate + authorize('admin')` |
+| `POST` | `/api/v1/notifications/send-to-user` | Manual push notification to a user |
+| `POST` | `/api/v1/notifications/send-to-driver` | Manual push notification to a driver |
+| `POST` | `/api/v1/notifications/send-to-audience` | Manual push notification to drivers, riders, or all |
 
 ## Current Admin Surface Summary
 
 ### Mounted and usable now
 - Auth admin login
-- Users admin CRUD and actions
-- Driver admin CRUD and actions
+- Users admin CRUD and account actions
+- Driver admin CRUD and approval actions
 - Support admin ticket management
-- Complaints admin management
+- FAQ admin CRUD
 - Regions admin CRUD
 - Vehicle models admin CRUD
 - Services admin CRUD
-- Payments admin listing and refund
+- Toll gates admin CRUD
+- Payments admin listing and detail
 - Promotions/coupons admin CRUD
-- Commission rules admin CRUD + activate
+- Commission rules admin CRUD plus activate
 - Earnings listing
-- Settings CRUD
-- Wallets listing/detail/adjustment
-- Vehicles CRUD
-- Admin dashboard summary
 - Reports endpoints
+- Settings CRUD
+- Wallets listing, detail, transactions, and manual adjustment
+- Vehicles admin CRUD
 - Admin notification send actions
 
 ### Not currently mounted as admin endpoints
 These files or concepts exist in the repo/history but are not mounted in `src/app.js` right now:
 - `src/modules/admin/admin.routes`
-- `src/modules/faqs/faqs.admin.routes.js`
 - `src/modules/sos/sos.admin.routes.js`
+- Any `/api/v1/dashboard/*` routes
+- Any `/api/v1/admin/complaints` routes
 
 ### Renamed from older docs
 - Old: `/api/v1/admin/commissions`
@@ -313,16 +302,10 @@ These files or concepts exist in the repo/history but are not mounted in `src/ap
 - Old: `/api/v1/admin/commissions/earnings`
 - New: `/api/v1/admin/earnings`
 
-- Old tag: `Analytics`
-- New tag: `Reports`
-
 ## Notes For Future Updates
 - Treat `src/app.js` as the source of truth for what is actually exposed
-- If a route file exists but is not mounted in `src/app.js`, do not list it as a live admin endpoint
-- If an endpoint is mounted under an admin path but lacks auth middleware, document that honestly until the implementation is fixed
-- Keep this file aligned with `PROJECT_DOCUMENTATION.md` whenever admin modules are renamed or split
+- Treat route-level middleware as the source of truth for access control on dual-mounted routers
 
 ---
 
-**Last Updated:** 2026-03-25
-**Source of Truth Used:** `PROJECT_DOCUMENTATION.md`, `src/app.js`, and the currently mounted route files under `src/modules/`
+**Last Updated:** 2026-04-08

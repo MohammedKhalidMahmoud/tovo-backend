@@ -1,7 +1,7 @@
 # Tovo Backend Public Endpoints
 
 ## Purpose
-This document is the current-state reference for non-admin endpoints that are actually exposed by the backend as of 2026-03-25.
+This document is the current-state reference for non-admin endpoints mounted by the backend as of 2026-04-08.
 
 It covers:
 - Fully public endpoints with no authentication
@@ -9,7 +9,10 @@ It covers:
 - Driver-authenticated endpoints
 - Shared authenticated endpoints on public paths
 
-It does not include admin-only routes under `/api/v1/admin`.
+It excludes:
+- `/api/v1/admin/*` routes
+- Admin-only endpoints mounted on non-admin paths such as `/api/v1/notifications/send-to-*`
+- `POST /api/v1/auth/admin/login`
 
 ## Base Paths And Auth
 - Main API base path: `/api/v1`
@@ -29,8 +32,9 @@ It does not include admin-only routes under `/api/v1/admin`.
   - `customer` = customer token required
   - `driver` = driver token required
   - `customer|driver` = either customer or driver token
+  - `customer|admin` = customer or admin token
 
-## Public Endpoint Index
+## Endpoint Index
 
 ### 1. System
 
@@ -38,6 +42,7 @@ It does not include admin-only routes under `/api/v1/admin`.
 |---|---|---|---|
 | `GET` | `/health` | public | Health check outside `/api/v1` |
 | `GET` | `/uploads/:filename` | public | Static uploaded files |
+| `GET` | `/debug/locations` | public | Debug-only in-memory driver location snapshot |
 
 ### 2. Auth
 
@@ -49,10 +54,9 @@ Mounted at `/api/v1/auth`.
 | `POST` | `/api/v1/auth/register/driver` | public | Driver registration |
 | `POST` | `/api/v1/auth/login` | public | Customer or driver login |
 | `POST` | `/api/v1/auth/token/refresh` | public | Refresh access token |
-| `POST` | `/api/v1/auth/otp/send` | public | Send phone OTP |
-| `POST` | `/api/v1/auth/otp/verify` | public | Verify phone OTP |
+| `POST` | `/api/v1/auth/otp/verify` | public | Verify Firebase phone-auth `id_token` |
 | `POST` | `/api/v1/auth/forgot-password` | public | Start forgot-password flow |
-| `POST` | `/api/v1/auth/reset-password` | public | Complete forgot-password flow |
+| `POST` | `/api/v1/auth/reset-password` | public | Complete forgot-password flow with `{ email, otp, new_password }` |
 | `POST` | `/api/v1/auth/social` | public | Social login for customer or driver |
 | `POST` | `/api/v1/auth/logout` | auth | Logout and optionally unregister device token |
 
@@ -64,16 +68,15 @@ Mounted at `/api/v1/users`.
 |---|---|---|---|
 | `GET` | `/api/v1/users/me` | customer | Get rider profile |
 | `PUT` | `/api/v1/users/me` | customer | Update rider profile |
+| `PUT` | `/api/v1/users/me/email` | customer | Request email change verification |
+| `PUT` | `/api/v1/users/me/password` | customer | Change password |
+| `GET` | `/api/v1/users/email-change/verify` | public | Verify pending email change via token |
 | `PATCH` | `/api/v1/users/me/avatar` | customer | Upload rider avatar |
 | `GET` | `/api/v1/users/me/wallet` | customer | Get rider wallet snapshot |
 | `GET` | `/api/v1/users/me/addresses` | customer | List saved addresses |
 | `POST` | `/api/v1/users/me/addresses` | customer | Create saved address |
 | `PUT` | `/api/v1/users/me/addresses/:id` | customer | Update saved address |
 | `DELETE` | `/api/v1/users/me/addresses/:id` | customer | Delete saved address |
-| `GET` | `/api/v1/users/me/payment-methods` | customer | List payment methods |
-| `POST` | `/api/v1/users/me/payment-methods` | customer | Add payment method |
-| `DELETE` | `/api/v1/users/me/payment-methods/:id` | customer | Delete payment method |
-| `PATCH` | `/api/v1/users/me/payment-methods/:id/default` | customer | Set default payment method |
 
 ### 4. Drivers
 
@@ -94,6 +97,7 @@ Mounted at `/api/v1/drivers`.
 | `PATCH` | `/api/v1/drivers/me/trips/:id/decline` | driver | Decline trip |
 | `PATCH` | `/api/v1/drivers/me/trips/:id/start` | driver | Start trip |
 | `PATCH` | `/api/v1/drivers/me/trips/:id/end` | driver | Complete trip |
+| `PATCH` | `/api/v1/drivers/me/trips/:id/stops/:stopId/arrive` | driver | Mark an intermediate stop as arrived |
 | `POST` | `/api/v1/drivers/me/trips/:tripId/credit-customer` | driver | Credit customer wallet |
 
 ### 5. Trips
@@ -103,13 +107,17 @@ Mounted at `/api/v1/trips`.
 | Method | Path | Auth | Notes |
 |---|---|---|---|
 | `GET` | `/api/v1/trips/regions/active` | public | Active regions for trip placement |
-| `GET` | `/api/v1/trips/estimate` | public | Fare estimate |
+| `GET` | `/api/v1/trips/estimate` | public | Route-aware fare estimate |
+| `GET` | `/api/v1/trips/share/:token` | public | Shared trip view by token |
 | `POST` | `/api/v1/trips` | customer | Create trip |
 | `GET` | `/api/v1/trips` | customer | Customer trip history |
+| `POST` | `/api/v1/trips/:id/stops` | customer | Add trip stops before trip start |
+| `POST` | `/api/v1/trips/:id/share-link` | customer | Generate a trip share link |
 | `GET` | `/api/v1/trips/nearby-drivers` | auth | Nearby available drivers |
 | `GET` | `/api/v1/trips/driver/requests` | driver | Driver open trip requests |
 | `GET` | `/api/v1/trips/driver/trips` | driver | Driver trip history |
 | `GET` | `/api/v1/trips/drivers/:driverId/ratings` | auth | Driver ratings |
+| `GET` | `/api/v1/trips/:id/route` | customer\|driver | Trip route polyline and decoded coordinates |
 | `GET` | `/api/v1/trips/:id` | customer\|driver | Trip detail for involved actors |
 | `PATCH` | `/api/v1/trips/:id/cancel` | customer | Cancel trip |
 | `POST` | `/api/v1/trips/:id/rating` | customer | Rate completed trip |
@@ -169,7 +177,7 @@ Mounted at `/api/v1/payments`.
 | Method | Path | Auth | Notes |
 |---|---|---|---|
 | `GET` | `/api/v1/payments/me` | customer | Get own payment history |
-| `GET` | `/api/v1/payments/:id` | customer | Get own payment detail |
+| `GET` | `/api/v1/payments/:id` | customer\|admin | Customer can view own payment; admin can view any |
 
 ### 11. Services
 
@@ -198,21 +206,22 @@ Mounted at `/api/v1/vehicle-models`.
 | `GET` | `/api/v1/vehicle-models` | public | Active vehicle models only |
 | `GET` | `/api/v1/vehicle-models/:id` | public | Active vehicle model detail |
 
-### 14. FAQs
+### 14. Vehicles
+
+Mounted at `/api/v1/vehicles`.
+
+| Method | Path | Auth | Notes |
+|---|---|---|---|
+| `GET` | `/api/v1/vehicles/me` | driver | Get own vehicle details |
+
+### 15. FAQs
 
 Mounted at `/api/v1/faqs`.
 
 | Method | Path | Auth | Notes |
 |---|---|---|---|
 | `GET` | `/api/v1/faqs` | public | Active FAQs |
-
-### 15. SOS
-
-Mounted at `/api/v1/sos`.
-
-| Method | Path | Auth | Notes |
-|---|---|---|---|
-| `POST` | `/api/v1/sos` | auth | Submit SOS alert |
+| `GET` | `/api/v1/faqs/:id` | public | Active FAQ detail |
 
 ### 16. Settings
 
@@ -222,26 +231,23 @@ Mounted at `/api/v1/settings`.
 |---|---|---|---|
 | `GET` | `/api/v1/settings` | public | Public settings map |
 
-### 17. Current Public-Path Caveats
+## Admin-Only Endpoints Mounted Outside `/api/v1/admin`
 
-These endpoints are currently mounted on public paths and do not enforce admin auth in their route files.
+These routes are on public-looking paths but still require admin auth:
 
-| Method | Path | Auth | Notes |
-|---|---|---|---|
-| `GET` | `/api/v1/dashboard/ride-requests` | public | Dashboard ride request list |
-| `GET` | `/api/v1/dashboard/ride-requests/riderequest-list` | public | Legacy alias |
-| `GET` | `/api/v1/dashboard/rides/upcoming` | public | Upcoming rides list |
-| `GET` | `/api/v1/vehicles` | public | Vehicle list |
-| `POST` | `/api/v1/vehicles` | public | Vehicle create route is publicly mounted today |
-| `GET` | `/api/v1/vehicles/:id` | public | Vehicle detail |
-| `PUT` | `/api/v1/vehicles/:id` | public | Vehicle update |
-| `DELETE` | `/api/v1/vehicles/:id` | public | Vehicle delete |
+| Method | Path | Notes |
+|---|---|---|
+| `POST` | `/api/v1/notifications/send-to-user` | Manual push notification to a user |
+| `POST` | `/api/v1/notifications/send-to-driver` | Manual push notification to a driver |
+| `POST` | `/api/v1/notifications/send-to-audience` | Manual push notification to drivers, riders, or all |
 
-Not included above:
-- `GET /api/v1/dashboard/statistics` is not public; it requires admin auth.
-- `/api/v1/admin/*` routes are intentionally excluded from this document.
+## Not Mounted Right Now
+
+- No `/api/v1/dashboard/*` routes are mounted
+- No `/api/v1/sos` routes are mounted
+- No user payment-method endpoints are mounted
 
 ---
 
-**Last Updated:** 2026-03-25
+**Last Updated:** 2026-04-08
 **Source of Truth Used:** `src/app.js` and the currently mounted non-admin route files under `src/modules/`
