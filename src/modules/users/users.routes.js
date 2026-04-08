@@ -28,6 +28,24 @@ router.put('/me', ...userOnly, [
   body('notificationsEnabled').optional().isBoolean(),
 ], validate, usersController.updateProfile);
 
+router.put('/me/email', ...userOnly, [
+  body('new_email').isEmail().withMessage('new_email must be a valid email').normalizeEmail(),
+  body('current_password').notEmpty().withMessage('current_password is required'),
+], validate, usersController.requestEmailChange);
+
+router.put('/me/password', ...userOnly, [
+  body('current_password').notEmpty().withMessage('current_password is required'),
+  body('new_password').isLength({ min: 8 }).withMessage('new_password must be at least 8 characters'),
+  body('confirm_password').custom((val, { req }) => {
+    if (val !== req.body.new_password) throw new Error('Passwords do not match');
+    return true;
+  }),
+], validate, usersController.changePassword);
+
+router.get('/email-change/verify', [
+  query('token').notEmpty().withMessage('token is required'),
+], validate, usersController.verifyEmailChange);
+
 router.patch('/me/avatar', ...userOnly, upload.single('avatar'), usersController.updateAvatar);
 
 router.get('/me/wallet', ...userOnly, usersController.getWallet);

@@ -233,7 +233,7 @@ const sendOtp = async (phone) => {
 
   await repo.createOtp({ phone, code, expiresAt });
 
-  // TODO: integrate SMS provider (Twilio, Vonage, etc.) here
+  // TODO: integrate SMS provider (Firebase : you will find the credentials in the env file.)
 
   return { message: 'OTP generated successfully. Delivery is handled out-of-band.' };
 };
@@ -256,13 +256,14 @@ const verifyOtp = async (phone, code) => {
 const forgotPassword = async (email) => {
   const user = await repo.findUserByEmail(email);
   // Always return same message to prevent email enumeration
+  console.log("checkpoint#1");
   if (!user) return { message: 'If this email is registered, an OTP has been sent.' };
-
+  console.log("checkpoint#2");
   const code = Math.floor(100000 + Math.random() * 900000).toString();
   const expiresAt = new Date(Date.now() + RESET_OTP_EXPIRY_MINUTES * 60 * 1000);
 
   await repo.createPasswordResetToken({ email, code, expiresAt });
-
+  console.log("Email will be sent.")
   await mailer.sendMail({
     to: email,
     subject: 'Your Tovo Password Reset OTP',
@@ -276,8 +277,8 @@ const forgotPassword = async (email) => {
       </div>
     `,
   });
-
-  return { message: 'If this email is registered, an OTP has been sent.' };
+  console.log("Email should be sent.")
+  // return { message: 'If this email is registered, an OTP has been sent.' };
 };
 
 const resetPassword = async (email, otp, newPassword) => {

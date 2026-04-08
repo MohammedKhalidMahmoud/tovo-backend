@@ -32,6 +32,21 @@ UserUpdate:
     language: { type: string, enum: [en, ar] }
     notificationsEnabled: { type: boolean }
 
+ChangeEmailRequest:
+  type: object
+  required: [new_email, current_password]
+  properties:
+    new_email: { type: string, format: email }
+    current_password: { type: string }
+
+ChangePasswordRequest:
+  type: object
+  required: [current_password, new_password, confirm_password]
+  properties:
+    current_password: { type: string }
+    new_password: { type: string, minLength: 8 }
+    confirm_password: { type: string }
+
 SavedAddress:
   type: object
   properties:

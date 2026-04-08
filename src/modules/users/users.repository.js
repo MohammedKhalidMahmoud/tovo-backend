@@ -19,6 +19,12 @@ const createUser = (data) =>
 const updateUser = (id, data) =>
   prisma.user.update({ where: { id }, data });
 
+const updateEmail = (id, email) =>
+  prisma.user.update({ where: { id }, data: { email } });
+
+const updatePassword = (id, passwordHash) =>
+  prisma.user.update({ where: { id }, data: { passwordHash } });
+
 const deleteUser = (id) =>
   prisma.user.delete({ where: { id } });
 
@@ -83,6 +89,8 @@ module.exports = {
   findByPhone,
   createUser,
   updateUser,
+  updateEmail,
+  updatePassword,
   deleteUser,
   countUsers,
   findManyUsers,

@@ -45,6 +45,60 @@
       '400': { description: Validation error }
       '401': { description: Unauthorized }
 
+/users/me/email:
+  put:
+    tags: [Users]
+    summary: Request current user email change
+    description: Verifies the current password, ensures the new email is available, and sends a verification link to the new address. The current email remains active until the link is used.
+    security: [{ BearerAuth: [] }]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ChangeEmailRequest'
+    responses:
+      '200': { description: Verification email sent }
+      '400': { description: Validation error or invalid email change request }
+      '401': { description: Unauthorized or current password is incorrect }
+      '403': { description: Forbidden }
+      '404': { description: User not found }
+      '409': { description: Email already exists }
+
+/users/me/password:
+  put:
+    tags: [Users]
+    summary: Change current user password
+    security: [{ BearerAuth: [] }]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ChangePasswordRequest'
+    responses:
+      '200': { description: Password changed }
+      '400': { description: Validation error or password change not available }
+      '401': { description: Unauthorized or current password is incorrect }
+      '403': { description: Forbidden }
+      '404': { description: User not found }
+
+/users/email-change/verify:
+  get:
+    tags: [Users]
+    summary: Verify pending email change
+    description: Applies the new email address after the verification link sent to the pending address is opened.
+    parameters:
+      - name: token
+        in: query
+        required: true
+        schema: { type: string }
+    responses:
+      '200': { description: Email updated }
+      '400': { description: Invalid or expired verification link }
+      '404': { description: User not found }
+      '409': { description: Email already exists }
+
 /users/me/avatar:
   patch:
     tags: [Users]

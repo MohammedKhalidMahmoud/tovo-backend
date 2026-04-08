@@ -22,6 +22,43 @@ const updateProfile = async (req, res, next) => {
   }
 };
 
+const requestEmailChange = async (req, res, next) => {
+  try {
+    const data = await service.requestEmailChange(req.actor.id, {
+      newEmail: req.body.new_email,
+      currentPassword: req.body.current_password,
+      baseUrl: process.env.APP_BASE_URL || `${req.protocol}://${req.get('host')}`,
+    });
+    return success(res, data, 'Verification email sent to the new address');
+  } catch (err) {
+    if (err.status) return error(res, err.message, err.status);
+    next(err);
+  }
+};
+
+const changePassword = async (req, res, next) => {
+  try {
+    await service.changePassword(req.actor.id, {
+      currentPassword: req.body.current_password,
+      newPassword: req.body.new_password,
+    });
+    return success(res, null, 'Password changed successfully');
+  } catch (err) {
+    if (err.status) return error(res, err.message, err.status);
+    next(err);
+  }
+};
+
+const verifyEmailChange = async (req, res, next) => {
+  try {
+    const data = await service.verifyEmailChange(req.query.token);
+    return success(res, data, 'Email updated successfully');
+  } catch (err) {
+    if (err.status) return error(res, err.message, err.status);
+    next(err);
+  }
+};
+
 const updateAvatar = async (req, res, next) => {
   try {
     if (!req.file) return error(res, 'No file uploaded', 400);
@@ -210,6 +247,9 @@ const deleteUser = async (req, res, next) => {
 module.exports = {
   getProfile,
   updateProfile,
+  requestEmailChange,
+  changePassword,
+  verifyEmailChange,
   updateAvatar,
   getWallet,
   getSavedAddresses,
