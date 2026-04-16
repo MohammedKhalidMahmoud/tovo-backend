@@ -152,11 +152,16 @@ export function configureSwagger(app) {
     filterPaths(paths, (routePath) => isAdminPath(routePath))
   );
 
-  app.use("/api/docs", swaggerUi.serveFiles(swaggerSpec), swaggerUi.setup(swaggerSpec));
+  const swaggerOptions = {
+    docExpansion: "none",
+    apisCollapse: true,
+  };
+
+  app.use("/api/docs", swaggerUi.serveFiles(swaggerSpec), swaggerUi.setup(swaggerSpec, swaggerOptions));
   app.use(
     "/docs/public",
     swaggerUi.serveFiles(publicSwaggerSpec),
-    swaggerUi.setup(publicSwaggerSpec)
+    swaggerUi.setup(publicSwaggerSpec, swaggerOptions)
   );
 
   return { swaggerSpec, publicSwaggerSpec, adminSwaggerSpec };

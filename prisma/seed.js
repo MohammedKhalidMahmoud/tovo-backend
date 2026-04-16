@@ -578,56 +578,64 @@ async function main() {
   console.log('Seeded coupons');
 
   const tripCompletedAhmed = await prisma.trip.create({
-    data: {
-      userId: ahmed.id,
-      driverId: driver1.id,
-      serviceId: svcComfort.id,
-      status: 'completed',
-      pickupLat: 30.0444,
-      pickupLng: 31.2357,
-      pickupAddress: 'Tahrir Square, Downtown Cairo',
-      dropoffLat: 30.0626,
-      dropoffLng: 31.2497,
-      dropoffAddress: 'Ramses Square, Cairo',
-      paymentType: 'cash',
-      finalFare: 70.8,
-      originalFare: 70.8,
-      discountAmount: 0,
-      commission: 10.8,
-      driverEarnings: 60,
-      currency: 'EGP',
-      distanceKm: 4.2,
-      durationMinutes: 18,
-      startedAt: daysAgo(4),
-      endedAt: daysAgo(4 - 0.01),
-    },
-  });
+  data: {
+    userId: ahmed.id,
+    driverId: driver1.id,
+    serviceId: svcComfort.id,
+    status: 'completed',
+    pickupLat: 30.0444,
+    pickupLng: 31.2357,
+    pickupAddress: 'Tahrir Square, Downtown Cairo',
+    dropoffLat: 30.0626,
+    dropoffLng: 31.2497,
+    dropoffAddress: 'Ramses Square, Cairo',
+    paymentType: 'cash',
+    finalFare: 70.8,
+    originalFare: 70.8,
+    discountAmount: 0,
+    commission: 10.8,
+    driverEarnings: 60,
+    currency: 'EGP',
+    distanceKm: 4.2,
+    durationMinutes: 18,
+    startedAt: daysAgo(4),
+    endedAt: daysAgo(4 - 0.01),
+    // ── route fields ──
+    routeEncodedPolyline: 'mock_w`{Iw`{I??_seK??_seK',
+    routeDistanceMeters: 4200,
+    routeDurationSeconds: 1080,
+  },
+});
 
-  const tripCompletedCash = await prisma.trip.create({
-    data: {
-      userId: sara.id,
-      driverId: driver2.id,
-      serviceId: svcRegular.id,
-      status: 'completed',
-      pickupLat: 30.0626,
-      pickupLng: 31.2197,
-      pickupAddress: 'Zamalek, Cairo',
-      dropoffLat: 30.0131,
-      dropoffLng: 31.2089,
-      dropoffAddress: 'Maadi, Cairo',
-      paymentType: 'cash',
-      finalFare: 46,
-      originalFare: 46,
-      discountAmount: 0,
-      commission: 6,
-      driverEarnings: 40,
-      currency: 'EGP',
-      distanceKm: 7.8,
-      durationMinutes: 24,
-      startedAt: daysAgo(3),
-      endedAt: daysAgo(3 - 0.01),
-    },
-  });
+const tripCompletedCash = await prisma.trip.create({
+  data: {
+    userId: sara.id,
+    driverId: driver2.id,
+    serviceId: svcRegular.id,
+    status: 'completed',
+    pickupLat: 30.0626,
+    pickupLng: 31.2197,
+    pickupAddress: 'Zamalek, Cairo',
+    dropoffLat: 30.0131,
+    dropoffLng: 31.2089,
+    dropoffAddress: 'Maadi, Cairo',
+    paymentType: 'cash',
+    finalFare: 46,
+    originalFare: 46,
+    discountAmount: 0,
+    commission: 6,
+    driverEarnings: 40,
+    currency: 'EGP',
+    distanceKm: 7.8,
+    durationMinutes: 24,
+    startedAt: daysAgo(3),
+    endedAt: daysAgo(3 - 0.01),
+    // ── route fields ──
+    routeEncodedPolyline: 'mock_w`{Iw`{I??_seK??_seK',
+    routeDistanceMeters: 7800,
+    routeDurationSeconds: 1440,
+  },
+});
 
   const tripMatched = await prisma.trip.create({
     data: {
@@ -650,6 +658,10 @@ async function main() {
       currency: 'EGP',
       distanceKm: 5.1,
       durationMinutes: 22,
+      // ── route fields ──
+    routeEncodedPolyline: 'mock_w`{Iw`{I??_seK??_seK',
+    routeDistanceMeters: 7800,
+    routeDurationSeconds: 1440,
     },
   });
 
@@ -674,6 +686,10 @@ async function main() {
       currency: 'EGP',
       distanceKm: 20.1,
       durationMinutes: 35,
+      // ── route fields ──
+    routeEncodedPolyline: 'mock_w`{Iw`{I??_seK??_seK',
+    routeDistanceMeters: 7800,
+    routeDurationSeconds: 1440,
     },
   });
 
@@ -699,6 +715,10 @@ async function main() {
       distanceKm: 14.2,
       durationMinutes: 28,
       startedAt: daysAgo(0.1),
+      // ── route fields ──
+    routeEncodedPolyline: 'mock_w`{Iw`{I??_seK??_seK',
+    routeDistanceMeters: 7800,
+    routeDurationSeconds: 1440,
     },
   });
 
@@ -722,6 +742,10 @@ async function main() {
       currency: 'EGP',
       distanceKm: 12.6,
       durationMinutes: 31,
+      // ── route fields ──
+    routeEncodedPolyline: 'mock_w`{Iw`{I??_seK??_seK',
+    routeDistanceMeters: 7800,
+    routeDurationSeconds: 1440,
     },
   });
 
@@ -747,6 +771,10 @@ async function main() {
       durationMinutes: 20,
       cancelledAt: daysAgo(1),
       cancelledBy: sara.id,
+      // ── route fields ──
+    routeEncodedPolyline: 'mock_w`{Iw`{I??_seK??_seK',
+    routeDistanceMeters: 7800,
+    routeDurationSeconds: 1440,
     },
   });
   console.log('Seeded trips');

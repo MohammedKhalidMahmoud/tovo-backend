@@ -465,7 +465,7 @@ const getTripById = async (id, actorId) => {
 
 const getTripRouteById = async (id, actorId) => {
   const trip = await getTripById(id, actorId);
-
+  
   if (!trip.routeEncodedPolyline) {
     throw { status: 404, message: 'Route data is not available for this trip' };
   }

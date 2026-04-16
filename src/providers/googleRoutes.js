@@ -18,11 +18,24 @@ const getApiKey = () => {
       { statusCode: 500 }
     );
   }
-
   return apiKey;
 };
 
+// ─── MOCK ────────────────────────────────────────────────────────────────────
+const computeDrivingRouteMock = async ({ origin, destination, intermediates = [] }) => {
+  return {
+    encodedPolyline: 'mock_w`{Iw`{I??_seK??_seK',
+    distanceMeters: 12400,
+    duration: '1320s',
+  };
+};
+// ─────────────────────────────────────────────────────────────────────────────
+
 const computeDrivingRoute = async ({ origin, destination, intermediates = [] }) => {
+  if (process.env.USE_MOCK_ROUTES === 'true') {
+    return computeDrivingRouteMock({ origin, destination, intermediates });
+  }
+
   const response = await fetch(GOOGLE_ROUTES_ENDPOINT, {
     method: 'POST',
     headers: {
