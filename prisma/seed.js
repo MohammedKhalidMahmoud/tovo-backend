@@ -576,7 +576,38 @@ async function main() {
     ],
   });
   console.log('Seeded coupons');
-
+ const MOCK_ROUTES = {
+  tahrirToRamses: {
+    routeEncodedPolyline: 'wbxyCkvzECKAGAEAEBGBEDGFIFGHKJKJILKNMNKPMROTQXSZU`@WZSXQRONKLIJGHEJGHEHGJGJILKNMPOROTSVSXUZWZWd@[f@]h@_@',
+    routeDistanceMeters: 4200,
+    routeDurationSeconds: 1080,
+  },
+  zamalekToMaadi: {
+    routeEncodedPolyline: 'gkxyCobzEFUDQFSHWJYL]N_@Pa@Rc@Ta@V_@X]Z[\\Yd@a@f@a@h@_@j@]l@Yn@Wp@Sn@Or@Kp@Ip@Gt@Et@Ct@At@?t@?r@Br@Dr@Fr@Hr@Jr@Lr@Nr@Pp@Rp@Tn@Vl@Xl@Zj@\\h@^h@`@f@b@d@b@d@d@b@f@`@h@^j@\\l@Zn@Xp@Vr@Tt@Rv@Px@Nz@L|@J~@H',
+    routeDistanceMeters: 7800,
+    routeDurationSeconds: 1440,
+  },
+  abdeenToOldCairo: {
+    routeEncodedPolyline: 'obxyCanzEHVFRFPHRJTLVLTNVNTPVRXTZVZX\\Z^\\`@^b@`@d@b@f@b@h@`@j@^l@\\n@Zp@Xr@Vt@Tr@Rp@Pn@Nl@Lj@Jh@Hf@Fd@Db@B`@?^A\\C',
+    routeDistanceMeters: 5100,
+    routeDurationSeconds: 1320,
+  },
+  tahrirToAirport: {
+    routeEncodedPolyline: 'wbxyCkvzEEOCMCKEMGOGOIOKQKQMSMSOUOUQWQWSYS[U[W]W_@Y_@[a@[c@]c@_@e@_@g@a@g@c@i@c@k@e@k@e@m@g@o@g@q@i@q@i@s@k@s@k@u@m@u@m@w@o@w@o@y@q@y@q@{@s@{@s@}@u@}@u@@w@@w@Bw@Dw@Fw@Hw@Jw@Lw@Nw@Pw@Rw@Tw@Vw@Xw@Zw@',
+    routeDistanceMeters: 20100,
+    routeDurationSeconds: 2100,
+  },
+  gardenCityToNasrCity: {
+    routeEncodedPolyline: '}_xyCanzEKWIUGSEQCOAMAK?K?I@I@IBIBIBKDKFKHKHKJKJKLKLMLMLNLNLPLPLRLRLRLTLTLVLVLXLXLZL',
+    routeDistanceMeters: 14200,
+    routeDurationSeconds: 1680,
+  },
+  heliopollisToNewCairo: {
+    routeEncodedPolyline: '_}xyCk~zEOe@Mc@Ka@I_@G]E[CYAS?S?Q@QBQDQFQHQJQJSLSNSPSRSRURUTUVUXUXWZWZW\\W^W^Y`@Y`@Yb@Yb@[d@[f@[f@]h@]h@_@j@_@l@_@l@a@n@a@n@',
+    routeDistanceMeters: 12600,
+    routeDurationSeconds: 1860,
+  },
+};
   const tripCompletedAhmed = await prisma.trip.create({
   data: {
     userId: ahmed.id,

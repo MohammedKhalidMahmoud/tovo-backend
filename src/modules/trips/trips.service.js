@@ -122,6 +122,7 @@ const resolveRouteData = async ({
   const routeDurationSeconds = parseRouteDurationSeconds(routeResponse.duration);
 
   return {
+    // routeEncodedPolyline: routeResponse.encodedPolyline,
     routeEncodedPolyline: routeResponse.encodedPolyline,
     routeCoordinates,
     routeDistanceMeters,

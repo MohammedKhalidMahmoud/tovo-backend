@@ -53,6 +53,7 @@ const createTrip = async (req, res, next) => {
 };
 
 const getUserTrips = async (req, res, next) => {
+  console.log('Getting trips for user', req.actor.id);
   try {
     const { page = 1, per_page = 20 } = req.query;
     const result = await service.getUserTrips(req.actor.id, +page, +per_page);
