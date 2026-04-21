@@ -1,4 +1,5 @@
 const service = require('./services.service');
+const vehicleModelService = require('../vehicle-models/vehicleModels.service');
 const { success, error } = require('../../utils/response');
 const { deleteLocalFile } = require('../../utils/uploads');
 
@@ -90,6 +91,36 @@ exports.updateServiceImage = async (req, res, next) => {
     const oldUrl = await service.updateServiceImage(req.params.id, imageUrl);
     deleteLocalFile(oldUrl);
     return success(res, { imageUrl }, 'Service image updated');
+  } catch (err) {
+    if (err.statusCode) return error(res, err.message, err.statusCode);
+    next(err);
+  }
+};
+
+exports.getServiceVehicleModels = async (req, res, next) => {
+  try {
+    const models = await service.getServiceVehicleModels(req.params.id);
+    return success(res, models, 'Vehicle models retrieved successfully');
+  } catch (err) {
+    if (err.statusCode) return error(res, err.message, err.statusCode);
+    next(err);
+  }
+};
+
+exports.addServiceVehicleModel = async (req, res, next) => {
+  try {
+    await service.addServiceVehicleModel(req.params.id, req.body.vehicleModelId);
+    return success(res, null, 'Vehicle model linked successfully');
+  } catch (err) {
+    if (err.statusCode) return error(res, err.message, err.statusCode);
+    next(err);
+  }
+};
+
+exports.removeServiceVehicleModel = async (req, res, next) => {
+  try {
+    await service.removeServiceVehicleModel(req.params.id, req.params.vehicleModelId);
+    return success(res, null, 'Vehicle model unlinked successfully');
   } catch (err) {
     if (err.statusCode) return error(res, err.message, err.statusCode);
     next(err);

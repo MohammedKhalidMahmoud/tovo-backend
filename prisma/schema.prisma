@@ -119,10 +119,23 @@ model VehicleModel {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  service  Service?  @relation(fields: [serviceId], references: [id])
-  vehicles Vehicle[]
+  service             Service?               @relation(fields: [serviceId], references: [id])
+  vehicles            Vehicle[]
+  supportedInServices ServiceVehicleModel[]
 
   @@map("vehicle_models")
+}
+
+model ServiceVehicleModel {
+  serviceId      String
+  vehicleModelId String
+  createdAt      DateTime @default(now())
+
+  service      Service      @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  vehicleModel VehicleModel @relation(fields: [vehicleModelId], references: [id], onDelete: Cascade)
+
+  @@id([serviceId, vehicleModelId])
+  @@map("service_vehicle_models")
 }
 
 model Vehicle {
@@ -550,10 +563,11 @@ model Service {
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 
-  trips           Trip[]
-  vehicleModels   VehicleModel[]
-  driverProfiles  DriverProfile[]
-  commissionLogs  CommissionLog[]
+  trips                 Trip[]
+  vehicleModels         VehicleModel[]
+  driverProfiles        DriverProfile[]
+  commissionLogs        CommissionLog[]
+  supportedVehicleModels ServiceVehicleModel[]
 
   @@map("services")
 }

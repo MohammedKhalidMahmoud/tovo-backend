@@ -72,4 +72,9 @@ router.patch(
 
 router.delete('/:id', ...adminOnly, [param('id').isUUID()], validate, ctrl.deleteService);
 
+// ── Vehicle Model Relations ───────────────────────────────────────────────
+router.get('/:id/vehicle-models', ...adminOnly, [param('id').isUUID()], validate, ctrl.getServiceVehicleModels);
+router.post('/:id/vehicle-models', ...adminOnly, [param('id').isUUID(), body('vehicleModelId').isUUID()], validate, ctrl.addServiceVehicleModel);
+router.delete('/:id/vehicle-models/:vehicleModelId', ...adminOnly, [param('id').isUUID(), param('vehicleModelId').isUUID()], validate, ctrl.removeServiceVehicleModel);
+
 module.exports = router;

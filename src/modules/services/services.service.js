@@ -85,3 +85,40 @@ exports.updateServiceImage = async (id, imageUrl) => {
   invalidateServicesCache();
   return oldImageUrl; // returned so the controller can delete the old file
 };
+
+exports.getServiceVehicleModels = async (serviceId) => {
+  const svc = await repo.findById(serviceId);
+  if (!svc) throw Object.assign(new Error('Service not found'), { statusCode: 404 });
+  return prisma.serviceVehicleModel.findMany({
+    where: { serviceId },
+    include: { vehicleModel: true },
+    orderBy: { vehicleModel: { name: 'asc' } },
+  });
+};
+
+exports.addServiceVehicleModel = async (serviceId, vehicleModelId) => {
+  const svc = await repo.findById(serviceId);
+  if (!svc) throw Object.assign(new Error('Service not found'), { statusCode: 404 });
+  const model = await prisma.vehicleModel.findUnique({ where: { id: vehicleModelId } });
+  if (!model) throw Object.assign(new Error('Vehicle model not found'), { statusCode: 404 });
+  try {
+    await prisma.serviceVehicleModel.create({
+      data: { serviceId, vehicleModelId },
+    });
+  } catch (err) {
+    if (err?.code === 'P2002') throw Object.assign(new Error('Vehicle model already linked to this service'), { statusCode: 400 });
+    throw err;
+  }
+};
+
+exports.removeServiceVehicleModel = async (serviceId, vehicleModelId) => {
+  const svc = await repo.findById(serviceId);
+  if (!svc) throw Object.assign(new Error('Service not found'), { statusCode: 404 });
+  const existing = await prisma.serviceVehicleModel.findUnique({
+    where: { serviceId_vehicleModelId: { serviceId, vehicleModelId } },
+  });
+  if (!existing) throw Object.assign(new Error('Vehicle model not linked to this service'), { statusCode: 404 });
+  await prisma.serviceVehicleModel.delete({
+    where: { serviceId_vehicleModelId: { serviceId, vehicleModelId } },
+  });
+};
