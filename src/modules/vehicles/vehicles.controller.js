@@ -1,5 +1,5 @@
 const service = require('./vehicles.service');
-const { success } = require('../../utils/response');
+const { success, error } = require('../../utils/response');
 
 exports.listVehicles = async (req, res, next) => {
   try {

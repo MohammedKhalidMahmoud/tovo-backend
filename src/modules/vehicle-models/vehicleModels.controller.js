@@ -1,5 +1,5 @@
 const service = require('./vehicleModels.service');
-const { success, created, error } = require('../../utils/response');
+const { success, error } = require('../../utils/response');
 
 const listModels = async (req, res, next) => {
   try {
@@ -67,4 +67,16 @@ const getActiveModel = async (req, res, next) => {
   }
 };
 
-module.exports = { listModels, getModel, createModel, updateModel, deleteModel, listActiveModels, getActiveModel };
+const getModelServices = async (req, res, next) => {
+  try {
+    const services = await service.getModelServices(req.params.id);
+    return success(res, services);
+  } catch (err) {
+    if (err.status) return error(res, err.message, err.status);
+    next(err);
+  }
+};
+
+const created = (res, data, message) => success(res, data, message, 201);
+
+module.exports = { listModels, getModel, createModel, updateModel, deleteModel, listActiveModels, getActiveModel, getModelServices };

@@ -10,5 +10,6 @@ const ctrl      = require('./vehicleModels.controller');
 
 router.get('/',    ctrl.listActiveModels);
 router.get('/:id', [param('id').isUUID()], validate, ctrl.getActiveModel);
+router.get('/:id/services', [param('id').isUUID()], validate, ctrl.getModelServices);
 
 module.exports = router;

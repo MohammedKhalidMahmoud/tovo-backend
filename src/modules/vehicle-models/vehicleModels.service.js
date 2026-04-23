@@ -42,4 +42,16 @@ const deleteModel = async (id) => {
   return repo.remove(id);
 };
 
-module.exports = { listModels, listActiveModels, getModel, getActiveModel, createModel, updateModel, deleteModel };
+const getModelServices = async (modelId) => {
+  const model = await repo.findById(modelId);
+  if (!model) throw { status: 404, message: 'Vehicle model not found' };
+
+  const prisma = require('../../config/prisma');
+  return prisma.serviceVehicleModel.findMany({
+    where: { vehicleModelId: modelId },
+    include: { service: true },
+    orderBy: { service: { name: 'asc' } },
+  });
+};
+
+module.exports = { listModels, listActiveModels, getModel, getActiveModel, createModel, updateModel, deleteModel, getModelServices };

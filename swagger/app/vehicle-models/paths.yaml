@@ -17,26 +17,61 @@
                       type: array
                       items: { $ref: '#/components/schemas/VehicleModel' }
 
-/vehicle-models/{id}:
-  get:
-    tags: [Vehicle Models]
-    summary: Get active vehicle model by ID
-    security: []
-    parameters:
-      - name: id
-        in: path
-        required: true
-        schema: { type: string, format: uuid }
-    responses:
-      '200':
-        description: Vehicle model details
-        content:
-          application/json:
-            schema:
-              allOf:
-                - $ref: '#/components/schemas/SuccessResponse'
-                - type: object
-                  properties:
-                    data: { $ref: '#/components/schemas/VehicleModel' }
-      '400': { description: Validation error }
-      '404': { description: Vehicle model not found }
+  /vehicle-models/{id}:
+    get:
+      tags: [Vehicle Models]
+      summary: Get active vehicle model by ID
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Vehicle model details
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data: { $ref: '#/components/schemas/VehicleModel' }
+        '400': { description: Validation error }
+        '404': { description: Vehicle model not found }
+
+  /vehicle-models/{id}/services:
+    get:
+      tags: [Vehicle Models]
+      summary: Get services supported by a vehicle model
+      description: |
+        Returns all services that a driver can register for based on their vehicle model.
+        Use this endpoint to show the driver which services they are eligible to join.
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Vehicle model UUID
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: List of supported services
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            serviceId: { type: string, format: uuid }
+                            vehicleModelId: { type: string, format: uuid }
+                            createdAt: { type: string, format: date-time }
+                            service: { $ref: '#/components/schemas/Service' }
+        '404': { description: Vehicle model not found }
