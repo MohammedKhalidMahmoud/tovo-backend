@@ -85,7 +85,17 @@ if (!RATE_LIMIT_DISABLED) {
 }
 
 // ── Swagger UI ────────────────────────────────────────────────────────────────
-const { adminSwaggerSpec } = configureSwagger(app);
+const { swaggerSpec, publicSwaggerSpec, adminSwaggerSpec } = configureSwagger(app);
+app.use(
+  '/docs',
+  swaggerUi.serveFiles(swaggerSpec),
+  swaggerUi.setup(swaggerSpec)
+);
+app.use(
+  '/docs/public',
+  swaggerUi.serveFiles(publicSwaggerSpec),
+  swaggerUi.setup(publicSwaggerSpec)
+);
 app.use(
   '/docs/admin',
   swaggerUi.serveFiles(adminSwaggerSpec),
@@ -160,7 +170,7 @@ prisma.driverProfile.updateMany({ where: { isOnline: true }, data: { isOnline: f
 
 server.listen(PORT, () => {
   logger.info(`🚀 Tovo API running on http://localhost:${PORT}`);
-  logger.info(`📖 Swagger docs at http://localhost:${PORT}/api/docs`);
+  logger.info(`📖 Swagger docs at http://localhost:${PORT}/docs`);
   logger.info(`Public Swagger docs at http://localhost:${PORT}/docs/public`);
   logger.info(`Admin Swagger docs at http://localhost:${PORT}/docs/admin`);
   logger.info(`🔌 Socket.io ready`);

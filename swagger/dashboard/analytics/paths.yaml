@@ -1,6 +1,6 @@
 /admin/reports/rides:
   get:
-    tags: [Admin Reports]
+    tags: [AdminTrips, Admin Reports]
     summary: Ride statistics
     security: [{ BearerAuth: [] }]
     parameters:

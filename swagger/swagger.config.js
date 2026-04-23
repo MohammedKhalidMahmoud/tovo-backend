@@ -99,7 +99,6 @@ export function configureSwagger(app) {
   // const authAdminPaths = YAML.load(path.resolve(__dirname, "./dashboard/auth/paths.yaml"));
   const usersAdminPaths = YAML.load(path.resolve(__dirname, "./dashboard/users/paths.yaml"));
   const driversAdminPaths = YAML.load(path.resolve(__dirname, "./dashboard/drivers/paths.yaml"));
-  const tripsAdminPaths = YAML.load(path.resolve(__dirname, "./dashboard/trips/paths.yaml"));
   const servicesAdminPaths = YAML.load(path.resolve(__dirname, "./dashboard/services/paths.yaml"));
   const regionsAdminPaths = YAML.load(path.resolve(__dirname, "./dashboard/regions/paths.yaml"));
   const tollGatesAdminPaths = YAML.load(path.resolve(__dirname, "./dashboard/toll-gates/paths.yaml"));
@@ -163,7 +162,6 @@ export function configureSwagger(app) {
     // ...authAdminPaths,
     ...usersAdminPaths,
     ...driversAdminPaths,
-    ...tripsAdminPaths,
     ...servicesAdminPaths,
     ...regionsAdminPaths,
     ...tollGatesAdminPaths,

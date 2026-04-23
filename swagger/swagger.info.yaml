@@ -69,20 +69,9 @@ tags:
   - name: FAQs
     description: Frequently asked questions
 
-  - name: Dashboard
-    description: Public and admin analytics/reporting endpoints
-
-  - name: Reports
-    description: Reporting and analytics endpoints
-
   - name: Settings
     description: System settings
 
-  - name: Commission Rules
-    description: Admin commission rule management
-
-  - name: Earnings
-    description: Platform commission earnings
 
   # - name: Auth
   #   description: Authentication endpoints
