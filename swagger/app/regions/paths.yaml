@@ -1,0 +1,40 @@
+/regions:
+  get:
+    tags: [Regions]
+    summary: List active regions
+    description: Returns all active service regions. No authentication required.
+    responses:
+      '200':
+        description: Active regions retrieved
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success: { type: boolean, example: true }
+                data:
+                  type: array
+                  items: { $ref: '#/components/schemas/Region' }
+
+/regions/{id}:
+  get:
+    tags: [Regions]
+    summary: Get an active region by ID
+    description: Returns the region only if it is active. Returns 404 for inactive or non-existent regions.
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    responses:
+      '200':
+        description: Region retrieved
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success: { type: boolean }
+                data:    { $ref: '#/components/schemas/Region' }
+      '404': { description: Region not found or inactive }
+

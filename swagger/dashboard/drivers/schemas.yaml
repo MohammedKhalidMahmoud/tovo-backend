@@ -1,0 +1,41 @@
+Driver:
+  type: object
+  properties:
+    id: { type: string, format: uuid }
+    name: { type: string }
+    email: { type: string, format: email }
+    phone: { type: string, nullable: true }
+    avatarUrl: { type: string, nullable: true }
+    language: { type: string, enum: [en, ar], nullable: true }
+    notificationsEnabled: { type: boolean, nullable: true }
+    isVerified: { type: boolean, nullable: true }
+    drivingLicense: { type: string, nullable: true }
+    licenseExpiryDate: { type: string, format: date-time, nullable: true }
+    serviceId: { type: string, format: uuid, nullable: true }
+    rating: { type: number, format: float, example: 4.8 }
+    totalTrips: { type: integer }
+    isOnline: { type: boolean }
+    vehicle:
+      $ref: '../vehicles/schemas.yaml#/Vehicle'
+    createdAt: { type: string, format: date-time, nullable: true }
+    updatedAt: { type: string, format: date-time, nullable: true }
+
+DriverCreate:
+  type: object
+  required: [name]
+  properties:
+    name: { type: string }
+    email: { type: string, format: email }
+    phone: { type: string }
+    drivingLicense: { type: string }
+    licenseExpiryDate: { type: string, format: date-time }
+
+DriverUpdate:
+  type: object
+  properties:
+    name: { type: string }
+    email: { type: string, format: email }
+    phone: { type: string }
+    drivingLicense: { type: string }
+    licenseExpiryDate: { type: string, format: date-time }
+    isVerified: { type: boolean }

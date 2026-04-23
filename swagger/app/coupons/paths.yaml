@@ -1,0 +1,65 @@
+/promotions:
+  get:
+    tags: [Coupons]
+    summary: List active promotions/coupons (public)
+    responses:
+      '200':
+        description: Promotions list
+        content:
+          application/json:
+            schema:
+              properties:
+                data:
+                  type: array
+                  items: { $ref: '#/components/schemas/Promotion' }
+
+/promotions/coupons/validate:
+  post:
+    tags: [Coupons]
+    summary: Validate a coupon code (public)
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            required: [code]
+            properties:
+              code: { type: string }
+    responses:
+      '200':
+        description: Coupon is valid
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Promotion'
+      '404': { description: Coupon not found }
+      '422': { description: Coupon is expired, inactive, or usage limit reached }
+
+/promotions/coupons/apply:
+  post:
+    tags: [Coupons]
+    summary: Apply a coupon to a searching trip
+    security: [{ BearerAuth: [] }]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            required: [trip_id, code]
+            properties:
+              trip_id: { type: string, format: uuid }
+              code: { type: string }
+    responses:
+      '200':
+        description: Coupon applied successfully
+        content:
+          application/json:
+            schema:
+              properties:
+                data: { $ref: '#/components/schemas/Trip' }
+      '401': { description: Unauthorized }
+      '403': { description: Trip does not belong to the authenticated rider }
+      '404': { description: Trip or coupon not found }
+      '422':
+        description: Coupon cannot be applied because the trip is not searching, a coupon is already attached, or coupon rules are not satisfied
+

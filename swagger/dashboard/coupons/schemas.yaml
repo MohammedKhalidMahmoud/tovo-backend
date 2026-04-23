@@ -1,0 +1,18 @@
+Promotion:
+  type: object
+  properties:
+    id:                    { type: string, format: uuid }
+    code:                  { type: string }
+    discount_type:
+      type: string
+      enum: [percentage, amount]
+    discount:              { type: number }
+    expiry_date:           { type: string, format: date-time, nullable: true }
+    usage_limit:           { type: integer, nullable: true }
+    usage_limit_per_rider: { type: integer, nullable: true }
+    min_amount:            { type: number, nullable: true }
+    max_discount:          { type: number, nullable: true }
+    coupon_type:           { type: string, example: 'all' }
+    status:                { type: integer, example: 1 }
+    used_count:            { type: integer }
+    createdAt:             { type: string, format: date-time }

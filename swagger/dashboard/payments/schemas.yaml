@@ -1,0 +1,40 @@
+Payment:
+  type: object
+  properties:
+    id: { type: string, format: uuid }
+    userId: { type: string, format: uuid }
+    driverId: { type: string, format: uuid, nullable: true }
+    serviceId: { type: string, format: uuid, nullable: true }
+    status: { type: string, example: completed }
+    paymentType: { type: string, enum: [cash], nullable: true }
+    finalFare: { type: number, nullable: true }
+    originalFare: { type: number, nullable: true }
+    discountAmount: { type: number }
+    commission: { type: number, nullable: true }
+    driverEarnings: { type: number, nullable: true }
+    currency: { type: string, example: EGP }
+    distanceKm: { type: number, nullable: true }
+    createdAt: { type: string, format: date-time }
+    endedAt: { type: string, format: date-time, nullable: true }
+    user:
+      nullable: true
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        email: { type: string, format: email }
+        phone: { type: string, nullable: true }
+    driver:
+      nullable: true
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        email: { type: string, format: email }
+        phone: { type: string, nullable: true }
+    service:
+      nullable: true
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }

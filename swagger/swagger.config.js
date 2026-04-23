@@ -52,49 +52,71 @@ export function configureSwagger(app) {
   }
 
   // ===== LOAD SCHEMAS =====
-  const authSchemas = YAML.load(path.resolve(__dirname, "./auth/schemas.yaml"));
-  const usersSchemas = YAML.load(path.resolve(__dirname, "./users/schemas.yaml"));
-  const driversSchemas = YAML.load(path.resolve(__dirname, "./drivers/schemas.yaml"));
-  const tripsSchemas = YAML.load(path.resolve(__dirname, "./trips/schemas.yaml"));
-  const servicesSchemas = YAML.load(path.resolve(__dirname, "./services/schemas.yaml"));
-  const regionsSchemas = YAML.load(path.resolve(__dirname, "./regions/schemas.yaml"));
-  const tollGatesSchemas = YAML.load(path.resolve(__dirname, "./toll-gates/schemas.yaml"));
-  const vehiclesSchemas = YAML.load(path.resolve(__dirname, "./vehicles/schemas.yaml"));
-  const vehicleModelsSchemas = YAML.load(path.resolve(__dirname, "./vehicle-models/schemas.yaml"));
-  const walletsSchemas = YAML.load(path.resolve(__dirname, "./wallets/schemas.yaml"));
-  const paymentsSchemas = YAML.load(path.resolve(__dirname, "./payments/schemas.yaml"));
-  const couponsSchemas = YAML.load(path.resolve(__dirname, "./coupons/schemas.yaml"));
-  const notificationsSchemas = YAML.load(path.resolve(__dirname, "./notifications/schemas.yaml"));
-  const supportSchemas = YAML.load(path.resolve(__dirname, "./support/schemas.yaml"));
-  const faqsSchemas = YAML.load(path.resolve(__dirname, "./faqs/schemas.yaml"));
-  const analyticsSchemas = YAML.load(path.resolve(__dirname, "./analytics/schemas.yaml"));
-  
-  const settingsSchemas = YAML.load(path.resolve(__dirname, "./settings/schemas.yaml"));
-  const commissionRulesSchemas = YAML.load(path.resolve(__dirname, "./commission-rules/schemas.yaml"));
-  const earningsSchemas        = YAML.load(path.resolve(__dirname, "./earnings/schemas.yaml"));
+  const authSchemas = YAML.load(path.resolve(__dirname, "./app/auth/schemas.yaml"));
+  const usersSchemas = YAML.load(path.resolve(__dirname, "./app/users/schemas.yaml"));
+  const driversSchemas = YAML.load(path.resolve(__dirname, "./app/drivers/schemas.yaml"));
+  const tripsSchemas = YAML.load(path.resolve(__dirname, "./app/trips/schemas.yaml"));
+  const servicesSchemas = YAML.load(path.resolve(__dirname, "./app/services/schemas.yaml"));
+  const regionsSchemas = YAML.load(path.resolve(__dirname, "./app/regions/schemas.yaml"));
+  // const tollGatesSchemas = YAML.load(path.resolve(__dirname, "./app/toll-gates/schemas.yaml"));
+  const vehiclesSchemas = YAML.load(path.resolve(__dirname, "./app/vehicles/schemas.yaml"));
+  const vehicleModelsSchemas = YAML.load(path.resolve(__dirname, "./app/vehicle-models/schemas.yaml"));
+  const walletsSchemas = YAML.load(path.resolve(__dirname, "./app/wallets/schemas.yaml"));
+  const paymentsSchemas = YAML.load(path.resolve(__dirname, "./app/payments/schemas.yaml"));
+  const couponsSchemas = YAML.load(path.resolve(__dirname, "./app/coupons/schemas.yaml"));
+  const notificationsSchemas = YAML.load(path.resolve(__dirname, "./app/notifications/schemas.yaml"));
+  const supportSchemas = YAML.load(path.resolve(__dirname, "./app/support/schemas.yaml"));
+  const faqsSchemas = YAML.load(path.resolve(__dirname, "./app/faqs/schemas.yaml"));
+  // const analyticsSchemas = YAML.load(path.resolve(__dirname, "./app/analytics/schemas.yaml"));
+
+  const settingsSchemas = YAML.load(path.resolve(__dirname, "./app/settings/schemas.yaml"));
+  // const commissionRulesSchemas = YAML.load(path.resolve(__dirname, "./app/commission-rules/schemas.yaml"));
+  // const earningsSchemas        = YAML.load(path.resolve(__dirname, "./app/earnings/schemas.yaml"));
 
   // ===== LOAD PATHS =====
-  const authPaths = YAML.load(path.resolve(__dirname, "./auth/paths.yaml"));
-  const usersPaths = YAML.load(path.resolve(__dirname, "./users/paths.yaml"));
-  const driversPaths = YAML.load(path.resolve(__dirname, "./drivers/paths.yaml"));
-  const tripsPaths = YAML.load(path.resolve(__dirname, "./trips/paths.yaml"));
-  const servicesPaths = YAML.load(path.resolve(__dirname, "./services/paths.yaml"));
-  const regionsPaths = YAML.load(path.resolve(__dirname, "./regions/paths.yaml"));
-  const tollGatesPaths = YAML.load(path.resolve(__dirname, "./toll-gates/paths.yaml"));
-  const vehiclesPaths = YAML.load(path.resolve(__dirname, "./vehicles/paths.yaml"));
-  const vehicleModelsPaths = YAML.load(path.resolve(__dirname, "./vehicle-models/paths.yaml"));
-  const walletsPaths = YAML.load(path.resolve(__dirname, "./wallets/paths.yaml"));
-  const paymentsPaths = YAML.load(path.resolve(__dirname, "./payments/paths.yaml"));
-  
-  const couponsPaths = YAML.load(path.resolve(__dirname, "./coupons/paths.yaml"));
-  const notificationsPaths = YAML.load(path.resolve(__dirname, "./notifications/paths.yaml"));
-  const supportPaths = YAML.load(path.resolve(__dirname, "./support/paths.yaml"));
-  const faqsPaths = YAML.load(path.resolve(__dirname, "./faqs/paths.yaml"));
-  const analyticsPaths = YAML.load(path.resolve(__dirname, "./analytics/paths.yaml"));
-  
-  const settingsPaths = YAML.load(path.resolve(__dirname, "./settings/paths.yaml"));
-  const commissionRulesPaths = YAML.load(path.resolve(__dirname, "./commission-rules/paths.yaml"));
-  const earningsPaths        = YAML.load(path.resolve(__dirname, "./earnings/paths.yaml"));
+  const authPaths = YAML.load(path.resolve(__dirname, "./app/auth/paths.yaml"));
+  const usersPaths = YAML.load(path.resolve(__dirname, "./app/users/paths.yaml"));
+  const driversPaths = YAML.load(path.resolve(__dirname, "./app/drivers/paths.yaml"));
+  const tripsPaths = YAML.load(path.resolve(__dirname, "./app/trips/paths.yaml"));
+  const servicesPaths = YAML.load(path.resolve(__dirname, "./app/services/paths.yaml"));
+  const regionsPaths = YAML.load(path.resolve(__dirname, "./app/regions/paths.yaml"));
+  // const tollGatesPaths = YAML.load(path.resolve(__dirname, "./app/toll-gates/paths.yaml"));
+  const vehiclesPaths = YAML.load(path.resolve(__dirname, "./app/vehicles/paths.yaml"));
+  const vehicleModelsPaths = YAML.load(path.resolve(__dirname, "./app/vehicle-models/paths.yaml"));
+  const walletsPaths = YAML.load(path.resolve(__dirname, "./app/wallets/paths.yaml"));
+  const paymentsPaths = YAML.load(path.resolve(__dirname, "./app/payments/paths.yaml"));
+
+  const couponsPaths = YAML.load(path.resolve(__dirname, "./app/coupons/paths.yaml"));
+  const notificationsPaths = YAML.load(path.resolve(__dirname, "./app/notifications/paths.yaml"));
+  const supportPaths = YAML.load(path.resolve(__dirname, "./app/support/paths.yaml"));
+  const faqsPaths = YAML.load(path.resolve(__dirname, "./app/faqs/paths.yaml"));
+  // const analyticsPaths = YAML.load(path.resolve(__dirname, "./app/analytics/paths.yaml"));
+
+  const settingsPaths = YAML.load(path.resolve(__dirname, "./app/settings/paths.yaml"));
+  // const commissionRulesPaths = YAML.load(path.resolve(__dirname, "./app/commission-rules/paths.yaml"));
+  // const earningsPaths        = YAML.load(path.resolve(__dirname, "./app/earnings/paths.yaml"));
+
+  // const authAdminPaths = YAML.load(path.resolve(__dirname, "./dashboard/auth/paths.yaml"));
+  const usersAdminPaths = YAML.load(path.resolve(__dirname, "./dashboard/users/paths.yaml"));
+  const driversAdminPaths = YAML.load(path.resolve(__dirname, "./dashboard/drivers/paths.yaml"));
+  const tripsAdminPaths = YAML.load(path.resolve(__dirname, "./dashboard/trips/paths.yaml"));
+  const servicesAdminPaths = YAML.load(path.resolve(__dirname, "./dashboard/services/paths.yaml"));
+  const regionsAdminPaths = YAML.load(path.resolve(__dirname, "./dashboard/regions/paths.yaml"));
+  const tollGatesAdminPaths = YAML.load(path.resolve(__dirname, "./dashboard/toll-gates/paths.yaml"));
+  const vehiclesAdminPaths = YAML.load(path.resolve(__dirname, "./dashboard/vehicles/paths.yaml"));
+  const vehicleModelsAdminPaths = YAML.load(path.resolve(__dirname, "./dashboard/vehicle-models/paths.yaml"));
+  const walletsAdminPaths = YAML.load(path.resolve(__dirname, "./dashboard/wallets/paths.yaml"));
+  const paymentsAdminPaths = YAML.load(path.resolve(__dirname, "./dashboard/payments/paths.yaml"));
+
+  const couponsAdminPaths = YAML.load(path.resolve(__dirname, "./dashboard/coupons/paths.yaml"));
+  const notificationsAdminPaths = YAML.load(path.resolve(__dirname, "./dashboard/notifications/paths.yaml"));
+  const supportAdminPaths = YAML.load(path.resolve(__dirname, "./dashboard/support/paths.yaml"));
+  const faqsAdminPaths = YAML.load(path.resolve(__dirname, "./dashboard/faqs/paths.yaml"));
+  const analyticsAdminPaths = YAML.load(path.resolve(__dirname, "./dashboard/analytics/paths.yaml"));
+
+  const settingsAdminPaths = YAML.load(path.resolve(__dirname, "./dashboard/settings/paths.yaml"));
+  const commissionRulesAdminPaths = YAML.load(path.resolve(__dirname, "./dashboard/commission-rules/paths.yaml"));
+  const earningsAdminPaths        = YAML.load(path.resolve(__dirname, "./dashboard/earnings/paths.yaml"));
 
   const schemas = {
     ...authSchemas,
@@ -103,7 +125,7 @@ export function configureSwagger(app) {
     ...tripsSchemas,
     ...servicesSchemas,
     ...regionsSchemas,
-    ...tollGatesSchemas,
+    // ...tollGatesSchemas,
     ...vehiclesSchemas,
     ...vehicleModelsSchemas,
     ...walletsSchemas,
@@ -112,10 +134,10 @@ export function configureSwagger(app) {
     ...notificationsSchemas,
     ...supportSchemas,
     ...faqsSchemas,
-    ...analyticsSchemas,
+    // ...analyticsSchemas,
     ...settingsSchemas,
-    ...commissionRulesSchemas,
-    ...earningsSchemas,
+    // ...commissionRulesSchemas,
+    // ...earningsSchemas,
   };
 
   const paths = {
@@ -125,7 +147,7 @@ export function configureSwagger(app) {
     ...tripsPaths,
     ...servicesPaths,
     ...regionsPaths,
-    ...tollGatesPaths,
+    // ...tollGatesPaths,
     ...vehiclesPaths,
     ...vehicleModelsPaths,
     ...walletsPaths,
@@ -134,17 +156,36 @@ export function configureSwagger(app) {
     ...notificationsPaths,
     ...supportPaths,
     ...faqsPaths,
-    ...analyticsPaths,
+    // ...analyticsPaths,
     ...settingsPaths,
-    ...commissionRulesPaths,
-    ...earningsPaths,
+    // ...commissionRulesPaths,
+    // ...earningsPaths,
+    // ...authAdminPaths,
+    ...usersAdminPaths,
+    ...driversAdminPaths,
+    ...tripsAdminPaths,
+    ...servicesAdminPaths,
+    ...regionsAdminPaths,
+    ...tollGatesAdminPaths,
+    ...vehiclesAdminPaths,
+    ...vehicleModelsAdminPaths,
+    ...walletsAdminPaths,
+    ...paymentsAdminPaths,
+    ...couponsAdminPaths,
+    ...notificationsAdminPaths,
+    ...supportAdminPaths,
+    ...faqsAdminPaths,
+    ...analyticsAdminPaths,
+    ...settingsAdminPaths,
+    ...commissionRulesAdminPaths,
+    ...earningsAdminPaths,
   };
 
   const swaggerSpec = buildSwaggerSpec(info, schemas, paths);
   const publicSwaggerSpec = buildSwaggerSpec(
     { ...info, info: { ...info.info, title: `${info.info.title} - Public` } },
     schemas,
-    filterPaths(paths, (routePath) => !isAdminPath(routePath))
+    paths
   );
   const adminSwaggerSpec = buildSwaggerSpec(
     { ...info, info: { ...info.info, title: `${info.info.title} - Admin` } },
@@ -162,6 +203,11 @@ export function configureSwagger(app) {
     "/docs/public",
     swaggerUi.serveFiles(publicSwaggerSpec),
     swaggerUi.setup(publicSwaggerSpec, swaggerOptions)
+  );
+  app.use(
+    "/docs/admin",
+    swaggerUi.serveFiles(adminSwaggerSpec),
+    swaggerUi.setup(adminSwaggerSpec, swaggerOptions)
   );
 
   return { swaggerSpec, publicSwaggerSpec, adminSwaggerSpec };

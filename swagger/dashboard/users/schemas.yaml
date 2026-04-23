@@ -1,0 +1,59 @@
+User:
+  type: object
+  properties:
+    id: { type: string, format: uuid }
+    name: { type: string }
+    email: { type: string, format: email }
+    phone: { type: string, nullable: true }
+    avatarUrl: { type: string, nullable: true }
+    role: { type: string, enum: [customer, driver, admin] }
+    isVerified: { type: boolean }
+    language: { type: string, enum: [en, ar] }
+    notificationsEnabled: { type: boolean }
+    createdAt: { type: string, format: date-time }
+    updatedAt: { type: string, format: date-time }
+
+UserCreate:
+  type: object
+  required: [name, email]
+  properties:
+    name: { type: string }
+    email: { type: string, format: email }
+    phone: { type: string }
+    password: { type: string, minLength: 8 }
+    language: { type: string, enum: [en, ar] }
+
+UserUpdate:
+  type: object
+  properties:
+    name: { type: string, minLength: 2, maxLength: 100 }
+    email: { type: string, format: email }
+    phone: { type: string }
+    language: { type: string, enum: [en, ar] }
+    notificationsEnabled: { type: boolean }
+
+ChangeEmailRequest:
+  type: object
+  required: [new_email, current_password]
+  properties:
+    new_email: { type: string, format: email }
+    current_password: { type: string }
+
+ChangePasswordRequest:
+  type: object
+  required: [current_password, new_password, confirm_password]
+  properties:
+    current_password: { type: string }
+    new_password: { type: string, minLength: 8 }
+    confirm_password: { type: string }
+
+SavedAddress:
+  type: object
+  properties:
+    id: { type: string, format: uuid }
+    label: { type: string }
+    address: { type: string }
+    lat: { type: number }
+    lng: { type: number }
+    createdAt: { type: string, format: date-time }
+    updatedAt: { type: string, format: date-time }

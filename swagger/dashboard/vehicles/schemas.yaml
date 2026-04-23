@@ -1,0 +1,24 @@
+Vehicle:
+  type: object
+  properties:
+    id:  { type: string, format: uuid }
+    vin: { type: string }
+    vehicleModel:
+      $ref: '../vehicle-models/schemas.yaml#/VehicleModel'
+
+VehicleDetail:
+  type: object
+  properties:
+    id:        { type: string, format: uuid }
+    vin:       { type: string, example: 1HGCM82633A123456 }
+    createdAt: { type: string, format: date-time }
+    updatedAt: { type: string, format: date-time }
+    vehicleModel:
+      $ref: '../vehicle-models/schemas.yaml#/VehicleModel'
+    driver:
+      type: object
+      properties:
+        id:    { type: string, format: uuid }
+        name:  { type: string }
+        email: { type: string, format: email }
+        phone: { type: string }

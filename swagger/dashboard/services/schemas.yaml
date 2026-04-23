@@ -1,0 +1,15 @@
+Service:
+  type: object
+  properties:
+    id: { type: string, format: uuid }
+    name: { type: string, example: Comfort }
+    baseFare: { type: number, example: 20.00 }
+    fixedSurcharge: { type: number, example: 0.00 }
+    perStopSurcharge: { type: number, example: 0.00 }
+    imageUrl: { type: string, nullable: true }
+    requiresSenderCode: { type: boolean, nullable: true }
+    requiresReceiverCode: { type: boolean, nullable: true }
+    maxWeightKg: { type: number, nullable: true }
+    isActive: { type: boolean, example: true }
+    createdAt: { type: string, format: date-time }
+    updatedAt: { type: string, format: date-time }

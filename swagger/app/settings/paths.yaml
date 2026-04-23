@@ -1,0 +1,17 @@
+/settings:
+  get:
+    tags: [Settings]
+    summary: Get all public settings
+    description: Public endpoint — returns all settings as a flat key-value map. No auth required.
+    responses:
+      '200':
+        description: Settings retrieved
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/SuccessResponse'
+                - type: object
+                  properties:
+                    data: { $ref: '#/components/schemas/PublicSettings' }
+

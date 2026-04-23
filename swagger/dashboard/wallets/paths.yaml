@@ -1,0 +1,133 @@
+
+/admin/wallets:
+  get:
+    tags: [Admin Wallets]
+    summary: List wallets (admin)
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: page
+        in: query
+        schema: { type: integer, default: 1 }
+      - name: limit
+        in: query
+        schema: { type: integer, default: 20 }
+      - name: ownerType
+        in: query
+        schema: { type: string, enum: [all, customer, driver], default: all }
+      - name: search
+        in: query
+        schema: { type: string }
+    responses:
+      '200':
+        description: Wallet list
+        headers:
+          X-Total-Count: { schema: { type: integer } }
+          X-Total-Pages: { schema: { type: integer } }
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/SuccessResponse'
+                - type: object
+                  properties:
+                    data:
+                      type: array
+                      items: { $ref: '#/components/schemas/Wallet' }
+      '401': { description: Unauthorized }
+      '403': { description: Forbidden }
+
+/admin/wallets/{id}:
+  get:
+    tags: [Admin Wallets]
+    summary: Get wallet by ID (admin)
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    responses:
+      '200':
+        description: Wallet details
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/SuccessResponse'
+                - type: object
+                  properties:
+                    data: { $ref: '#/components/schemas/Wallet' }
+      '401': { description: Unauthorized }
+      '403': { description: Forbidden }
+      '404': { description: Wallet not found }
+
+/admin/wallets/{id}/transactions:
+  get:
+    tags: [Admin Wallets]
+    summary: Get wallet transactions by wallet ID (admin)
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - name: page
+        in: query
+        schema: { type: integer, default: 1 }
+      - name: limit
+        in: query
+        schema: { type: integer, default: 20 }
+    responses:
+      '200':
+        description: Wallet transactions
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/SuccessResponse'
+                - type: object
+                  properties:
+                    data:
+                      type: array
+                      items: { $ref: '#/components/schemas/WalletTransaction' }
+      '401': { description: Unauthorized }
+      '403': { description: Forbidden }
+      '404': { description: Wallet not found }
+
+/admin/wallets/{id}/adjust:
+  post:
+    tags: [Admin Wallets]
+    summary: Adjust wallet balance (admin)
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [type, amount, reason]
+            properties:
+              type: { type: string, enum: [credit, debit] }
+              amount: { type: number, minimum: 0.01 }
+              reason: { type: string }
+    responses:
+      '200':
+        description: Wallet adjusted
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/SuccessResponse'
+                - type: object
+                  properties:
+                    data: { $ref: '#/components/schemas/Wallet' }
+      '400': { description: Invalid request }
+      '401': { description: Unauthorized }
+      '403': { description: Forbidden }
+      '404': { description: Wallet not found }
+      '422': { description: Insufficient balance for debit }

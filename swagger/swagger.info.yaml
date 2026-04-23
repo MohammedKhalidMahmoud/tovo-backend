@@ -57,7 +57,6 @@ tags:
   - name: Payments
     description: Payment processing endpoints
 
- 
   - name: Coupons
     description: Promotions & discount codes
 
@@ -84,3 +83,63 @@ tags:
 
   - name: Earnings
     description: Platform commission earnings
+
+  # - name: Auth
+  #   description: Authentication endpoints
+
+  - name: Admin Users
+    description: Admin user profile & management
+
+  - name: Admin Drivers
+    description: Admin driver profile & vehicle management
+
+  - name: AdminTrips
+    description: Admin Trip lifecycle management
+
+  - name: Admin Services
+    description: Admin Ride and delivery service types
+
+  - name: AdminRegions
+    description: Admin Service coverage zones
+
+  - name: Admin Vehicles
+    description: Admin Driver vehicle management
+
+  - name: AdminVehicle Models
+    description: Admin Vehicle model whitelist
+
+  - name: Admin Wallets
+    description: Admin User & driver wallet management
+
+  - name: Admin Payments
+    description: Admin Payment processing endpoints
+
+  - name: Admin Coupons
+    description: Admin Promotions & discount codes
+
+  - name: Admin Notifications
+    description: Admin Push notifications
+
+  - name: Admin Support
+    description: Admin Support tickets
+
+  - name: Admin FAQs
+    description: AdminFrequently asked questions
+
+  - name: Admin Dashboard
+    description: Admin Public and admin analytics/reporting endpoints
+
+  - name: Admin Toll Gates
+    description: Admin Toll gates management
+
+  - name: Admin Reports
+    description: Admin Reporting and analytics endpoints
+
+  - name: Admin Settings
+    description: Admin System settings
+
+  - name: Admin Commission Rules
+    description: Admin commission rule management
+
+  - name: Admin Earnings
+    description: Admin Platform commission earnings

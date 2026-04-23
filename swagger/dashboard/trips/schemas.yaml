@@ -1,0 +1,185 @@
+TripStop:
+  type: object
+  properties:
+    id: { type: string, format: uuid }
+    order: { type: integer }
+    lat: { type: number }
+    lng: { type: number }
+    address: { type: string }
+    arrivedAt: { type: string, format: date-time, nullable: true }
+
+TripTollGate:
+  type: object
+  properties:
+    tripId: { type: string, format: uuid }
+    tollGateId: { type: string, format: uuid }
+    fee:
+      type: number
+      description: Snapshotted toll fee at trip creation time
+    createdAt: { type: string, format: date-time }
+    tollGate:
+      type: object
+      nullable: true
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        lat: { type: number }
+        lng: { type: number }
+        isActive: { type: boolean }
+
+RouteCoordinate:
+  type: object
+  properties:
+    lat: { type: number }
+    lng: { type: number }
+
+Rating:
+  type: object
+  properties:
+    id: { type: string, format: uuid }
+    tripId: { type: string, format: uuid }
+    userId: { type: string, format: uuid }
+    driverId: { type: string, format: uuid }
+    stars: { type: integer, minimum: 1, maximum: 5 }
+    comment: { type: string, nullable: true }
+    createdAt: { type: string, format: date-time }
+
+Trip:
+  type: object
+  properties:
+    id: { type: string, format: uuid }
+    userId: { type: string, format: uuid }
+    driverId: { type: string, format: uuid, nullable: true }
+    serviceId: { type: string, format: uuid, nullable: true }
+    couponId: { type: string, format: uuid, nullable: true }
+    couponCode: { type: string, nullable: true }
+    status:
+      type: string
+      enum: [searching, matched, on_way, in_progress, completed, cancelled]
+    pickupLat: { type: number }
+    pickupLng: { type: number }
+    pickupAddress: { type: string }
+    dropoffLat: { type: number }
+    dropoffLng: { type: number }
+    dropoffAddress: { type: string }
+    paymentType: { type: string, enum: [cash], nullable: true }
+    finalFare: { type: number, nullable: true }
+    originalFare: { type: number, nullable: true }
+    discountAmount: { type: number }
+    commission: { type: number, nullable: true }
+    driverEarnings: { type: number, nullable: true }
+    currency: { type: string, example: EGP }
+    distanceKm: { type: number, nullable: true }
+    durationMinutes: { type: integer, nullable: true }
+    routeEncodedPolyline: { type: string, nullable: true }
+    routeDistanceMeters: { type: integer, nullable: true }
+    routeDurationSeconds: { type: integer, nullable: true }
+    shareToken: { type: string, nullable: true }
+    shareTokenExpiresAt: { type: string, format: date-time, nullable: true }
+    senderConfirmationCode: { type: string, nullable: true }
+    receiverConfirmationCode: { type: string, nullable: true }
+    startedAt: { type: string, format: date-time, nullable: true }
+    endedAt: { type: string, format: date-time, nullable: true }
+    cancelledAt: { type: string, format: date-time, nullable: true }
+    cancelledBy: { type: string, nullable: true }
+    createdAt: { type: string, format: date-time }
+    updatedAt: { type: string, format: date-time }
+    user:
+      type: object
+      nullable: true
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        avatarUrl: { type: string, nullable: true }
+    driver:
+      type: object
+      nullable: true
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        avatarUrl: { type: string, nullable: true }
+        rating: { type: number }
+        totalTrips: { type: integer }
+    service:
+      type: object
+      nullable: true
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        baseFare: { type: number }
+        fixedSurcharge: { type: number }
+        perStopSurcharge: { type: number }
+        requiresSenderCode: { type: boolean, nullable: true }
+        requiresReceiverCode: { type: boolean, nullable: true }
+        maxWeightKg: { type: number, nullable: true }
+    stops:
+      type: array
+      items: { $ref: '#/components/schemas/TripStop' }
+    tollGates:
+      type: array
+      items: { $ref: '#/components/schemas/TripTollGate' }
+    coupon:
+      type: object
+      nullable: true
+      properties:
+        id: { type: string, format: uuid }
+        code: { type: string }
+        discount_type: { type: string, enum: [percentage, amount] }
+        discount: { type: number }
+        max_discount: { type: number, nullable: true }
+    rating:
+      allOf:
+        - $ref: '#/components/schemas/Rating'
+      nullable: true
+
+TripRouteDetails:
+  type: object
+  properties:
+    id: { type: string, format: uuid }
+    status:
+      type: string
+      enum: [searching, matched, on_way, in_progress, completed, cancelled]
+    service:
+      type: object
+      nullable: true
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        baseFare: { type: number }
+        fixedSurcharge: { type: number }
+        perStopSurcharge: { type: number }
+        requiresSenderCode: { type: boolean, nullable: true }
+        requiresReceiverCode: { type: boolean, nullable: true }
+        maxWeightKg: { type: number, nullable: true }
+    pickup:
+      type: object
+      properties:
+        lat: { type: number }
+        lng: { type: number }
+        address: { type: string }
+    dropoff:
+      type: object
+      properties:
+        lat: { type: number }
+        lng: { type: number }
+        address: { type: string }
+    stops:
+      type: array
+      items: { $ref: '#/components/schemas/TripStop' }
+    tollFeesTotal: { type: number }
+    tollGates:
+      type: array
+      items: { $ref: '#/components/schemas/TripTollGate' }
+    finalFare: { type: number, nullable: true }
+    originalFare: { type: number, nullable: true }
+    distanceKm: { type: number, nullable: true }
+    durationMinutes: { type: integer, nullable: true }
+    route:
+      type: object
+      properties:
+        encodedPolyline: { type: string }
+        distanceMeters: { type: integer, nullable: true }
+        durationSeconds: { type: integer, nullable: true }
+        coordinates:
+          type: array
+          items: { $ref: '#/components/schemas/RouteCoordinate' }

@@ -1,0 +1,81 @@
+/admin/reports/rides:
+  get:
+    tags: [Admin Reports]
+    summary: Ride statistics
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: dateFrom
+        in: query
+        schema: { type: string, format: date-time }
+      - name: dateTo
+        in: query
+        schema: { type: string, format: date-time }
+      - name: driverId
+        in: query
+        schema: { type: string, format: uuid }
+      - name: userId
+        in: query
+        schema: { type: string, format: uuid }
+    responses:
+      '200':
+        description: Ride stats
+        content:
+          application/json:
+            schema:
+              properties:
+                totalRides: { type: integer }
+                completed:  { type: integer }
+                canceled:   { type: integer }
+                revenue:    { type: number }
+
+/admin/reports/drivers:
+  get:
+    tags: [Admin Reports]
+    summary: Driver performance
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: dateFrom
+        in: query
+        schema: { type: string, format: date-time }
+      - name: dateTo
+        in: query
+        schema: { type: string, format: date-time }
+    responses:
+      '200':
+        description: Driver performance
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                properties:
+                  driverId:       { type: string }
+                  ridesCompleted: { type: integer }
+                  averageRating:  { type: number }
+                  totalEarnings:  { type: number }
+
+/admin/reports/users:
+  get:
+    tags: [Admin Reports]
+    summary: User activity
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: dateFrom
+        in: query
+        schema: { type: string, format: date-time }
+      - name: dateTo
+        in: query
+        schema: { type: string, format: date-time }
+    responses:
+      '200':
+        description: User activity
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                properties:
+                  userId:        { type: string }
+                  ridesTaken:    { type: integer }
+                  totalSpent:    { type: number }
+                  averageRating: { type: number }

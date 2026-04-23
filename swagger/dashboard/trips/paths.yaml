@@ -1,0 +1,449 @@
+/trips/estimate:
+  get:
+    tags: [AdminTrips]
+    summary: Estimate trip fares
+    security: []
+    parameters:
+      - name: lat_pick
+        in: query
+        required: true
+        schema: { type: number, format: float }
+      - name: lng_pick
+        in: query
+        required: true
+        schema: { type: number, format: float }
+      - name: lat_drop
+        in: query
+        required: true
+        schema: { type: number, format: float }
+      - name: lng_drop
+        in: query
+        required: true
+        schema: { type: number, format: float }
+      - name: stops
+        in: query
+        required: false
+        description: JSON stringified array of stops, each with lat, lng, and address
+        schema: { type: string }
+    responses:
+      '200':
+        description: Fare estimates
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/SuccessResponse'
+                - type: object
+                  properties:
+                    data:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          serviceId: { type: string, format: uuid }
+                          serviceName: { type: string }
+                          distanceKm: { type: number }
+                          farePerKm: { type: number }
+                          fixedSurcharge: { type: number }
+                          perStopSurcharge: { type: number }
+                          stopsCount: { type: integer }
+                          stopsSurcharge: { type: number }
+                          tollFees: { type: number }
+                          tollGatesCount: { type: integer }
+                          originalFare: { type: number }
+                          finalFare: { type: number }
+                          discountAmount: { type: number }
+                          commission: { type: number }
+                          driverEarnings: { type: number }
+                          routeDistanceMeters: { type: integer, nullable: true }
+                          routeDurationSeconds: { type: integer, nullable: true }
+                          currency: { type: string, example: EGP }
+      '400': { description: Validation error }
+
+/trips/regions/active:
+  get:
+    tags: [AdminTrips]
+    summary: List active service regions
+    security: []
+    responses:
+      '200':
+        description: Active regions
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/SuccessResponse'
+                - type: object
+                  properties:
+                    data:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          id: { type: string, format: uuid }
+                          name: { type: string }
+                          city: { type: string, nullable: true }
+                          lat: { type: number, nullable: true }
+                          lng: { type: number, nullable: true }
+                          radius: { type: number, nullable: true }
+                          status: { type: boolean }
+
+/trips:
+  post:
+    tags: [AdminTrips]
+    summary: Create a trip request
+    security: [{ BearerAuth: [] }]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [pickup_lat, pickup_lng, pickup_address, dropoff_lat, dropoff_lng, dropoff_address, service_id]
+            properties:
+              pickup_lat: { type: number }
+              pickup_lng: { type: number }
+              pickup_address: { type: string }
+              dropoff_lat: { type: number }
+              dropoff_lng: { type: number }
+              dropoff_address: { type: string }
+              service_id: { type: string, format: uuid }
+              payment_type:
+                type: string
+                enum: [cash]
+                description: Optional; only `cash` is accepted
+              stops:
+                type: array
+                items:
+                  type: object
+                  required: [lat, lng, address]
+                  properties:
+                    lat: { type: number }
+                    lng: { type: number }
+                    address: { type: string }
+    responses:
+      '201':
+        description: Trip created
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/SuccessResponse'
+                - type: object
+                  properties:
+                    data: { $ref: '#/components/schemas/Trip' }
+      '400': { description: Validation error }
+      '401': { description: Unauthorized }
+      '422': { description: Invalid pickup region }
+
+  get:
+    tags: [AdminTrips]
+    summary: List customer trips
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: page
+        in: query
+        schema: { type: integer, default: 1 }
+      - name: per_page
+        in: query
+        schema: { type: integer, default: 20 }
+    responses:
+      '200': { description: Customer trips }
+      '401': { description: Unauthorized }
+
+/trips/nearby-drivers:
+  get:
+    tags: [AdminTrips]
+    summary: Get nearby online drivers
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: latitude
+        in: query
+        required: true
+        schema: { type: number }
+      - name: longitude
+        in: query
+        required: true
+        schema: { type: number }
+      - name: radius
+        in: query
+        schema: { type: number, default: 5 }
+      - name: serviceId
+        in: query
+        schema: { type: string, format: uuid }
+    responses:
+      '200': { description: Nearby drivers list }
+      '400': { description: Validation error }
+      '401': { description: Unauthorized }
+
+/trips/driver/requests:
+  get:
+    tags: [AdminTrips]
+    summary: List new requests for current driver
+    security: [{ BearerAuth: [] }]
+    responses:
+      '200': { description: Driver requests }
+      '401': { description: Unauthorized }
+      '403': { description: Forbidden }
+
+/trips/driver/trips:
+  get:
+    tags: [AdminTrips]
+    summary: List current driver trips
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: page
+        in: query
+        schema: { type: integer, default: 1 }
+      - name: per_page
+        in: query
+        schema: { type: integer, default: 20 }
+    responses:
+      '200': { description: Driver trips }
+      '401': { description: Unauthorized }
+      '403': { description: Forbidden }
+
+/trips/share/{token}:
+  get:
+    tags: [AdminTrips]
+    summary: Get public shared trip tracking payload
+    security: []
+    parameters:
+      - name: token
+        in: path
+        required: true
+        schema: { type: string, minLength: 48, maxLength: 48 }
+    responses:
+      '200':
+        description: Shared trip data
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/SuccessResponse'
+                - type: object
+                  properties:
+                    data:
+                      type: object
+                      properties:
+                        driverLocation:
+                          type: object
+                          nullable: true
+                          properties:
+                            latitude: { type: number }
+                            longitude: { type: number }
+                            heading: { type: number, nullable: true }
+                        pickupAddress: { type: string }
+                        dropoffAddress: { type: string }
+                        status: { type: string, enum: [matched, on_way, in_progress] }
+                        etaMinutes: { type: integer, nullable: true }
+      '404': { description: Shared trip not found }
+      '410': { description: Shared link expired or trip no longer shareable }
+
+/trips/drivers/{driverId}/ratings:
+  get:
+    tags: [AdminTrips]
+    summary: List ratings for a driver
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: driverId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - name: page
+        in: query
+        schema: { type: integer, default: 1 }
+      - name: per_page
+        in: query
+        schema: { type: integer, default: 20 }
+    responses:
+      '200':
+        description: Driver ratings
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/SuccessResponse'
+                - type: object
+                  properties:
+                    data:
+                      type: array
+                      items: { $ref: '#/components/schemas/Rating' }
+      '400': { description: Validation error }
+      '401': { description: Unauthorized }
+
+/trips/{id}:
+  get:
+    tags: [AdminTrips]
+    summary: Get trip details
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    responses:
+      '200':
+        description: Trip details
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/SuccessResponse'
+                - type: object
+                  properties:
+                    data: { $ref: '#/components/schemas/Trip' }
+      '400': { description: Validation error }
+      '401': { description: Unauthorized }
+      '403': { description: Forbidden }
+      '404': { description: Trip not found }
+
+/trips/{id}/route:
+  get:
+    tags: [AdminTrips]
+    summary: Get trip route details for map rendering
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    responses:
+      '200':
+        description: Trip route details
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/SuccessResponse'
+                - type: object
+                  properties:
+                    data: { $ref: '#/components/schemas/TripRouteDetails' }
+      '400': { description: Validation error }
+      '401': { description: Unauthorized }
+      '403': { description: Forbidden }
+      '404': { description: Trip not found or route data unavailable }
+
+/trips/{id}/cancel:
+  patch:
+    tags: [AdminTrips]
+    summary: Cancel trip (customer)
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    responses:
+      '200': { description: Trip cancelled }
+      '400': { description: Validation error }
+      '401': { description: Unauthorized }
+      '403': { description: Forbidden }
+      '404': { description: Trip not found }
+      '422': { description: Trip cannot be cancelled }
+
+/trips/{id}/stops:
+  post:
+    tags: [AdminTrips]
+    summary: Add stops to trip
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [stops]
+            properties:
+              stops:
+                type: array
+                minItems: 1
+                items:
+                  type: object
+                  required: [lat, lng, address]
+                  properties:
+                    lat: { type: number }
+                    lng: { type: number }
+                    address: { type: string }
+    responses:
+      '200': { description: Stops added }
+      '400': { description: Validation error }
+      '401': { description: Unauthorized }
+      '403': { description: Forbidden }
+      '404': { description: Trip not found }
+      '422': { description: Stops cannot be modified for this trip state }
+
+/trips/{id}/share-link:
+  post:
+    tags: [AdminTrips]
+    summary: Generate trip share link
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    responses:
+      '200':
+        description: Share link generated
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/SuccessResponse'
+                - type: object
+                  properties:
+                    data:
+                      type: object
+                      properties:
+                        shareToken: { type: string }
+                        shareTokenExpiresAt: { type: string, format: date-time }
+                        shareUrl: { type: string, format: uri }
+      '400': { description: Validation error }
+      '401': { description: Unauthorized }
+      '403': { description: Forbidden }
+      '404': { description: Trip not found }
+      '422': { description: Trip is not shareable }
+
+/trips/{id}/rating:
+  post:
+    tags: [AdminTrips]
+    summary: Rate completed trip
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [rating]
+            properties:
+              rating: { type: integer, minimum: 1, maximum: 5 }
+              comment: { type: string }
+    responses:
+      '201':
+        description: Rating created
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/SuccessResponse'
+                - type: object
+                  properties:
+                    data: { $ref: '#/components/schemas/Rating' }
+      '400': { description: Validation error }
+      '401': { description: Unauthorized }
+      '403': { description: Forbidden }
+      '404': { description: Trip not found }
+      '409': { description: Trip already rated }
+      '422': { description: Trip cannot be rated in current state }

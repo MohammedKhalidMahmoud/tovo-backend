@@ -1,0 +1,43 @@
+/faqs:
+  get:
+    tags: [FAQs]
+    summary: List active FAQs
+    security: []
+    responses:
+      '200':
+        description: Active FAQ list
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/SuccessResponse'
+                - type: object
+                  properties:
+                    data:
+                      type: array
+                      items: { $ref: '#/components/schemas/Faq' }
+
+/faqs/{id}:
+  get:
+    tags: [FAQs]
+    summary: Get an active FAQ by ID
+    security: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    responses:
+      '200':
+        description: FAQ retrieved
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/SuccessResponse'
+                - type: object
+                  properties:
+                    data: { $ref: '#/components/schemas/Faq' }
+      '400': { description: Validation error }
+      '404': { description: FAQ not found }
+

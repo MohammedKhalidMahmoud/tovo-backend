@@ -1,0 +1,238 @@
+
+/admin/users:
+  get:
+    tags: [Admin Users]
+    summary: List users (admin)
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: page
+        in: query
+        schema: { type: integer, minimum: 1, default: 1 }
+      - name: limit
+        in: query
+        schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+      - name: sortBy
+        in: query
+        schema: { type: string, enum: [createdAt, updatedAt, name, email] }
+      - name: sortOrder
+        in: query
+        schema: { type: string, enum: [asc, desc] }
+      - name: search
+        in: query
+        schema: { type: string }
+      - name: status
+        in: query
+        schema: { type: string, enum: [all, active, suspended, verified, unverified] }
+      - name: dateFrom
+        in: query
+        schema: { type: string, format: date-time }
+      - name: dateTo
+        in: query
+        schema: { type: string, format: date-time }
+    responses:
+      '200':
+        description: Users list
+        headers:
+          X-Total-Count: { schema: { type: integer } }
+          X-Total-Pages: { schema: { type: integer } }
+          X-Current-Page: { schema: { type: integer } }
+          X-Per-Page: { schema: { type: integer } }
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/SuccessResponse'
+                - type: object
+                  properties:
+                    data:
+                      type: array
+                      items: { $ref: '#/components/schemas/User' }
+      '400': { description: Validation error }
+      '401': { description: Unauthorized }
+      '403': { description: Forbidden }
+
+  post:
+    tags: [Admin Users]
+    summary: Create user (admin)
+    security: [{ BearerAuth: [] }]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/UserCreate'
+    responses:
+      '201':
+        description: User created
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/SuccessResponse'
+                - type: object
+                  properties:
+                    data: { $ref: '#/components/schemas/User' }
+      '400': { description: Validation error }
+      '401': { description: Unauthorized }
+      '403': { description: Forbidden }
+      '409': { description: Email or phone already exists }
+
+/admin/users/{userId}:
+  get:
+    tags: [Admin Users]
+    summary: Get user details (admin)
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: userId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    responses:
+      '200':
+        description: User details
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/SuccessResponse'
+                - type: object
+                  properties:
+                    data: { $ref: '#/components/schemas/User' }
+      '400': { description: Validation error }
+      '401': { description: Unauthorized }
+      '403': { description: Forbidden }
+      '404': { description: User not found }
+
+  put:
+    tags: [Admin Users]
+    summary: Update user (admin)
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: userId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/UserUpdate'
+    responses:
+      '200': { description: User updated }
+      '400': { description: Validation error }
+      '401': { description: Unauthorized }
+      '403': { description: Forbidden }
+      '404': { description: User not found }
+      '409': { description: Email or phone already exists }
+
+  delete:
+    tags: [Admin Users]
+    summary: Delete user (admin)
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: userId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - name: confirm
+        in: query
+        required: true
+        schema: { type: string, enum: ['true'] }
+    requestBody:
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              reason: { type: string, minLength: 5, maxLength: 500 }
+    responses:
+      '200': { description: User deleted }
+      '400': { description: Validation error }
+      '401': { description: Unauthorized }
+      '403': { description: Forbidden }
+      '404': { description: User not found }
+
+/admin/users/{userId}/suspend:
+  post:
+    tags: [Admin Users]
+    summary: Suspend or unsuspend user (admin)
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: userId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [action]
+            properties:
+              action: { type: string, enum: [suspend, unsuspend] }
+              reason: { type: string, minLength: 5, maxLength: 500 }
+              durationDays: { type: integer, minimum: 1, maximum: 365 }
+    responses:
+      '200': { description: Suspension status updated }
+      '400': { description: Validation error }
+      '401': { description: Unauthorized }
+      '403': { description: Forbidden }
+      '404': { description: User not found }
+
+/admin/users/{userId}/refund:
+  post:
+    tags: [Admin Users]
+    summary: Issue wallet refund to user (admin)
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: userId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [amount, currency, reason]
+            properties:
+              amount: { type: number, minimum: 0.01 }
+              currency: { type: string, minLength: 3, maxLength: 3 }
+              tripId: { type: string, format: uuid }
+              reason: { type: string, minLength: 5, maxLength: 200 }
+              notes: { type: string, maxLength: 500 }
+    responses:
+      '201': { description: Refund issued }
+      '400': { description: Validation error }
+      '401': { description: Unauthorized }
+      '403': { description: Forbidden }
+      '404': { description: User not found }
+
+/admin/users/{userId}/reset-password:
+  post:
+    tags: [Admin Users]
+    summary: Reset user password (admin)
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: userId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [newPassword]
+            properties:
+              newPassword: { type: string, minLength: 8 }
+    responses:
+      '200': { description: Password reset }
+      '400': { description: Validation error }
+      '401': { description: Unauthorized }
+      '403': { description: Forbidden }
+      '404': { description: User not found }

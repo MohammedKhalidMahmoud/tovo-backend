@@ -1,0 +1,102 @@
+
+/admin/settings/all:
+  get:
+    tags: [Admin Settings]
+    summary: List all settings (admin)
+    security: [{ BearerAuth: [] }]
+    responses:
+      '200':
+        description: Settings list
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/SuccessResponse'
+                - type: object
+                  properties:
+                    data:
+                      type: array
+                      items: { $ref: '#/components/schemas/SystemSetting' }
+
+/admin/settings:
+  post:
+    tags: [Admin Settings]
+    summary: Create a setting (admin)
+    security: [{ BearerAuth: [] }]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [key, value]
+            properties:
+              key:
+                type: string
+                pattern: '^[a-z0-9_.]+$'
+                example: trip.max_distance_km
+              value:
+                type: string
+                example: '50'
+    responses:
+      '201':
+        description: Setting created
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/SuccessResponse'
+                - type: object
+                  properties:
+                    data: { $ref: '#/components/schemas/SystemSetting' }
+      '409': { description: Key already exists }
+
+/admin/settings/{id}:
+  patch:
+    tags: [Admin Settings]
+    summary: Update a setting (admin)
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              key:
+                type: string
+                pattern: '^[a-z0-9_.]+$'
+                example: trip.max_distance_km
+              value:
+                type: string
+                example: '100'
+    responses:
+      '200':
+        description: Setting updated
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/SuccessResponse'
+                - type: object
+                  properties:
+                    data: { $ref: '#/components/schemas/SystemSetting' }
+      '404': { description: Setting not found }
+      '409': { description: Key already exists }
+  delete:
+    tags: [Admin Settings]
+    summary: Delete a setting (admin)
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    responses:
+      '200': { description: Setting deleted }
+      '404': { description: Setting not found }

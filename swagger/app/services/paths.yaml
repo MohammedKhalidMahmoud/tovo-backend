@@ -1,0 +1,43 @@
+/services:
+  get:
+    tags: [Services]
+    summary: List active services
+    security: []
+    responses:
+      '200':
+        description: Active services
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/SuccessResponse'
+                - type: object
+                  properties:
+                    data:
+                      type: array
+                      items: { $ref: '#/components/schemas/Service' }
+
+/services/{id}:
+  get:
+    tags: [Services]
+    summary: Get active service by ID
+    security: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    responses:
+      '200':
+        description: Service details
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/SuccessResponse'
+                - type: object
+                  properties:
+                    data: { $ref: '#/components/schemas/Service' }
+      '400': { description: Validation error }
+      '404': { description: Service not found }
+

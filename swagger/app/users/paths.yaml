@@ -1,0 +1,243 @@
+/users/me:
+  get:
+    tags: [Users]
+    summary: Get current user profile
+    security: [{ BearerAuth: [] }]
+    responses:
+      '200':
+        description: User profile
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/SuccessResponse'
+                - type: object
+                  properties:
+                    data: { $ref: '#/components/schemas/User' }
+      '401': { description: Unauthorized }
+
+  put:
+    tags: [Users]
+    summary: Update current user profile
+    security: [{ BearerAuth: [] }]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              name: { type: string }
+              phone: { type: string }
+              language: { type: string, enum: [en, ar] }
+              notificationsEnabled: { type: boolean }
+    responses:
+      '200':
+        description: Updated user profile
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/SuccessResponse'
+                - type: object
+                  properties:
+                    data: { $ref: '#/components/schemas/User' }
+      '400': { description: Validation error }
+      '401': { description: Unauthorized }
+
+/users/me/email:
+  put:
+    tags: [Users]
+    summary: Request current user email change
+    description: Verifies the current password, ensures the new email is available, and sends a verification link to the new address. The current email remains active until the link is used.
+    security: [{ BearerAuth: [] }]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ChangeEmailRequest'
+    responses:
+      '200': { description: Verification email sent }
+      '400': { description: Validation error or invalid email change request }
+      '401': { description: Unauthorized or current password is incorrect }
+      '403': { description: Forbidden }
+      '404': { description: User not found }
+      '409': { description: Email already exists }
+
+/users/me/password:
+  put:
+    tags: [Users]
+    summary: Change current user password
+    security: [{ BearerAuth: [] }]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ChangePasswordRequest'
+    responses:
+      '200': { description: Password changed }
+      '400': { description: Validation error or password change not available }
+      '401': { description: Unauthorized or current password is incorrect }
+      '403': { description: Forbidden }
+      '404': { description: User not found }
+
+/users/email-change/verify:
+  get:
+    tags: [Users]
+    summary: Verify pending email change
+    description: Applies the new email address after the verification link sent to the pending address is opened.
+    parameters:
+      - name: token
+        in: query
+        required: true
+        schema: { type: string }
+    responses:
+      '200': { description: Email updated }
+      '400': { description: Invalid or expired verification link }
+      '404': { description: User not found }
+      '409': { description: Email already exists }
+
+/users/me/avatar:
+  patch:
+    tags: [Users]
+    summary: Upload user avatar
+    security: [{ BearerAuth: [] }]
+    requestBody:
+      required: true
+      content:
+        multipart/form-data:
+          schema:
+            type: object
+            required: [avatar]
+            properties:
+              avatar: { type: string, format: binary }
+    responses:
+      '200':
+        description: Avatar updated
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/SuccessResponse'
+                - type: object
+                  properties:
+                    data:
+                      type: object
+                      properties:
+                        avatarUrl: { type: string }
+      '400': { description: No file uploaded }
+      '401': { description: Unauthorized }
+
+/users/me/wallet:
+  get:
+    tags: [Users]
+    summary: Get current user wallet
+    security: [{ BearerAuth: [] }]
+    responses:
+      '200':
+        description: Wallet data
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/SuccessResponse'
+                - type: object
+                  properties:
+                    data: { $ref: '#/components/schemas/Wallet' }
+      '401': { description: Unauthorized }
+      '404': { description: Wallet not found }
+
+/users/me/addresses:
+  get:
+    tags: [Users]
+    summary: List saved addresses
+    security: [{ BearerAuth: [] }]
+    responses:
+      '200':
+        description: Saved addresses
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/SuccessResponse'
+                - type: object
+                  properties:
+                    data:
+                      type: array
+                      items: { $ref: '#/components/schemas/SavedAddress' }
+      '401': { description: Unauthorized }
+
+  post:
+    tags: [Users]
+    summary: Add a saved address
+    security: [{ BearerAuth: [] }]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [label, address, lat, lng]
+            properties:
+              label: { type: string }
+              address: { type: string }
+              lat: { type: number }
+              lng: { type: number }
+    responses:
+      '201':
+        description: Address created
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/SuccessResponse'
+                - type: object
+                  properties:
+                    data: { $ref: '#/components/schemas/SavedAddress' }
+      '400': { description: Validation error }
+      '401': { description: Unauthorized }
+
+/users/me/addresses/{id}:
+  put:
+    tags: [Users]
+    summary: Update a saved address
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              label: { type: string }
+              address: { type: string }
+              lat: { type: number }
+              lng: { type: number }
+    responses:
+      '200': { description: Address updated }
+      '400': { description: Validation error }
+      '401': { description: Unauthorized }
+      '404': { description: Address not found }
+
+  delete:
+    tags: [Users]
+    summary: Delete a saved address
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    responses:
+      '200': { description: Address deleted }
+      '400': { description: Validation error }
+      '401': { description: Unauthorized }
+      '404': { description: Address not found }
+

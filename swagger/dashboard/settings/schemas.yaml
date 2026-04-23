@@ -1,0 +1,18 @@
+SystemSetting:
+  type: object
+  properties:
+    id:        { type: string, format: uuid }
+    key:       { type: string, example: trip.max_distance_km }
+    value:     { type: string, example: '50' }
+    createdAt: { type: string, format: date-time }
+    updatedAt: { type: string, format: date-time }
+
+PublicSettings:
+  type: object
+  description: Flat key-value map of all public settings
+  additionalProperties:
+    type: string
+  example:
+    trip.max_distance_km: '50'
+    ui.support_phone: '+201001234567'
+    payments.cash_enabled: 'true'

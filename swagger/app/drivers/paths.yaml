@@ -1,0 +1,645 @@
+# ════════════════════════════════════════════════════════════════════════════
+# DRIVERS MODULE — paths.yaml
+# Covers: /api/v1/drivers  (driver-facing) + /api/v1/admin/drivers  (admin)
+# ════════════════════════════════════════════════════════════════════════════
+
+# ── DRIVER-FACING ROUTES ────────────────────────────────────────────────────
+
+/drivers:
+  get:
+    tags: [Drivers]
+    summary: List drivers
+    description: Returns a paginated, filterable list of drivers.
+    security: []
+    parameters:
+      - name: page
+        in: query
+        schema: { type: integer, minimum: 1, default: 1 }
+      - name: limit
+        in: query
+        schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+      - name: sortBy
+        in: query
+        schema: { type: string, enum: [createdAt, rating, totalTrips, totalEarnings] }
+      - name: sortOrder
+        in: query
+        schema: { type: string, enum: [asc, desc] }
+      - name: search
+        in: query
+        schema: { type: string }
+      - name: status
+        in: query
+        schema: { type: string, enum: [all, active, suspended, pending, rejected] }
+      - name: isVerified
+        in: query
+        schema: { type: string, enum: [all, verified, unverified, pending] }
+      - name: onlineStatus
+        in: query
+        schema: { type: string, enum: [all, online, offline] }
+    responses:
+      '200': { description: Drivers list }
+      '400': { description: Validation error }
+
+/drivers/me:
+  get:
+    tags: [Drivers]
+    summary: Get driver profile
+    description: Returns the authenticated driver's full profile.
+    security: [{ BearerAuth: [] }]
+    responses:
+      '200':
+        description: Driver profile retrieved successfully
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/SuccessResponse'
+                - type: object
+                  properties:
+                    data: { $ref: '#/components/schemas/Driver' }
+      '401':
+        description: Unauthorized
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  put:
+    tags: [Drivers]
+    summary: Update driver profile
+    description: Updates one or more fields on the authenticated driver's profile.
+    security: [{ BearerAuth: [] }]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              name:
+                type: string
+                example: Khaled Hassan
+              phone:
+                type: string
+                example: '+201012345678'
+              language:
+                type: string
+                enum: [en, ar]
+                example: ar
+              notificationsEnabled:
+                type: boolean
+                example: true
+    responses:
+      '200':
+        description: Profile updated successfully
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/SuccessResponse'
+                - type: object
+                  properties:
+                    data: { $ref: '#/components/schemas/Driver' }
+      '400':
+        description: Validation error
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ErrorResponse' }
+      '401':
+        description: Unauthorized
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+/drivers/me/avatar:
+  patch:
+    tags: [Drivers]
+    summary: Upload profile avatar
+    description: Uploads a new profile photo for the authenticated driver. Accepts `multipart/form-data`.
+    security: [{ BearerAuth: [] }]
+    requestBody:
+      required: true
+      content:
+        multipart/form-data:
+          schema:
+            type: object
+            required: [avatar]
+            properties:
+              avatar:
+                type: string
+                format: binary
+                description: Image file (jpg, png, webp recommended)
+    responses:
+      '200':
+        description: Avatar updated successfully
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/SuccessResponse'
+                - type: object
+                  properties:
+                    data:
+                      type: object
+                      properties:
+                        avatarUrl: { type: string, example: 'https://cdn.tovo.app/avatars/driver-abc.jpg' }
+      '400':
+        description: No file uploaded or invalid format
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ErrorResponse' }
+      '401':
+        description: Unauthorized
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+# ── Duty ─────────────────────────────────────────────────────────────────────
+
+/drivers/me/duty/start:
+  post:
+    tags: [Drivers]
+    summary: Go on duty
+    description: |
+      Marks the driver as online and visible to the dispatch system.
+
+      After calling this endpoint the driver **must** start emitting
+      `driver.location_update` events over the WebSocket connection so their
+      GPS position is kept up to date. Trip requests are only broadcast to
+      drivers whose stored location falls within **10 km** of the pickup point.
+    security: [{ BearerAuth: [] }]
+    responses:
+      '200':
+        description: Driver is now on duty
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/SuccessResponse'
+                - type: object
+                  properties:
+                    data:
+                      type: object
+                      properties:
+                        onlineStatus: { type: string, example: online }
+      '401':
+        description: Unauthorized
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ErrorResponse' }
+      '409':
+        description: Driver is already on duty
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+/drivers/me/duty/end:
+  post:
+    tags: [Drivers]
+    summary: Go off duty
+    description: |
+      Marks the driver as offline and clears their stored GPS coordinates.
+      They will not appear in any subsequent nearby-driver queries until
+      they call `/duty/start` again.
+    security: [{ BearerAuth: [] }]
+    responses:
+      '200':
+        description: Driver is now off duty
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/SuccessResponse'
+                - type: object
+                  properties:
+                    data:
+                      type: object
+                      properties:
+                        onlineStatus: { type: string, example: offline }
+      '401':
+        description: Unauthorized
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ErrorResponse' }
+      '409':
+        description: Driver is already off duty
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+# ── Wallet ────────────────────────────────────────────────────────────────────
+
+/drivers/me/wallet:
+  get:
+    tags: [Drivers]
+    summary: Get driver wallet & earnings
+    description: Returns the authenticated driver's wallet balance, currency, and earnings summary.
+    security: [{ BearerAuth: [] }]
+    responses:
+      '200':
+        description: Wallet data retrieved successfully
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/SuccessResponse'
+                - type: object
+                  properties:
+                    data: { $ref: '#/components/schemas/Wallet' }
+      '401':
+        description: Unauthorized
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+# ── Insurance ─────────────────────────────────────────────────────────────────
+
+/drivers/me/insurance:
+  get:
+    tags: [Drivers]
+    summary: Get insurance cards
+    description: Returns all active insurance card records associated with the authenticated driver.
+    security: [{ BearerAuth: [] }]
+    responses:
+      '200':
+        description: Insurance cards retrieved successfully
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/SuccessResponse'
+                - type: object
+                  properties:
+                    data:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          id:          { type: string, format: uuid }
+                          provider:    { type: string, example: 'Misr Insurance' }
+                          policyNumber:{ type: string, example: 'POL-20240001' }
+                          expiryDate:  { type: string, format: date, example: '2025-12-31' }
+                          status:      { type: string, enum: [active, expired], example: active }
+      '401':
+        description: Unauthorized
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+# ── Trip Management (Driver side) ────────────────────────────────────────────
+
+/drivers/me/trips:
+  get:
+    tags: [Drivers]
+    summary: List driver trips
+    description: Returns the authenticated driver's trip history and any pending incoming requests.
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: page
+        in: query
+        schema: { type: integer, minimum: 1, default: 1, example: 1 }
+        description: Page number
+      - name: per_page
+        in: query
+        schema: { type: integer, minimum: 1, maximum: 100, default: 20, example: 20 }
+        description: Results per page
+    responses:
+      '200':
+        description: Driver trips retrieved successfully
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/SuccessResponse'
+                - type: object
+                  properties:
+                    data:
+                      type: array
+                      items: { $ref: '#/components/schemas/Trip' }
+                    pagination: { $ref: '#/components/schemas/Pagination' }
+      '401':
+        description: Unauthorized
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+/drivers/me/trips/{id}/accept:
+  patch:
+    tags: [Drivers]
+    summary: Accept a trip request
+    description: |
+      Driver accepts an incoming trip request. The trip status transitions to `accepted`.
+      Returns `422` if the trip was already taken by another driver or cancelled by the user.
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: UUID of the trip
+        schema: { type: string, format: uuid, example: 'b2c3d4e5-f6a7-8901-bcde-f12345678901' }
+    responses:
+      '200':
+        description: Trip accepted successfully
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/SuccessResponse'
+                - type: object
+                  properties:
+                    data: { $ref: '#/components/schemas/Trip' }
+      '400':
+        description: Validation error (id must be a valid UUID)
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ErrorResponse' }
+      '401':
+        description: Unauthorized
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ErrorResponse' }
+      '404':
+        description: Trip not found
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ErrorResponse' }
+      '422':
+        description: Trip no longer available (already taken or cancelled)
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+/drivers/me/trips/{id}/decline:
+  patch:
+    tags: [Drivers]
+    summary: Decline a trip request
+    description: Driver declines an incoming trip request. The request will be broadcast to other nearby drivers.
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: UUID of the trip
+        schema: { type: string, format: uuid, example: 'b2c3d4e5-f6a7-8901-bcde-f12345678901' }
+    responses:
+      '200':
+        description: Trip declined successfully
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SuccessResponse' }
+      '400':
+        description: Validation error (id must be a valid UUID)
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ErrorResponse' }
+      '401':
+        description: Unauthorized
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ErrorResponse' }
+      '404':
+        description: Trip not found
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ErrorResponse' }
+      '422':
+        description: Trip is not in a declinable state
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+/drivers/me/trips/{id}/start:
+  patch:
+    tags: [Drivers]
+    summary: Start a trip
+    description: |
+      Driver marks the trip as started (passenger has been picked up).
+      Trip status transitions from `accepted` → `in_progress`.
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: UUID of the trip
+        schema: { type: string, format: uuid, example: 'b2c3d4e5-f6a7-8901-bcde-f12345678901' }
+    responses:
+      '200':
+        description: Trip started successfully
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/SuccessResponse'
+                - type: object
+                  properties:
+                    data: { $ref: '#/components/schemas/Trip' }
+      '400':
+        description: Validation error (id must be a valid UUID)
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ErrorResponse' }
+      '401':
+        description: Unauthorized
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ErrorResponse' }
+      '404':
+        description: Trip not found
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ErrorResponse' }
+      '422':
+        description: Trip is not in an accepted state
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+/drivers/me/trips/{id}/end:
+  patch:
+    tags: [Drivers]
+    summary: End a trip
+    description: |
+      Driver marks the trip as completed (passenger has been dropped off).
+      Trip status transitions from `in_progress` → `completed`.
+      Fare calculation and wallet settlement are triggered server-side.
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: UUID of the trip
+        schema: { type: string, format: uuid, example: 'b2c3d4e5-f6a7-8901-bcde-f12345678901' }
+    responses:
+      '200':
+        description: Trip completed successfully
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/SuccessResponse'
+                - type: object
+                  properties:
+                    data: { $ref: '#/components/schemas/Trip' }
+      '400':
+        description: Validation error (id must be a valid UUID)
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ErrorResponse' }
+      '401':
+        description: Unauthorized
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ErrorResponse' }
+      '404':
+        description: Trip not found
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ErrorResponse' }
+      '422':
+        description: Trip is not currently in progress
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+/drivers/me/trips/{id}/stops/{stopId}/arrive:
+  patch:
+    tags: [Drivers]
+    summary: Mark next trip stop as arrived
+    description: Marks a stop as arrived in order while the trip is in progress.
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - name: stopId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    responses:
+      '200':
+        description: Stop marked as arrived
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/SuccessResponse'
+                - type: object
+                  properties:
+                    data: { $ref: '#/components/schemas/Trip' }
+      '400': { description: Validation error }
+      '401': { description: Unauthorized }
+      '404': { description: Trip or stop not found }
+      '422': { description: Trip is not in progress or stop order is invalid }
+
+/drivers/me/trips/{tripId}/credit-customer:
+  post:
+    tags: [Drivers]
+    summary: Credit customer wallet from trip
+    description: Driver credits a customer's wallet after completing a trip. Trip must be completed and belong to the authenticated driver. Creates a wallet transaction with reason `driver_credit`.
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: tripId
+        in: path
+        required: true
+        description: UUID of the completed trip
+        schema: { type: string, format: uuid, example: 'b2c3d4e5-f6a7-8901-bcde-f12345678901' }
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [amount]
+            properties:
+              amount:
+                type: number
+                example: 50.00
+                description: Positive amount to credit to customer wallet
+    responses:
+      '200':
+        description: Customer wallet credited successfully
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/SuccessResponse'
+                - type: object
+                  properties:
+                    data: { $ref: '#/components/schemas/Wallet' }
+      '400':
+        description: Validation error (invalid tripId format or amount must be positive)
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ErrorResponse' }
+      '401':
+        description: Unauthorized
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ErrorResponse' }
+      '403':
+        description: Forbidden — trip does not belong to this driver
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ErrorResponse' }
+      '404':
+        description: Trip not found
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ErrorResponse' }
+      '422':
+        description: Trip must be completed to credit customer wallet
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+
+  post:
+    tags: [Drivers]
+    summary: Reset driver password
+    description: Admin sets a new password for a specific driver account.
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: driverId
+        in: path
+        required: true
+        description: UUID of the driver
+        schema: { type: string, format: uuid, example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' }
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [newPassword]
+            properties:
+              newPassword:
+                type: string
+                minLength: 8
+                example: 'NewStr0ng#Pass'
+                description: New password (minimum 8 characters)
+    responses:
+      '200':
+        description: Password reset successfully
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SuccessResponse' }
+      '400':
+        description: Validation error (password too short)
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ErrorResponse' }
+      '401':
+        description: Unauthorized
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ErrorResponse' }
+      '403':
+        description: Forbidden — admin role required
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ErrorResponse' }
+      '404':
+        description: Driver not found
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ErrorResponse' }

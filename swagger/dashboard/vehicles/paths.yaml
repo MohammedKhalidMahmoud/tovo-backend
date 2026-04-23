@@ -1,0 +1,130 @@
+
+/admin/vehicles:
+  get:
+    tags: [Admin Vehicles]
+    summary: List all vehicles
+    description: Paginated list of all driver-assigned vehicles with driver and vehicle model details.
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: page
+        in: query
+        schema: { type: integer, default: 1 }
+      - name: limit
+        in: query
+        schema: { type: integer, default: 20 }
+      - name: vehicleModelId
+        in: query
+        description: Filter by vehicle model UUID
+        schema: { type: string, format: uuid }
+      - name: search
+        in: query
+        description: Search by VIN or driver name/email
+        schema: { type: string }
+    responses:
+      '200':
+        description: Paginated vehicle list
+        headers:
+          X-Total-Count: { schema: { type: integer } }
+          X-Total-Pages:  { schema: { type: integer } }
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/SuccessResponse'
+                - type: object
+                  properties:
+                    data:
+                      type: array
+                      items: { $ref: '#/components/schemas/VehicleDetail' }
+  post:
+    tags: [Admin Vehicles]
+    summary: Assign a vehicle to a driver
+    security: [{ BearerAuth: [] }]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [driverId, vin]
+            properties:
+              driverId:      { type: string, format: uuid }
+              vehicleModelId: { type: string, format: uuid, nullable: true }
+              vin:            { type: string, example: 1HGCM82633A123456 }
+    responses:
+      '201':
+        description: Vehicle assigned
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/SuccessResponse'
+                - type: object
+                  properties:
+                    data: { $ref: '#/components/schemas/VehicleDetail' }
+      '404': { description: Driver or vehicle model not found }
+
+/admin/vehicles/{id}:
+  get:
+    tags: [Admin Vehicles]
+    summary: Get a vehicle
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    responses:
+      '200':
+        description: Vehicle details
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/SuccessResponse'
+                - type: object
+                  properties:
+                    data: { $ref: '#/components/schemas/VehicleDetail' }
+      '404': { description: Vehicle not found }
+  put:
+    tags: [Admin Vehicles]
+    summary: Update a vehicle
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              vehicleModelId: { type: string, format: uuid, nullable: true }
+              vin:            { type: string }
+    responses:
+      '200':
+        description: Updated vehicle
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/SuccessResponse'
+                - type: object
+                  properties:
+                    data: { $ref: '#/components/schemas/VehicleDetail' }
+      '404': { description: Vehicle not found }
+  delete:
+    tags: [Admin Vehicles]
+    summary: Delete a vehicle
+    security: [{ BearerAuth: [] }]
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    responses:
+      '200': { description: Vehicle deleted }
+      '404': { description: Vehicle not found }
