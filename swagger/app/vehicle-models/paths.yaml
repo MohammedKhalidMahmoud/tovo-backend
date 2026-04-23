@@ -45,6 +45,7 @@
   get:
     tags: [Vehicle Models]
     summary: Get services supported by a vehicle model
+    security: []
     description: |
       Returns all services that a driver can register for based on their vehicle model.
       Use this endpoint to show the driver which services they are eligible to join.
