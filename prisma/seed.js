@@ -191,6 +191,20 @@ async function main() {
   ]);
   console.log('Seeded vehicle models');
 
+  await prisma.serviceVehicleModel.createMany({
+    data: [
+      { serviceId: svcComfort.id, vehicleModelId: bmw5.id },
+      { serviceId: svcComfort.id, vehicleModelId: sonata.id },
+      { serviceId: svcRegular.id, vehicleModelId: camry.id },
+      { serviceId: svcRegular.id, vehicleModelId: corolla.id },
+      { serviceId: svcRegular.id, vehicleModelId: sonata.id },
+      { serviceId: svcMoto.id, vehicleModelId: cb125.id },
+      { serviceId: svcPackage.id, vehicleModelId: hiAce.id },
+      { serviceId: svcPackage.id, vehicleModelId: camry.id },
+    ],
+  });
+  console.log('Seeded service vehicle models');
+
   const [ahmed, sara, omar, driver1, driver2, driver3] = await Promise.all([
     prisma.user.create({
       data: {
