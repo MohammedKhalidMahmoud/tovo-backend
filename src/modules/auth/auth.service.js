@@ -68,24 +68,42 @@ const registerUser = async ({ name, email, phone, password }) => {
   return safeUser;
 };
 
-const registerDriver = async ({ name, email, phone, password, drivingLicense, vehicleModelName, vin }) => {
+const registerDriver = async ({ name, email, phone, password, driving_license, vehicle_model_id, vin }) => {
   const existingEmail = await repo.findUserByEmail(email);
   if (existingEmail) throw { status: 409, message: 'Email already registered' };
 
   const existingPhone = await repo.findUserByPhone(phone);
   if (existingPhone) throw { status: 409, message: 'Phone number already registered' };
 
-  const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
-
   const vehicleModel = await prisma.vehicleModel.findUnique({
-    where: { name: vehicleModelName },
-    select: { id: true, isActive: true, serviceId: true },
+    where: { id: vehicle_model_id },
+    select: {
+      id: true,
+      isActive: true,
+      supportedInServices: {
+        select: {
+          service: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      },
+    },
   });
-  if (!vehicleModel) throw { status: 400, message: 'Vehicle model is not recognised. Please choose from the available models.' };
+  if (!vehicleModel) throw { statusCode: 404, message: 'Vehicle model not found' };
   if (!vehicleModel.isActive) throw { status: 400, message: 'This vehicle model is no longer accepted for registration.' };
 
-  const vehicleModelId = vehicleModel.id;
-  const serviceId = vehicleModel.serviceId ?? null;
+  const enrolledServices = vehicleModel.supportedInServices
+    .map(({ service }) => service)
+    .filter(Boolean);
+
+  if (enrolledServices.length === 0) {
+    throw { statusCode: 400, message: 'Vehicle model supports no services' };
+  }
+
+  const passwordHash = await bcrypt.hash(password, 10);
 
   const driver = await prisma.$transaction(async (tx) => {
     const newDriver = await tx.user.create({
@@ -97,15 +115,21 @@ const registerDriver = async ({ name, email, phone, password, drivingLicense, ve
         role: 'driver',
         driverProfile: {
           create: {
-            drivingLicense,
-            serviceId,
+            drivingLicense: driving_license,
           },
         },
       },
     });
 
     await tx.vehicle.create({
-      data: { userId: newDriver.id, vehicleModelId, vin },
+      data: { userId: newDriver.id, vehicleModelId: vehicle_model_id, vin },
+    });
+
+    await tx.driverService.createMany({
+      data: enrolledServices.map((service) => ({
+        driverId: newDriver.id,
+        serviceId: service.id,
+      })),
     });
 
     await tx.wallet.create({ data: { userId: newDriver.id, currency: 'EGP' } });
@@ -114,7 +138,7 @@ const registerDriver = async ({ name, email, phone, password, drivingLicense, ve
   });
 
   const { passwordHash: _, ...safeDriver } = driver;
-  return safeDriver;
+  return { driver: safeDriver, enrolledServices };
 };
 
 const login = async ({ identifier, email: emailField, password }) => {

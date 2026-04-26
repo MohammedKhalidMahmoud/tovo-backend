@@ -38,7 +38,7 @@
         application/json:
           schema:
             type: object
-            required: [name, email, phone, driving_license, password, confirm_password, vehicle_model, vin]
+            required: [name, email, phone, driving_license, password, confirm_password, vehicle_model, serviceId, vin]
             properties:
               name: { type: string }
               email: { type: string, format: email }
@@ -50,6 +50,7 @@
                 type: string
                 example: 'Toyota Camry'
                 description: "Exact name of an active VehicleModel from GET /vehicle-models. Registration is rejected if the model is not in the whitelist or is inactive."
+              serviceId: { type: string, format: uuid }
               vin: { type: string, description: Vehicle Identification Number }
     responses:
       '201': { description: Driver registered }

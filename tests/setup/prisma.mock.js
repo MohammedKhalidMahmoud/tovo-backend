@@ -17,6 +17,9 @@ const prismaMock = {
   vehicle: {
     create: jest.fn(),
   },
+  driverService: {
+    createMany: jest.fn(),
+  },
   driverProfile: {
     updateMany: jest.fn(),
   },
@@ -38,6 +41,7 @@ const prismaMock = {
       return arg({
         user: { create: prismaMock.user.create },
         vehicle: { create: prismaMock.vehicle.create },
+        driverService: { createMany: prismaMock.driverService.createMany },
         wallet: { create: prismaMock.wallet.create },
       });
     }

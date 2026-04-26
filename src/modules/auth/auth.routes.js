@@ -20,12 +20,12 @@ router.post('/register/driver', [
   body('email').isEmail().normalizeEmail(),
   body('phone').notEmpty().trim(),
   body('driving_license').notEmpty().trim(),
+  body('vehicle_model_id').isUUID().withMessage('Invalid vehicle model ID'),
   body('password').isLength({ min: 8 }),
   body('confirm_password').custom((val, { req }) => {
     if (val !== req.body.password) throw new Error('Passwords do not match');
     return true;
   }),
-  body('vehicle_model').notEmpty().trim(),
   body('vin').notEmpty().trim(),
 ], validate, controller.registerDriver);
 

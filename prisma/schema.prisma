@@ -50,25 +50,26 @@ enum SupportTicketStatus {
 // ─────────────────────────────────────────────
 
 model User {
-  id              String    @id @default(uuid())
-  name            String
-  email           String    @unique
-  phone           String?   @unique
-  passwordHash    String?
-  googleId        String?   @unique
-  facebookId      String?   @unique
-  appleId         String?   @unique
-  avatarUrl       String?
-  role            Role      @default(customer)
-  isVerified      Boolean   @default(false)
-  language        String    @default("en")
-  notificationsEnabled Boolean @default(true)
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  id                   String   @id @default(uuid())
+  name                 String
+  email                String   @unique
+  phone                String?  @unique
+  passwordHash         String?
+  googleId             String?  @unique
+  facebookId           String?  @unique
+  appleId              String?  @unique
+  avatarUrl            String?
+  role                 Role     @default(customer)
+  isVerified           Boolean  @default(false)
+  language             String   @default("en")
+  notificationsEnabled Boolean  @default(true)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 
   // ── Driver-only fields (null for customers) ───────────────────────────────
   // ── Relations ─────────────────────────────────────────────────────────────
   driverProfile   DriverProfile?
+  driverServices  DriverService[] @relation("DriverServices")
   vehicle         Vehicle?
   wallet          Wallet?
   savedAddresses  SavedAddress[]
@@ -86,16 +87,16 @@ model User {
 }
 
 model DriverProfile {
-  id                String   @id @default(uuid())
-  userId            String   @unique
+  id                String    @id @default(uuid())
+  userId            String    @unique
   drivingLicense    String?
   licenseExpiryDate DateTime?
-  isOnline          Boolean  @default(false)
-  rating            Float    @default(0)
-  totalTrips        Int      @default(0)
+  isOnline          Boolean   @default(false)
+  rating            Float     @default(0)
+  totalTrips        Int       @default(0)
   serviceId         String?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   service Service? @relation(fields: [serviceId], references: [id])
@@ -109,17 +110,17 @@ model DriverProfile {
 // ─────────────────────────────────────────────
 
 model VehicleModel {
-  id          String    @id @default(uuid())
-  name        String    @unique
+  id          String   @id @default(uuid())
+  name        String   @unique
   brand       String
   description String?
   imageUrl    String?
   serviceId   String
-  isActive    Boolean   @default(true)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  service             Service?               @relation(fields: [serviceId], references: [id])
+  service             Service?              @relation(fields: [serviceId], references: [id])
   vehicles            Vehicle[]
   supportedInServices ServiceVehicleModel[]
 
@@ -139,12 +140,12 @@ model ServiceVehicleModel {
 }
 
 model Vehicle {
-  id             String        @id @default(uuid())
-  userId         String        @unique
+  id             String   @id @default(uuid())
+  userId         String   @unique
   vehicleModelId String?
-  vin            String        @unique
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  vin            String   @unique
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   user         User          @relation(fields: [userId], references: [id])
   vehicleModel VehicleModel? @relation(fields: [vehicleModelId], references: [id])
@@ -157,12 +158,12 @@ model Vehicle {
 // ─────────────────────────────────────────────
 
 model Wallet {
-  id          String    @id @default(uuid())
-  userId      String    @unique
-  balance     Decimal   @default(0) @db.Decimal(10, 2)
-  currency    String    @default("EGP")
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  balance   Decimal  @default(0) @db.Decimal(10, 2)
+  currency  String   @default("EGP")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   transactions WalletTransaction[]
@@ -179,8 +180,8 @@ model WalletTransaction {
   tripId    String?
   createdAt DateTime        @default(now())
 
-  wallet    Wallet          @relation(fields: [walletId], references: [id])
-  trip      Trip?           @relation(fields: [tripId], references: [id])
+  wallet Wallet @relation(fields: [walletId], references: [id])
+  trip   Trip?  @relation(fields: [tripId], references: [id])
 
   @@map("wallet_transactions")
 }
@@ -190,52 +191,52 @@ model WalletTransaction {
 // ─────────────────────────────────────────────
 
 model Trip {
-  id              String      @id @default(uuid())
-  userId          String
-  driverId        String?
-  serviceId       String?
-  couponId        String?
-  couponCode      String?
-  status          TripStatus  @default(searching)
-  pickupLat       Float
-  pickupLng       Float
-  pickupAddress   String
-  dropoffLat      Float
-  dropoffLng      Float
-  dropoffAddress  String
-  paymentType     String?
-  finalFare       Decimal?    @map("fare") @db.Decimal(10, 2)
-  originalFare    Decimal?    @map("fareBeforeDiscount") @db.Decimal(10, 2)
-  discountAmount  Decimal     @default(0) @db.Decimal(10, 2)
-  commission      Decimal?    @db.Decimal(10, 2)
-  driverEarnings  Decimal?    @db.Decimal(10, 2)
-  currency        String      @default("EGP")
-  distanceKm      Float?
-  durationMinutes Int?
-  routeEncodedPolyline String? @db.Text
-  routeDistanceMeters  Int?
-  routeDurationSeconds Int?
-  shareToken      String?     @unique
-  shareTokenExpiresAt DateTime?
+  id                       String     @id @default(uuid())
+  userId                   String
+  driverId                 String?
+  serviceId                String?
+  couponId                 String?
+  couponCode               String?
+  status                   TripStatus @default(searching)
+  pickupLat                Float
+  pickupLng                Float
+  pickupAddress            String
+  dropoffLat               Float
+  dropoffLng               Float
+  dropoffAddress           String
+  paymentType              String?
+  finalFare                Decimal?   @map("fare") @db.Decimal(10, 2)
+  originalFare             Decimal?   @map("fareBeforeDiscount") @db.Decimal(10, 2)
+  discountAmount           Decimal    @default(0) @db.Decimal(10, 2)
+  commission               Decimal?   @db.Decimal(10, 2)
+  driverEarnings           Decimal?   @db.Decimal(10, 2)
+  currency                 String     @default("EGP")
+  distanceKm               Float?
+  durationMinutes          Int?
+  routeEncodedPolyline     String?    @db.Text
+  routeDistanceMeters      Int?
+  routeDurationSeconds     Int?
+  shareToken               String?    @unique
+  shareTokenExpiresAt      DateTime?
   senderConfirmationCode   String?
   receiverConfirmationCode String?
-  startedAt       DateTime?
-  endedAt         DateTime?
-  cancelledAt     DateTime?
-  cancelledBy     String?
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  startedAt                DateTime?
+  endedAt                  DateTime?
+  cancelledAt              DateTime?
+  cancelledBy              String?
+  createdAt                DateTime   @default(now())
+  updatedAt                DateTime   @updatedAt
 
-  user            User           @relation("CustomerTrips", fields: [userId], references: [id])
-  driver          User?          @relation("DriverTrips", fields: [driverId], references: [id])
-  service         Service?       @relation(fields: [serviceId], references: [id])
-  coupon          Coupon?        @relation(fields: [couponId], references: [id])
-  rating              Rating?
-  stops               TripStop[]
-  tollGates           TripTollGate[]
-  declines            TripDecline[]
-  walletTransactions  WalletTransaction[]
-  commissionLog       CommissionLog?
+  user               User                @relation("CustomerTrips", fields: [userId], references: [id])
+  driver             User?               @relation("DriverTrips", fields: [driverId], references: [id])
+  service            Service?            @relation(fields: [serviceId], references: [id])
+  coupon             Coupon?             @relation(fields: [couponId], references: [id])
+  rating             Rating?
+  stops              TripStop[]
+  tollGates          TripTollGate[]
+  declines           TripDecline[]
+  walletTransactions WalletTransaction[]
+  commissionLog      CommissionLog?
 
   @@index([userId], map: "trips_userId_fkey")
   @@index([driverId], map: "trips_driverId_fkey")
@@ -253,7 +254,7 @@ model TripStop {
   address   String
   arrivedAt DateTime?
 
-  trip      Trip      @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
 
   @@unique([tripId, order])
   @@index([tripId])
@@ -265,7 +266,7 @@ model TripDecline {
   driverId  String
   createdAt DateTime @default(now())
 
-  trip      Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
 
   @@id([tripId, driverId])
   @@map("trip_declines")
@@ -276,17 +277,17 @@ model TripDecline {
 // ─────────────────────────────────────────────
 
 model Rating {
-  id        String    @id @default(uuid())
-  tripId    String    @unique
+  id        String   @id @default(uuid())
+  tripId    String   @unique
   userId    String
   driverId  String
   stars     Int
   comment   String?
-  createdAt DateTime  @default(now())
+  createdAt DateTime @default(now())
 
-  trip      Trip      @relation(fields: [tripId], references: [id])
-  user      User      @relation("CustomerRatings", fields: [userId], references: [id])
-  driver    User      @relation("DriverRatings", fields: [driverId], references: [id])
+  trip   Trip @relation(fields: [tripId], references: [id])
+  user   User @relation("CustomerRatings", fields: [userId], references: [id])
+  driver User @relation("DriverRatings", fields: [driverId], references: [id])
 
   @@index([driverId], map: "ratings_driverId_fkey")
   @@map("ratings")
@@ -297,14 +298,14 @@ model Rating {
 // ─────────────────────────────────────────────
 
 model Promotion {
-  id            String    @id @default(uuid())
-  title         String
-  description   String?
-  discountPct   Int
-  imageUrl      String?
-  validUntil    DateTime?
-  isActive      Boolean   @default(true)
-  createdAt     DateTime  @default(now())
+  id          String    @id @default(uuid())
+  title       String
+  description String?
+  discountPct Int
+  imageUrl    String?
+  validUntil  DateTime?
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
 
   @@map("promotions")
 }
@@ -315,20 +316,20 @@ enum DiscountType {
 }
 
 model Coupon {
-  id                        String       @id @default(uuid())
-  code                      String       @unique
-  discount_type             DiscountType @default(percentage)
-  discount                  Decimal      @db.Decimal(10, 2)
-  expiry_date               DateTime?
-  usage_limit               Int?
-  usage_limit_per_rider     Int?
-  min_amount                Decimal?     @db.Decimal(10, 2)
-  max_discount              Decimal?     @db.Decimal(10, 2)
-  coupon_type               String       @default("all")
-  status                    Int          @default(1)
-  used_count                Int          @default(0)
-  createdAt                 DateTime     @default(now())
-  trips                     Trip[]
+  id                    String       @id @default(uuid())
+  code                  String       @unique
+  discount_type         DiscountType @default(percentage)
+  discount              Decimal      @db.Decimal(10, 2)
+  expiry_date           DateTime?
+  usage_limit           Int?
+  usage_limit_per_rider Int?
+  min_amount            Decimal?     @db.Decimal(10, 2)
+  max_discount          Decimal?     @db.Decimal(10, 2)
+  coupon_type           String       @default("all")
+  status                Int          @default(1)
+  used_count            Int          @default(0)
+  createdAt             DateTime     @default(now())
+  trips                 Trip[]
 
   @@map("coupons")
 }
@@ -338,16 +339,16 @@ model Coupon {
 // ─────────────────────────────────────────────
 
 model SavedAddress {
-  id        String    @id @default(uuid())
+  id        String   @id @default(uuid())
   userId    String
   label     String
   address   String
   lat       Float
   lng       Float
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  user      User      @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id])
 
   @@map("saved_addresses")
 }
@@ -360,14 +361,14 @@ model SavedAddress {
 // ─────────────────────────────────────────────
 
 model Notification {
-  id        String    @id @default(uuid())
+  id        String   @id @default(uuid())
   userId    String
   title     String
   body      String
-  isRead    Boolean   @default(false)
-  createdAt DateTime  @default(now())
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
 
-  user      User      @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id])
 
   @@index([userId], map: "notifications_userId_fkey")
   @@map("notifications")
@@ -397,13 +398,13 @@ model AdminUser {
 }
 
 model DeviceToken {
-  id        String    @id @default(uuid())
+  id        String   @id @default(uuid())
   userId    String
-  token     String    @unique
+  token     String   @unique
   platform  String
-  createdAt DateTime  @default(now())
+  createdAt DateTime @default(now())
 
-  user      User      @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id])
 
   @@index([userId], map: "device_tokens_userId_fkey")
   @@map("device_tokens")
@@ -421,20 +422,20 @@ model SupportTicket {
   createdAt DateTime            @default(now())
   updatedAt DateTime            @updatedAt
 
-  user      User                @relation(fields: [userId], references: [id])
-  messages  TicketMessage[]
+  user     User            @relation(fields: [userId], references: [id])
+  messages TicketMessage[]
 
   @@map("support_tickets")
 }
 
 model TicketMessage {
-  id        String        @id @default(uuid())
+  id        String   @id @default(uuid())
   ticketId  String
   senderId  String
-  body      String        @db.Text
-  createdAt DateTime      @default(now())
+  body      String   @db.Text
+  createdAt DateTime @default(now())
 
-  ticket    SupportTicket @relation(fields: [ticketId], references: [id])
+  ticket SupportTicket @relation(fields: [ticketId], references: [id])
 
   @@map("ticket_messages")
 }
@@ -444,13 +445,13 @@ model TicketMessage {
 // ─────────────────────────────────────────────
 
 model RefreshToken {
-  id        String    @id @default(uuid())
+  id        String   @id @default(uuid())
   userId    String?
-  token     String    @db.Text
+  token     String   @db.Text
   expiresAt DateTime
-  createdAt DateTime  @default(now())
+  createdAt DateTime @default(now())
 
-  user      User?     @relation(fields: [userId], references: [id])
+  user User? @relation(fields: [userId], references: [id])
 
   @@map("refresh_tokens")
 }
@@ -471,14 +472,14 @@ model PasswordResetToken {
 // ─────────────────────────────────────────────
 
 model InsuranceCard {
-  id           String    @id @default(uuid())
+  id           String   @id @default(uuid())
   userId       String
   provider     String
   policyNumber String
   expiresAt    DateTime
-  createdAt    DateTime  @default(now())
+  createdAt    DateTime @default(now())
 
-  user         User      @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id])
 
   @@map("insurance_cards")
 }
@@ -522,14 +523,14 @@ model Region {
 // ─────────────────────────────────────────────
 
 model TollGate {
-  id        String   @id @default(uuid())
+  id        String         @id @default(uuid())
   name      String
   lat       Float
   lng       Float
-  fee       Decimal  @db.Decimal(10, 2)
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  fee       Decimal        @db.Decimal(10, 2)
+  isActive  Boolean        @default(true)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
   trips     TripTollGate[]
 
   @@map("toll_gates")
@@ -541,8 +542,8 @@ model TripTollGate {
   fee        Decimal  @db.Decimal(10, 2)
   createdAt  DateTime @default(now())
 
-  trip      Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
-  tollGate  TollGate @relation(fields: [tollGateId], references: [id], onDelete: Cascade)
+  trip     Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  tollGate TollGate @relation(fields: [tollGateId], references: [id], onDelete: Cascade)
 
   @@id([tripId, tollGateId])
   @@index([tollGateId], map: "trip_toll_gates_tollGateId_fkey")
@@ -563,13 +564,28 @@ model Service {
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 
-  trips                 Trip[]
-  vehicleModels         VehicleModel[]
-  driverProfiles        DriverProfile[]
-  commissionLogs        CommissionLog[]
+  trips                  Trip[]
+  vehicleModels          VehicleModel[]
+  driverProfiles         DriverProfile[]
+  driverServices         DriverService[]
+  commissionLogs         CommissionLog[]
   supportedVehicleModels ServiceVehicleModel[]
 
   @@map("services")
+}
+
+model DriverService {
+  id        String   @id @default(uuid())
+  driverId  String   @map("driver_id")
+  serviceId String   @map("service_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  driver  User    @relation("DriverServices", fields: [driverId], references: [id], onDelete: Cascade)
+  service Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@unique([driverId, serviceId])
+  @@map("driver_services")
 }
 
 // ─────────────────────────────────────────────
@@ -600,8 +616,8 @@ model CommissionLog {
   serviceId   String?
   createdAt   DateTime @default(now())
 
-  trip        Trip     @relation(fields: [tripId], references: [id])
-  service     Service? @relation(fields: [serviceId], references: [id])
+  trip    Trip     @relation(fields: [tripId], references: [id])
+  service Service? @relation(fields: [serviceId], references: [id])
 
   @@map("commission_logs")
 }

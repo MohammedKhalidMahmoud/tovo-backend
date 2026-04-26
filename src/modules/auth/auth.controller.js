@@ -13,16 +13,31 @@ const registerUser = async (req, res, next) => {
 
 const registerDriver = async (req, res, next) => {
   try {
-    const { driving_license, vehicle_model, ...rest } = req.body;
-    const data = await authService.registerDriver({
-      ...rest,
-      drivingLicense: driving_license,
-      vehicleModelName: vehicle_model,
+    const { name, email, phone, driving_license, password, vin, vehicle_model_id } = req.body;
+    const { driver, enrolledServices } = await authService.registerDriver({
+      name,
+      email,
+      phone,
+      driving_license,
+      password,
+      vin,
+      vehicle_model_id,
     });
-    return created(res, data, 'Driver registered successfully');
+
+    return created(res, {
+      driver: {
+        id: driver.id,
+        name: driver.name,
+        email: driver.email,
+        phone: driver.phone,
+      },
+      enrolled_services: enrolledServices.map((service) => ({
+        id: service.id,
+        name: service.name,
+      })),
+    }, 'Driver registered successfully');
   } catch (err) {
-    if (err.status) return error(res, err.message, err.status);
-    next(err);
+    return error(res, err.message || 'Internal server error', err.statusCode || err.status || 500);
   }
 };
 
