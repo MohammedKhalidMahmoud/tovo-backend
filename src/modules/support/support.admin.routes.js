@@ -2,13 +2,14 @@ const router  = require('express').Router();
 const { body, param, query } = require('express-validator');
 const ctrl    = require('./support.controller');
 const validate = require('../../middleware/validate.middleware');
-const { authenticate, authorize } = require('../../middleware/auth.middleware');
+const { authenticate, requirePermission } = require('../../middleware/auth.middleware');
 
-const adminOnly = [authenticate, authorize('admin')];
+const adminRead = [authenticate, requirePermission('complaints:read')];
+const adminManage = [authenticate, requirePermission('complaints:manage')];
 
 router.get(
   '/',
-  ...adminOnly,
+  ...adminRead,
   [
     query('page').optional().isInt({ min: 1 }),
     query('limit').optional().isInt({ min: 1, max: 100 }),
@@ -20,16 +21,16 @@ router.get(
   ctrl.listComplaints,
 );
 
-router.get('/:id', ...adminOnly, [param('id').isUUID()], validate, ctrl.getComplaint);
+router.get('/:id', ...adminRead, [param('id').isUUID()], validate, ctrl.getComplaint);
 
 router.post(
   '/:id/respond',
-  ...adminOnly,
+  ...adminManage,
   [param('id').isUUID(), body('response').notEmpty().withMessage('response is required')],
   validate,
   ctrl.respondToComplaint,
 );
 
-router.patch('/:id/resolve', ...adminOnly, [param('id').isUUID()], validate, ctrl.resolveComplaint);
+router.patch('/:id/resolve', ...adminManage, [param('id').isUUID()], validate, ctrl.resolveComplaint);
 
 module.exports = router;

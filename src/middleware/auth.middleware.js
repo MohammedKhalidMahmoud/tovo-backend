@@ -20,7 +20,25 @@ const authenticate = async (req, res, next) => {
     if (decoded.role === 'admin') {
       actor = await prisma.adminUser.findUnique({
         where: { id: decoded.id },
-        select: { id: true, role: true, isActive: true },
+        select: {
+          id: true,
+          isAdmin: true,
+          isActive: true,
+          dashboardRoleId: true,
+          dashboardRole: {
+            select: {
+              id: true,
+              name: true,
+              permissions: {
+                select: {
+                  permission: {
+                    select: { key: true },
+                  },
+                },
+              },
+            },
+          },
+        },
       });
 
       if (!actor || !actor.isActive) {
@@ -38,7 +56,15 @@ const authenticate = async (req, res, next) => {
     }
 
     if (decoded.role === 'admin') {
-      req.actor = { id: actor.id, role: 'admin', adminRole: actor.role };
+      req.actor = {
+        id: actor.id,
+        isAdmin: actor.isAdmin,
+        dashboardRoleId: actor.dashboardRoleId,
+        dashboardRole: actor.dashboardRole
+          ? { id: actor.dashboardRole.id, name: actor.dashboardRole.name }
+          : null,
+        permissions: actor.dashboardRole?.permissions.map(({ permission }) => permission.key) || [],
+      };
     } else {
       req.actor = { id: actor.id, role: actor.role };
     }
@@ -50,7 +76,7 @@ const authenticate = async (req, res, next) => {
 
 /**
  * Role-based access guard — pass allowed roles as arguments
- * Usage: authorize('customer') | authorize('driver') | authorize('customer', 'driver') | authorize('admin')
+ * Usage: authorize('customer') | authorize('driver') | authorize('customer', 'driver')
  */
 const authorize = (...roles) => {
   return (req, res, next) => {
@@ -61,4 +87,31 @@ const authorize = (...roles) => {
   };
 };
 
-module.exports = { authenticate, authorize };
+const requireSuperAdmin = (req, res, next) => {
+  if (!req.actor?.isAdmin) {
+    return forbidden(res, 'Super admin access required');
+  }
+  next();
+};
+
+const requirePermission = (...permissionKeys) => {
+  return (req, res, next) => {
+    if (!req.actor || typeof req.actor.isAdmin !== 'boolean') {
+      return forbidden(res, 'Admin access required');
+    }
+
+    if (req.actor.isAdmin) {
+      return next();
+    }
+
+    const granted = new Set(req.actor.permissions || []);
+    const hasPermission = permissionKeys.some((permissionKey) => granted.has(permissionKey));
+    if (!hasPermission) {
+      return forbidden(res, `Missing permission: ${permissionKeys.join(' or ')}`);
+    }
+
+    next();
+  };
+};
+
+module.exports = { authenticate, authorize, requirePermission, requireSuperAdmin };

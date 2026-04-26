@@ -514,6 +514,50 @@ const getUserTrips = async (userId, page = 1, perPage = 20) => {
   return { trips, total, page, perPage };
 };
 
+const getAdminTrips = async ({
+  page = 1,
+  perPage = 20,
+  status,
+  userId,
+  driverId,
+  serviceId,
+  dateFrom,
+  dateTo,
+  search,
+} = {}) => {
+  const where = {};
+
+  if (status && status !== 'all') where.status = status;
+  if (userId) where.userId = userId;
+  if (driverId) where.driverId = driverId;
+  if (serviceId) where.serviceId = serviceId;
+  if (dateFrom || dateTo) {
+    where.createdAt = {};
+    if (dateFrom) where.createdAt.gte = new Date(dateFrom);
+    if (dateTo) where.createdAt.lte = new Date(dateTo);
+  }
+  if (search) {
+    where.OR = [
+      { pickupAddress: { contains: search } },
+      { dropoffAddress: { contains: search } },
+      { user: { name: { contains: search } } },
+      { user: { email: { contains: search } } },
+      { driver: { name: { contains: search } } },
+      { driver: { email: { contains: search } } },
+    ];
+  }
+
+  const skip = (page - 1) * perPage;
+  const [trips, total] = await repo.findTrips({ where, skip, take: perPage });
+  return { trips, total, page, perPage };
+};
+
+const getAdminTripById = async (id) => {
+  const trip = await repo.findTripById(id);
+  if (!trip) throw { status: 404, message: 'Trip not found' };
+  return trip;
+};
+
 const addTripStops = async (tripId, userId, stops) => {
   const trip = await repo.findTripById(tripId);
   assertStopsCanBeModified(trip, userId);
@@ -769,7 +813,8 @@ const getDriverRatings = async (driverId, page = 1, perPage = 20) => {
 };
 
 module.exports = {
-  estimateFare, getNearbyDrivers, createTrip, getTripById, getTripRouteById, getUserTrips, addTripStops, cancelTrip,
+  estimateFare, getNearbyDrivers, createTrip, getTripById, getTripRouteById, getUserTrips, getAdminTrips,
+  getAdminTripById, addTripStops, cancelTrip,
   getDriverTrips, getNewRequests, acceptTrip, declineTrip, startTrip, markStopArrived, endTrip,
   rateTrip, getDriverRatings, generateTripShareLink, getSharedTrip, resolveShareTokenSocketContext,
 };

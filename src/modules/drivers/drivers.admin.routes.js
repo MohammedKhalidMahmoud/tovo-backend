@@ -7,15 +7,17 @@ const driverController      = require('./drivers.controller');
 // const tripsController = require('../trips/trips.controller');
 // const walletsController = require('../wallets/wallets.controller');
 const validate = require('../../middleware/validate.middleware');
-const { authenticate, authorize } = require('../../middleware/auth.middleware');
+const { authenticate, requirePermission } = require('../../middleware/auth.middleware');
 
-const adminOnly = [authenticate, authorize('admin')];
+const readDrivers = requirePermission('drivers:read');
+const manageDrivers = requirePermission('drivers:manage');
 
-router.use(...adminOnly);
+router.use(authenticate);
 
 // LIST drivers - admin
 router.get(
   '/',
+  readDrivers,
   [
     query('page').optional().isInt({ min: 1 }).withMessage('page must be > 0'),
     query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('limit must be between 1 and 100'),
@@ -33,6 +35,7 @@ router.get(
 // CREATE driver - admin
 router.post(
   '/',
+  manageDrivers,
   [
     body('name').notEmpty().withMessage('name is required'),
     body('email').isEmail().withMessage('email is required and must be valid').normalizeEmail(),
@@ -53,6 +56,7 @@ router.post(
  */
 router.get(
   '/:driverId',
+  readDrivers,
   [
     param('driverId').isUUID().withMessage('driverId must be a valid UUID'),
   ],
@@ -70,6 +74,7 @@ router.get(
  */
 router.put(
   '/:driverId',
+  manageDrivers,
   [
     param('driverId').isUUID().withMessage('driverId must be a valid UUID'),
     body('name').optional().trim().isLength({ min: 2, max: 100 }),
@@ -89,6 +94,7 @@ router.put(
  */
 router.post(
   '/:driverId/approve',
+  manageDrivers,
   [
     param('driverId').isUUID().withMessage('driverId must be a valid UUID'),
     body('reason').optional().trim().isLength({ max: 500 }),
@@ -103,6 +109,7 @@ router.post(
  */
 router.post(
   '/:driverId/reject',
+  manageDrivers,
   [
     param('driverId').isUUID().withMessage('driverId must be a valid UUID'),
     body('reason').trim().isLength({ min: 10, max: 500 }),
@@ -117,6 +124,7 @@ router.post(
  */
 router.post(
   '/:driverId/suspend',
+  manageDrivers,
   [
     param('driverId').isUUID().withMessage('driverId must be a valid UUID'),
     body('action').isIn(['suspend', 'unsuspend']).withMessage('action must be suspend or unsuspend'),
@@ -133,6 +141,7 @@ router.post(
  */
 router.post(
   '/:driverId/refund',
+  manageDrivers,
   [
     param('driverId').isUUID().withMessage('driverId must be a valid UUID'),
     body('amount').isFloat({ min: 0.01 }).withMessage('amount must be > 0'),
@@ -150,6 +159,7 @@ router.post(
  */
 router.post(
   '/:driverId/reset-password',
+  manageDrivers,
   [
     param('driverId').isUUID().withMessage('driverId must be a valid UUID'),
     body('newPassword').isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
@@ -168,6 +178,7 @@ router.post(
  */
 router.delete(
   '/:driverId',
+  manageDrivers,
   [
     param('driverId').isUUID().withMessage('driverId must be a valid UUID'),
     query('confirm').equals('true').withMessage('confirm parameter must be true'),

@@ -22,10 +22,28 @@ const createUser = (data) =>
   prisma.user.create({ data });
 
 const findAdminByEmail = (email) =>
-  prisma.adminUser.findUnique({ where: { email } });
+  prisma.adminUser.findUnique({
+    where: { email },
+    include: {
+      dashboardRole: {
+        include: {
+          permissions: { include: { permission: true } },
+        },
+      },
+    },
+  });
 
 const findAdminById = (id) =>
-  prisma.adminUser.findUnique({ where: { id } });
+  prisma.adminUser.findUnique({
+    where: { id },
+    include: {
+      dashboardRole: {
+        include: {
+          permissions: { include: { permission: true } },
+        },
+      },
+    },
+  });
 
 const createRefreshToken = (data) =>
   prisma.refreshToken.create({ data });

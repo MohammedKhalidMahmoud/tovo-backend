@@ -2,13 +2,14 @@ const router = require('express').Router();
 const { body, param, query } = require('express-validator');
 const controller = require('./faqs.controller');
 const validate = require('../../middleware/validate.middleware');
-const { authenticate, authorize } = require('../../middleware/auth.middleware');
+const { authenticate, requirePermission } = require('../../middleware/auth.middleware');
 
-const adminOnly = [authenticate, authorize('admin')];
+const adminRead = [authenticate, requirePermission('faqs:read')];
+const adminManage = [authenticate, requirePermission('faqs:manage')];
 
 router.get(
   '/',
-  ...adminOnly,
+  ...adminRead,
   [
     query('page').optional().isInt({ min: 1 }),
     query('limit').optional().isInt({ min: 1, max: 100 }),
@@ -21,7 +22,7 @@ router.get(
 
 router.post(
   '/',
-  ...adminOnly,
+  ...adminManage,
   [
     body('question').trim().notEmpty().withMessage('question is required'),
     body('answer').trim().notEmpty().withMessage('answer is required'),
@@ -32,11 +33,11 @@ router.post(
   controller.createFaq
 );
 
-router.get('/:id', ...adminOnly, [param('id').isUUID()], validate, controller.getFaq);
+router.get('/:id', ...adminRead, [param('id').isUUID()], validate, controller.getFaq);
 
 router.put(
   '/:id',
-  ...adminOnly,
+  ...adminManage,
   [
     param('id').isUUID(),
     body('question').optional().trim().notEmpty(),
@@ -48,6 +49,6 @@ router.put(
   controller.updateFaq
 );
 
-router.delete('/:id', ...adminOnly, [param('id').isUUID()], validate, controller.deleteFaq);
+router.delete('/:id', ...adminManage, [param('id').isUUID()], validate, controller.deleteFaq);
 
 module.exports = router;

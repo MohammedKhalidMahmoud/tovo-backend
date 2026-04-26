@@ -63,6 +63,37 @@ const getUserTrips = async (req, res, next) => {
   }
 };
 
+const getAdminTrips = async (req, res, next) => {
+  try {
+    const page = Math.max(Number.parseInt(req.query.page, 10) || 1, 1);
+    const perPage = Math.min(Math.max(Number.parseInt(req.query.per_page || req.query.limit, 10) || 20, 1), 100);
+    const result = await service.getAdminTrips({
+      page,
+      perPage,
+      status: req.query.status,
+      userId: req.query.userId,
+      driverId: req.query.driverId,
+      serviceId: req.query.serviceId,
+      dateFrom: req.query.dateFrom,
+      dateTo: req.query.dateTo,
+      search: req.query.search,
+    });
+    return success(res, result.trips, 'Success', 200, paginate(page, perPage, result.total));
+  } catch (err) {
+    next(err);
+  }
+};
+
+const getAdminTripById = async (req, res, next) => {
+  try {
+    const data = await service.getAdminTripById(req.params.id);
+    return success(res, data);
+  } catch (err) {
+    if (err.status) return error(res, err.message, err.status);
+    next(err);
+  }
+};
+
 const addTripStops = async (req, res, next) => {
   try {
     const trip = await service.addTripStops(req.params.id, req.actor.id, req.body.stops);
@@ -257,7 +288,8 @@ const getNearbyDrivers = (req, res, next) => {
 };
 
 module.exports = {
-  estimateFare, getActiveRegions, createTrip, getUserTrips, addTripStops, getTripById, cancelTrip,
+  estimateFare, getActiveRegions, createTrip, getUserTrips, getAdminTrips, getAdminTripById,
+  addTripStops, getTripById, cancelTrip,
   getDriverTrips, getNewRequests, acceptTrip, declineTrip, startTrip, endTrip, markStopArrived,
   rateTrip, getDriverRatings, getNearbyDrivers, generateTripShareLink, getSharedTrip, getTripRouteById,
 };

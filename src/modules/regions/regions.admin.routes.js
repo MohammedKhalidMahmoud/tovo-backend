@@ -8,15 +8,16 @@ const router   = require('express').Router();
 const { body, param } = require('express-validator');
 const ctrl     = require('./regions.controller');
 const validate = require('../../middleware/validate.middleware');
-const { authenticate, authorize } = require('../../middleware/auth.middleware');
+const { authenticate, requirePermission } = require('../../middleware/auth.middleware');
 
-const adminOnly = [authenticate, authorize('admin')];
+const adminRead = [authenticate, requirePermission('regions:read')];
+const adminManage = [authenticate, requirePermission('regions:manage')];
 
-router.get('/', ...adminOnly, ctrl.listRegions);
+router.get('/', ...adminRead, ctrl.listRegions);
 
 router.post(
   '/',
-  ...adminOnly,
+  ...adminManage,
   [
     body('name').trim().isLength({ min: 1 }).withMessage('name is required'),
     // body('country').trim().isLength({ min: 1 }).withMessage('country is required'),
@@ -30,11 +31,11 @@ router.post(
   ctrl.createRegion
 );
 
-router.get('/:id', ...adminOnly, [param('id').isUUID()], validate, ctrl.getRegion);
+router.get('/:id', ...adminRead, [param('id').isUUID()], validate, ctrl.getRegion);
 
 router.put(
   '/:id',
-  ...adminOnly,
+  ...adminManage,
   [
     param('id').isUUID(),
     body('name').optional().trim().isLength({ min: 1 }).withMessage('name must not be empty'),
@@ -49,6 +50,6 @@ router.put(
   ctrl.updateRegion
 );
 
-router.delete('/:id', ...adminOnly, [param('id').isUUID()], validate, ctrl.deleteRegion);
+router.delete('/:id', ...adminManage, [param('id').isUUID()], validate, ctrl.deleteRegion);
 
 module.exports = router;

@@ -9,20 +9,6 @@ const controller = require('./payments.controller');
 const validate   = require('../../middleware/validate.middleware');
 const { authenticate, authorize, requirePermission } = require('../../middleware/auth.middleware');
 
-// ── User routes ───────────────────────────────────────────────────────────────
-
-// GET /payments/me — own payment history
-router.get(
-  '/me',
-  authenticate, authorize('customer'),
-  [
-    query('page').optional().isInt({ min: 1 }),
-    query('limit').optional().isInt({ min: 1, max: 100 }),
-  ],
-  validate,
-  controller.listMyPayments
-);
-
 // ── Shared (user sees own, admin sees any) ────────────────────────────────────
 
 // GET /payments/:id — single payment detail

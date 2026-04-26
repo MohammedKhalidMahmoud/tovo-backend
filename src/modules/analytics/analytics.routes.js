@@ -2,8 +2,8 @@ const router = require('express').Router();
 const { query } = require('express-validator');
 const controller = require('./analytics.controller');
 const validate = require('../../middleware/validate.middleware');
-const { authenticate, authorize } = require('../../middleware/auth.middleware');
-const adminOnly = [authenticate, authorize('admin')];
+const { authenticate, requirePermission } = require('../../middleware/auth.middleware');
+const adminOnly = [authenticate, requirePermission('reports:read')];
 
 router.get(
   '/rides',

@@ -1,8 +1,8 @@
 const router = require('express').Router();
-const { authenticate, authorize } = require('../../middleware/auth.middleware');
+const { authenticate, requirePermission } = require('../../middleware/auth.middleware');
 const ctrl = require('./earnings.controller');
 
-router.use(authenticate, authorize('admin'));
+router.use(authenticate, requirePermission('reports:read'));
 
 // GET /
 router.get('/', ctrl.listEarnings);

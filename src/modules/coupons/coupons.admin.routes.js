@@ -2,18 +2,18 @@ const router = require('express').Router();
 const { body, query, param } = require('express-validator');
 const controller = require('./coupons.controller');
 const validate = require('../../middleware/validate.middleware');
-const { authenticate, authorize } = require('../../middleware/auth.middleware');
+const { authenticate, requirePermission } = require('../../middleware/auth.middleware');
 
-router.use(authenticate, authorize('admin'));
+router.use(authenticate);
 
-router.get('/', [
+router.get('/', requirePermission('coupons:read'), [
   query('page').optional().isInt({ min: 1 }),
   query('limit').optional().isInt({ min: 1, max: 100 }),
   query('status').optional().isIn(['all', 'active', 'inactive']),
   query('search').optional().trim(),
 ], validate, controller.listCoupons);
 
-router.post('/', [
+router.post('/', requirePermission('coupons:manage'), [
   body('code').trim().notEmpty().withMessage('code is required'),
   body('discount_type').isIn(['percentage', 'amount']).withMessage('discount_type must be percentage or amount'),
   body('discount').isFloat({ gt: 0 }).withMessage('discount must be a positive number'),
@@ -26,9 +26,9 @@ router.post('/', [
   body('status').optional().isInt({ min: 0, max: 1 }),
 ], validate, controller.createCoupon);
 
-router.get('/:id', [param('id').isUUID()], validate, controller.getCoupon);
+router.get('/:id', requirePermission('coupons:read'), [param('id').isUUID()], validate, controller.getCoupon);
 
-router.put('/:id', [
+router.put('/:id', requirePermission('coupons:manage'), [
   param('id').isUUID(),
   body('code').optional().trim().notEmpty(),
   body('discount_type').optional().isIn(['percentage', 'amount']),
@@ -42,6 +42,6 @@ router.put('/:id', [
   body('status').optional().isInt({ min: 0, max: 1 }),
 ], validate, controller.updateCoupon);
 
-router.delete('/:id', [param('id').isUUID()], validate, controller.deleteCoupon);
+router.delete('/:id', requirePermission('coupons:manage'), [param('id').isUUID()], validate, controller.deleteCoupon);
 
 module.exports = router;

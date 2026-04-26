@@ -5,7 +5,7 @@ const path = require('path');
 
 const usersController = require('./users.controller');
 const validate = require('../../middleware/validate.middleware');
-const { authenticate, authorize } = require('../../middleware/auth.middleware');
+const { authenticate, authorize, requirePermission } = require('../../middleware/auth.middleware');
 
 const storage = multer.diskStorage({
   destination: 'uploads/',
@@ -17,7 +17,8 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 const userOnly = [authenticate, authorize('customer')];
-const adminOnly = [authenticate, authorize('admin')];
+const adminRead = [authenticate, requirePermission('riders:read')];
+const adminManage = [authenticate, requirePermission('riders:manage')];
 
 router.get('/me', ...userOnly, usersController.getProfile);
 
@@ -71,7 +72,7 @@ router.delete('/me/addresses/:id', ...userOnly, [
   param('id').isUUID().withMessage('id must be a valid UUID'),
 ], validate, usersController.deleteAddress);
 
-router.get('/', ...adminOnly, [
+router.get('/', ...adminRead, [
   query('page').optional().isInt({ min: 1 }).withMessage('page must be > 0'),
   query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('limit must be between 1-100'),
   query('sortBy').optional().isIn(['createdAt', 'updatedAt', 'name', 'email']),
@@ -82,7 +83,7 @@ router.get('/', ...adminOnly, [
   query('dateTo').optional().isISO8601(),
 ], validate, usersController.listUsers);
 
-router.post('/', ...adminOnly, [
+router.post('/', ...adminManage, [
   body('name').notEmpty().withMessage('name is required'),
   body('email').isEmail().withMessage('valid email is required').normalizeEmail(),
   body('phone').optional().trim().isMobilePhone(),
@@ -90,11 +91,11 @@ router.post('/', ...adminOnly, [
   body('language').optional().isIn(['en', 'ar']),
 ], validate, usersController.createUser);
 
-router.get('/:userId', ...adminOnly, [
+router.get('/:userId', ...adminRead, [
   param('userId').isUUID().withMessage('userId must be a valid UUID'),
 ], validate, usersController.getUser);
 
-router.put('/:userId', ...adminOnly, [
+router.put('/:userId', ...adminManage, [
   param('userId').isUUID().withMessage('userId must be a valid UUID'),
   body('name').optional().trim().isLength({ min: 2, max: 100 }),
   body('email').optional().isEmail().normalizeEmail(),
@@ -103,14 +104,14 @@ router.put('/:userId', ...adminOnly, [
   body('notificationsEnabled').optional().isBoolean(),
 ], validate, usersController.updateUser);
 
-router.post('/:userId/suspend', ...adminOnly, [
+router.post('/:userId/suspend', ...adminManage, [
   param('userId').isUUID().withMessage('userId must be a valid UUID'),
   body('action').isIn(['suspend', 'unsuspend']).withMessage('action must be suspend or unsuspend'),
   body('reason').optional().trim().isLength({ min: 5, max: 500 }),
   body('durationDays').optional().isInt({ min: 1, max: 365 }),
 ], validate, usersController.suspendUser);
 
-router.post('/:userId/refund', ...adminOnly, [
+router.post('/:userId/refund', ...adminManage, [
   param('userId').isUUID().withMessage('userId must be a valid UUID'),
   body('amount').isFloat({ min: 0.01 }).withMessage('amount must be > 0'),
   body('currency').isLength({ min: 3, max: 3 }).toUpperCase(),
@@ -120,12 +121,12 @@ router.post('/:userId/refund', ...adminOnly, [
   body('notes').optional().trim().isLength({ max: 500 }),
 ], validate, usersController.issueRefund);
 
-router.post('/:userId/reset-password', ...adminOnly, [
+router.post('/:userId/reset-password', ...adminManage, [
   param('userId').isUUID().withMessage('userId must be a valid UUID'),
   body('newPassword').isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
 ], validate, usersController.resetPassword);
 
-router.delete('/:userId', ...adminOnly, [
+router.delete('/:userId', ...adminManage, [
   param('userId').isUUID().withMessage('userId must be a valid UUID'),
   query('confirm').equals('true').withMessage('confirm parameter must be true'),
   body('reason').optional().trim().isLength({ min: 5, max: 500 })

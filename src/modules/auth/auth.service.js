@@ -15,7 +15,7 @@ const assertActiveActor = async ({ id, role }) => {
   if (role === 'admin') {
     const admin = await prisma.adminUser.findUnique({
       where: { id },
-      select: { id: true, role: true, isActive: true },
+      select: { id: true, isActive: true },
     });
 
     if (!admin || !admin.isActive) {
@@ -172,11 +172,24 @@ const adminLogin = async ({ email, password }) => {
   await repo.createRefreshToken({ token: refreshToken, expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) });
 
   const { passwordHash: _, ...safeActor } = actor;
+  const permissions = safeActor.dashboardRole?.permissions.map(({ permission }) => permission.key) || [];
+  const dashboardRole = safeActor.dashboardRole
+    ? {
+        id: safeActor.dashboardRole.id,
+        name: safeActor.dashboardRole.name,
+        description: safeActor.dashboardRole.description,
+        isSystem: safeActor.dashboardRole.isSystem,
+      }
+    : null;
+
   return {
     accessToken,
     refreshToken,
-    user: { ...safeActor, adminRole: safeActor.role, role: 'admin' },
-    role: 'admin',
+    user: {
+      ...safeActor,
+      dashboardRole,
+      permissions,
+    },
   };
 };
 
@@ -189,7 +202,8 @@ const logout = async (actor, refreshToken, fcmToken) => {
       throw { status: 401, message: 'Refresh token is invalid or expired' };
     }
 
-    if (decoded.id !== actor.id || decoded.role !== actor.role) {
+    const actorTokenRole = actor.role || (typeof actor.isAdmin === 'boolean' ? 'admin' : undefined);
+    if (decoded.id !== actor.id || decoded.role !== actorTokenRole) {
       throw { status: 403, message: 'Refresh token does not belong to the authenticated actor' };
     }
 

@@ -1,11 +1,11 @@
 const prisma = require('../../config/prisma');
 
-const userSelect = {
+const adminUserSelect = {
   id: true,
   email: true,
   name: true,
-  role: true,
   isAdmin: true,
+  isActive: true,
   dashboardRoleId: true,
   createdAt: true,
   updatedAt: true,
@@ -69,7 +69,7 @@ const deleteRolePermissions = (dashboardRoleId) =>
   prisma.rolePermission.deleteMany({ where: { dashboardRoleId } });
 
 const countDashboardAdminUsersByRoleId = (dashboardRoleId) =>
-  prisma.user.count({ where: { dashboardRoleId, role: 'dashboard_admin' } });
+  prisma.adminUser.count({ where: { dashboardRoleId } });
 
 const findPermissions = ({ where = {}, skip = 0, take = 20 } = {}) =>
   Promise.all([
@@ -84,21 +84,21 @@ const findPermissions = ({ where = {}, skip = 0, take = 20 } = {}) =>
 
 const findStaff = ({ where = {}, skip = 0, take = 20 } = {}) =>
   Promise.all([
-    prisma.user.findMany({
+    prisma.adminUser.findMany({
       where,
-      select: userSelect,
+      select: adminUserSelect,
       skip,
       take,
       orderBy: { createdAt: 'desc' },
     }),
-    prisma.user.count({ where }),
+    prisma.adminUser.count({ where }),
   ]);
 
 const findStaffById = (id) =>
-  prisma.user.findUnique({
+  prisma.adminUser.findUnique({
     where: { id },
     select: {
-      ...userSelect,
+      ...adminUserSelect,
       dashboardRole: {
         include: {
           permissions: { include: { permission: true } },
@@ -108,22 +108,22 @@ const findStaffById = (id) =>
   });
 
 const findUserById = (id) =>
-  prisma.user.findUnique({ where: { id } });
+  prisma.adminUser.findUnique({ where: { id } });
 
 const findUserByEmail = (email) =>
-  prisma.user.findUnique({ where: { email } });
+  prisma.adminUser.findUnique({ where: { email } });
 
 const createStaff = (data) =>
-  prisma.user.create({
+  prisma.adminUser.create({
     data,
-    select: userSelect,
+    select: adminUserSelect,
   });
 
 const updateStaff = (id, data) =>
-  prisma.user.update({
+  prisma.adminUser.update({
     where: { id },
     data,
-    select: userSelect,
+    select: adminUserSelect,
   });
 
 module.exports = {

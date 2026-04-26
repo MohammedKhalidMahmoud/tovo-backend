@@ -8,7 +8,7 @@ const { param, body } = require('express-validator');
 const multer  = require('multer');
 const path    = require('path');
 const validate = require('../../middleware/validate.middleware');
-const { authenticate, authorize } = require('../../middleware/auth.middleware');
+const { authenticate, requirePermission } = require('../../middleware/auth.middleware');
 const ctrl = require('./services.controller');
 
 const storage = multer.diskStorage({
@@ -20,15 +20,16 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-const adminOnly = [authenticate, authorize('admin')];
+const adminRead = [authenticate, requirePermission('services:read')];
+const adminManage = [authenticate, requirePermission('services:manage')];
 
 // ── Admin ─────────────────────────────────────────────────────────────────────
-router.get('/', ...adminOnly, ctrl.listServices);
-router.get('/:id', ...adminOnly, [param('id').isUUID()], validate, ctrl.getService);
+router.get('/', ...adminRead, ctrl.listServices);
+router.get('/:id', ...adminRead, [param('id').isUUID()], validate, ctrl.getService);
 
 router.post(
   '/',
-  ...adminOnly,
+  ...adminManage,
   [
     body('name').notEmpty().trim().withMessage('name is required'),
     body('baseFare').optional().isFloat({ min: 0 }).withMessage('baseFare must be a non-negative number'),
@@ -45,7 +46,7 @@ router.post(
 
 router.patch(
   '/:id',
-  ...adminOnly,
+  ...adminManage,
   [
     param('id').isUUID(),
     body('name').optional().trim().isLength({ min: 1 }).withMessage('name must not be empty'),
@@ -63,18 +64,18 @@ router.patch(
 
 router.patch(
   '/:id/image',
-  ...adminOnly,
+  ...adminManage,
   upload.single('image'),
   [param('id').isUUID()],
   validate,
   ctrl.updateServiceImage
 );
 
-router.delete('/:id', ...adminOnly, [param('id').isUUID()], validate, ctrl.deleteService);
+router.delete('/:id', ...adminManage, [param('id').isUUID()], validate, ctrl.deleteService);
 
 // ── Vehicle Model Relations ───────────────────────────────────────────────
-router.get('/:id/vehicle-models', ...adminOnly, [param('id').isUUID()], validate, ctrl.getServiceVehicleModels);
-router.post('/:id/vehicle-models', ...adminOnly, [param('id').isUUID(), body('vehicleModelId').isUUID()], validate, ctrl.addServiceVehicleModel);
-router.delete('/:id/vehicle-models/:vehicleModelId', ...adminOnly, [param('id').isUUID(), param('vehicleModelId').isUUID()], validate, ctrl.removeServiceVehicleModel);
+router.get('/:id/vehicle-models', ...adminRead, [param('id').isUUID()], validate, ctrl.getServiceVehicleModels);
+router.post('/:id/vehicle-models', ...adminManage, [param('id').isUUID(), body('vehicleModelId').isUUID()], validate, ctrl.addServiceVehicleModel);
+router.delete('/:id/vehicle-models/:vehicleModelId', ...adminManage, [param('id').isUUID(), param('vehicleModelId').isUUID()], validate, ctrl.removeServiceVehicleModel);
 
 module.exports = router;

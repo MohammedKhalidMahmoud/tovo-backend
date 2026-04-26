@@ -8,6 +8,142 @@ const PASSWORD = 'password123';
 const daysFromNow = (days) => new Date(Date.now() + days * 24 * 60 * 60 * 1000);
 const daysAgo = (days) => new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
+const DASHBOARD_TABS = [
+  { label: 'Riders', slug: 'riders' },
+  { label: 'Drivers', slug: 'drivers' },
+  { label: 'Fleets', slug: 'fleets' },
+  { label: 'Dispatch', slug: 'dispatch' },
+  { label: 'Services', slug: 'services' },
+  { label: 'Coupons', slug: 'coupons' },
+  { label: 'Complaints', slug: 'complaints' },
+  { label: 'Reports', slug: 'reports' },
+  { label: 'Commission Rules', slug: 'commission-rules' },
+  { label: 'Settings', slug: 'settings' },
+  { label: 'Regions', slug: 'regions' },
+  { label: 'Toll Gates', slug: 'toll-gates' },
+  { label: 'Vehicle Models', slug: 'vehicle-models' },
+  { label: 'FAQs', slug: 'faqs' },
+  { label: 'Cancellations', slug: 'cancellations' },
+  { label: 'Payments', slug: 'payments' },
+  { label: 'Wallets', slug: 'wallets' },
+  { label: 'Profile', slug: 'profile' },
+  { label: 'Layout', slug: 'layout' },
+];
+
+const DASHBOARD_PERMISSION_ACTIONS = ['read', 'manage'];
+
+const permissionKey = (slug, action) => `${slug}:${action}`;
+
+const dashboardPermissions = DASHBOARD_TABS.flatMap(({ label, slug }) =>
+  DASHBOARD_PERMISSION_ACTIONS.map((action) => ({
+    key: permissionKey(slug, action),
+    label: `${label} ${action === 'read' ? 'Read' : 'Manage'}`,
+    description:
+      action === 'read'
+        ? `Allows viewing the ${label} dashboard tab.`
+        : `Allows managing records and settings in the ${label} dashboard tab.`,
+  }))
+);
+
+const allDashboardPermissionKeys = dashboardPermissions.map((permission) => permission.key);
+const readDashboardPermissionKeys = DASHBOARD_TABS.map(({ slug }) => permissionKey(slug, 'read'));
+const supportReadSlugs = [
+  'riders',
+  'drivers',
+  'fleets',
+  'dispatch',
+  'services',
+  'coupons',
+  'complaints',
+  'reports',
+  'regions',
+  'toll-gates',
+  'vehicle-models',
+  'faqs',
+  'cancellations',
+  'payments',
+  'wallets',
+  'profile',
+];
+const supportManageSlugs = ['dispatch', 'complaints', 'cancellations', 'payments', 'wallets', 'profile'];
+const supportDashboardPermissionKeys = [
+  ...supportReadSlugs.map((slug) => permissionKey(slug, 'read')),
+  ...supportManageSlugs.map((slug) => permissionKey(slug, 'manage')),
+];
+
+async function seedDashboardRbac({ superAdminId, opsAdminId } = {}) {
+  await prisma.permission.createMany({
+    data: dashboardPermissions,
+  });
+
+  const permissions = await prisma.permission.findMany({
+    where: { key: { in: allDashboardPermissionKeys } },
+    select: { id: true, key: true },
+  });
+  const permissionIdByKey = new Map(permissions.map((permission) => [permission.key, permission.id]));
+
+  const roleSeeds = [
+    {
+      name: 'super_admin',
+      description: 'Full dashboard access across all tabs and actions.',
+      isSystem: true,
+      permissionKeys: allDashboardPermissionKeys,
+    },
+    {
+      name: 'support',
+      description: 'Operational support access for rider, driver, trip, complaint, payment, and wallet workflows.',
+      isSystem: true,
+      permissionKeys: supportDashboardPermissionKeys,
+    },
+    {
+      name: 'viewer',
+      description: 'Read-only dashboard access across all tabs.',
+      isSystem: true,
+      permissionKeys: readDashboardPermissionKeys,
+    },
+  ];
+
+  for (const roleSeed of roleSeeds) {
+    const role = await prisma.dashboardRole.create({
+      data: {
+        name: roleSeed.name,
+        description: roleSeed.description,
+        isSystem: roleSeed.isSystem,
+      },
+    });
+
+    await prisma.rolePermission.createMany({
+      data: roleSeed.permissionKeys.map((key) => ({
+        dashboardRoleId: role.id,
+        permissionId: permissionIdByKey.get(key),
+      })),
+    });
+  }
+
+  const dashboardRoles = await prisma.dashboardRole.findMany({
+    where: { name: { in: roleSeeds.map((role) => role.name) } },
+    select: { id: true, name: true },
+  });
+  const roleIdByName = new Map(dashboardRoles.map((role) => [role.name, role.id]));
+
+  await Promise.all([
+    superAdminId
+      ? prisma.adminUser.update({
+          where: { id: superAdminId },
+          data: { dashboardRoleId: roleIdByName.get('super_admin') },
+        })
+      : Promise.resolve(),
+    opsAdminId
+      ? prisma.adminUser.update({
+          where: { id: opsAdminId },
+          data: { dashboardRoleId: roleIdByName.get('support') },
+        })
+      : Promise.resolve(),
+  ]);
+
+  console.log(`Seeded dashboard RBAC (${dashboardPermissions.length} permissions, ${roleSeeds.length} roles)`);
+}
+
 async function ensureTripCouponSchema() {
   const expectedColumns = [
     ['couponId', 'ALTER TABLE `trips` ADD COLUMN `couponId` VARCHAR(191) NULL'],
@@ -136,6 +272,7 @@ async function main() {
         imageUrl: 'https://assets.tovo.app/vehicles/camry.png',
         serviceId: svcRegular.id,
         isActive: true,
+        status: true,
       },
     }),
     prisma.vehicleModel.create({
@@ -146,6 +283,7 @@ async function main() {
         imageUrl: 'https://assets.tovo.app/vehicles/corolla.png',
         serviceId: svcRegular.id,
         isActive: true,
+        status: true,
       },
     }),
     prisma.vehicleModel.create({
@@ -156,6 +294,7 @@ async function main() {
         imageUrl: 'https://assets.tovo.app/vehicles/bmw5.png',
         serviceId: svcComfort.id,
         isActive: true,
+        status: true,
       },
     }),
     prisma.vehicleModel.create({
@@ -166,6 +305,7 @@ async function main() {
         imageUrl: 'https://assets.tovo.app/vehicles/sonata.png',
         serviceId: svcRegular.id,
         isActive: true,
+        status: true,
       },
     }),
     prisma.vehicleModel.create({
@@ -176,6 +316,7 @@ async function main() {
         imageUrl: 'https://assets.tovo.app/vehicles/cb125.png',
         serviceId: svcMoto.id,
         isActive: true,
+        status: true,
       },
     }),
     prisma.vehicleModel.create({
@@ -186,6 +327,7 @@ async function main() {
         imageUrl: 'https://assets.tovo.app/vehicles/hiace.png',
         serviceId: svcPackage.id,
         isActive: true,
+        status: true,
       },
     }),
   ]);
@@ -324,22 +466,24 @@ async function main() {
       data: {
         name: 'Super Admin',
         email: 'admin@tovo.com',
-        role: 'superadmin',
         passwordHash,
         isActive: true,
+        isAdmin: true,
       },
     }),
     prisma.adminUser.create({
       data: {
         name: 'Operations Admin',
         email: 'ops@example.com',
-        role: 'operations',
         passwordHash,
         isActive: true,
+        isAdmin: false,
       },
     }),
   ]);
   console.log('Seeded admin users');
+
+  await seedDashboardRbac({ superAdminId: superAdmin.id, opsAdminId: opsAdmin.id });
 
   await prisma.systemSetting.createMany({
     data: [

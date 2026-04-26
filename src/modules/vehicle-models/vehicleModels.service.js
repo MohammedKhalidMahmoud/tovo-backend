@@ -22,18 +22,43 @@ const validateServiceExists = async (serviceId) => {
   if (!svc) throw { status: 400, message: 'serviceId does not match any existing service' };
 };
 
-const createModel = async ({ name, brand, serviceId, isActive }) => {
+const normalizeBoolean = (value) => {
+  if (value === undefined || value === null) return undefined;
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'string') return value === 'true';
+  return Boolean(value);
+};
+
+const normalizeStatusFields = ({ isActive, status }) => {
+  const normalizedStatus = normalizeBoolean(status);
+  const normalizedIsActive = normalizeBoolean(isActive);
+  const effectiveStatus = normalizedStatus ?? normalizedIsActive ?? true;
+
+  return {
+    isActive: normalizedIsActive ?? effectiveStatus,
+    status: effectiveStatus,
+  };
+};
+
+const createModel = async ({ name, brand, serviceId, isActive, status }) => {
   const existing = await repo.findByName(name);
   if (existing) throw { status: 409, message: 'A vehicle model with this name already exists' };
   await validateServiceExists(serviceId);
-  return repo.create({ name, brand, serviceId, isActive: isActive ?? true });
+  return repo.create({ name, brand, serviceId, ...normalizeStatusFields({ isActive, status }) });
 };
 
 const updateModel = async (id, data) => {
   const model = await repo.findById(id);
   if (!model) throw { status: 404, message: 'Vehicle model not found' };
   if (data.serviceId !== undefined) await validateServiceExists(data.serviceId);
-  return repo.update(id, data);
+  const updateData = { ...data };
+  if (data.isActive !== undefined || data.status !== undefined) {
+    Object.assign(updateData, normalizeStatusFields({
+      isActive: data.isActive ?? model.isActive,
+      status: data.status ?? data.isActive ?? model.status,
+    }));
+  }
+  return repo.update(id, updateData);
 };
 
 const deleteModel = async (id) => {

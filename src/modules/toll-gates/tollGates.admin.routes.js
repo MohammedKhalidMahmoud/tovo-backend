@@ -2,13 +2,14 @@ const router = require('express').Router();
 const { body, param, query } = require('express-validator');
 const ctrl = require('./tollGates.controller');
 const validate = require('../../middleware/validate.middleware');
-const { authenticate, authorize } = require('../../middleware/auth.middleware');
+const { authenticate, requirePermission } = require('../../middleware/auth.middleware');
 
-const adminOnly = [authenticate, authorize('admin')];
+const adminRead = [authenticate, requirePermission('toll-gates:read')];
+const adminManage = [authenticate, requirePermission('toll-gates:manage')];
 
 router.get(
   '/',
-  ...adminOnly,
+  ...adminRead,
   [
     query('page').optional().isInt({ min: 1 }).withMessage('page must be greater than 0'),
     query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('limit must be between 1 and 100'),
@@ -17,11 +18,11 @@ router.get(
   ctrl.listTollGates,
 );
 
-router.get('/:id', ...adminOnly, [param('id').isUUID()], validate, ctrl.getTollGate);
+router.get('/:id', ...adminRead, [param('id').isUUID()], validate, ctrl.getTollGate);
 
 router.post(
   '/',
-  ...adminOnly,
+  ...adminManage,
   [
     body('name').trim().isLength({ min: 1 }).withMessage('name is required'),
     body('lat').isFloat({ min: -90, max: 90 }).withMessage('lat must be between -90 and 90'),
@@ -35,7 +36,7 @@ router.post(
 
 router.put(
   '/:id',
-  ...adminOnly,
+  ...adminManage,
   [
     param('id').isUUID(),
     body('name').optional().trim().isLength({ min: 1 }).withMessage('name must not be empty'),
@@ -50,7 +51,7 @@ router.put(
 
 router.delete(
   '/:id',
-  ...adminOnly,
+  ...adminManage,
   [
     param('id').isUUID(),
     query('confirm').equals('true').withMessage('confirm=true is required'),

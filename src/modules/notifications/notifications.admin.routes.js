@@ -4,17 +4,6 @@ const controller = require('./notifications.controller');
 const validate = require('../../middleware/validate.middleware');
 const { authenticate, requirePermission } = require('../../middleware/auth.middleware');
 
-// ── User-facing ───────────────────────────────────────────────────────────────
-router.get('/',                   authenticate, controller.getNotifications);
-router.patch('/read-all',         authenticate, controller.markAllRead);
-router.patch('/:id/read',         authenticate, [
-  param('id').isUUID(),
-], validate, controller.markRead);
-router.post('/device-token',      authenticate, [
-  body('token').notEmpty(),
-  body('platform').isIn(['ios', 'android', 'web']),
-], validate, controller.registerDeviceToken);
-
 // ── Admin: manual FCM push ────────────────────────────────────────────────────
 router.post('/send-to-user', authenticate, requirePermission('layout:manage'), [
   body('user_id').notEmpty().isUUID(),

@@ -98,6 +98,14 @@ const findTripsByDriver = async (driverId, skip, take) => {
   return [trips.map(normalizeTrip), total];
 };
 
+const findTrips = async ({ where = {}, skip = 0, take = 20 } = {}) => {
+  const [trips, total] = await Promise.all([
+    prisma.trip.findMany({ where, include: TRIP_INCLUDE, orderBy: { createdAt: 'desc' }, skip, take }),
+    prisma.trip.count({ where }),
+  ]);
+  return [trips.map(normalizeTrip), total];
+};
+
 const findNewRequests = async (driverId) =>
   (await prisma.trip.findMany({
     where: {
@@ -136,7 +144,7 @@ const findDriverRatings = (driverId, skip, take) =>
 module.exports = {
   TRIP_INCLUDE,
   createTrip, findTripById, findTripsByUser,
-  findTripsByDriver, findNewRequests, updateTrip, recordDecline,
+  findTripsByDriver, findTrips, findNewRequests, updateTrip, recordDecline,
   updateTripStop, createRating, findRatingsByTrip, findDriverRatings,
   findTripByShareToken, findTripShareSocketContextByToken,
 };

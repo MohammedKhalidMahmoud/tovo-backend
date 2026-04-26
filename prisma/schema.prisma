@@ -117,6 +117,7 @@ model VehicleModel {
   imageUrl    String?
   serviceId   String
   isActive    Boolean  @default(true)
+  status      Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -385,15 +386,19 @@ model SystemSetting {
 }
 
 model AdminUser {
-  id           String   @id @default(uuid())
-  name         String
-  email        String   @unique
-  role         String
-  passwordHash String
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id              String         @id @default(uuid())
+  name            String
+  email           String         @unique
+  passwordHash    String
+  isActive        Boolean        @default(true)
+  isAdmin         Boolean        @default(false)
+  dashboardRoleId String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
 
+  dashboardRole DashboardRole? @relation(fields: [dashboardRoleId], references: [id])
+
+  @@index([dashboardRoleId])
   @@map("admin_users")
 }
 
@@ -620,4 +625,43 @@ model CommissionLog {
   service Service? @relation(fields: [serviceId], references: [id])
 
   @@map("commission_logs")
+}
+
+
+model Permission {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  label       String
+  description String?  @db.Text
+  createdAt   DateTime @default(now())
+
+  roles RolePermission[]
+
+  @@index([key])
+}
+
+model DashboardRole {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?  @db.Text
+  isSystem    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users       AdminUser[]
+  permissions RolePermission[]
+
+  @@index([name])
+}
+
+model RolePermission {
+  dashboardRoleId String
+  permissionId    String
+
+  role       DashboardRole @relation(fields: [dashboardRoleId], references: [id], onDelete: Cascade)
+  permission Permission    @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([dashboardRoleId, permissionId])
+  @@index([dashboardRoleId])
+  @@index([permissionId])
 }
