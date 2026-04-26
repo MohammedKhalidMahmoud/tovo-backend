@@ -38,7 +38,7 @@
         application/json:
           schema:
             type: object
-            required: [name, email, phone, driving_license, password, confirm_password, vehicle_model, serviceId, vin]
+            required: [name, email, phone, driving_license, password, confirm_password, vehicle_model_id, vin]
             properties:
               name: { type: string }
               email: { type: string, format: email }
@@ -46,14 +46,38 @@
               driving_license: { type: string }
               password: { type: string, minLength: 8 }
               confirm_password: { type: string }
-              vehicle_model:
+              vehicle_model_id:
                 type: string
-                example: 'Toyota Camry'
-                description: "Exact name of an active VehicleModel from GET /vehicle-models. Registration is rejected if the model is not in the whitelist or is inactive."
-              serviceId: { type: string, format: uuid }
+                format: uuid
+                example: '314ac528-6253-457e-a0da-8ab443b676f6'
+                description: "ID of an active VehicleModel from GET /vehicle-models. The driver's services are enrolled automatically from the model's supported services."
               vin: { type: string, description: Vehicle Identification Number }
     responses:
-      '201': { description: Driver registered }
+      '201':
+        description: Driver registered
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/SuccessResponse'
+                - properties:
+                    data:
+                      type: object
+                      properties:
+                        driver:
+                          type: object
+                          properties:
+                            id: { type: string, format: uuid }
+                            name: { type: string }
+                            email: { type: string, format: email }
+                            phone: { type: string }
+                        enrolled_services:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              id: { type: string, format: uuid }
+                              name: { type: string }
       '409': { description: Email or phone already exists }
 
 /auth/login:

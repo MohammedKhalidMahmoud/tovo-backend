@@ -191,17 +191,19 @@ async function main() {
   ]);
   console.log('Seeded vehicle models');
 
+  const serviceVehicleModelSeed = [
+    { serviceId: svcComfort.id, vehicleModelId: bmw5.id },
+    { serviceId: svcComfort.id, vehicleModelId: sonata.id },
+    { serviceId: svcRegular.id, vehicleModelId: camry.id },
+    { serviceId: svcRegular.id, vehicleModelId: corolla.id },
+    { serviceId: svcRegular.id, vehicleModelId: sonata.id },
+    { serviceId: svcMoto.id, vehicleModelId: cb125.id },
+    { serviceId: svcPackage.id, vehicleModelId: hiAce.id },
+    { serviceId: svcPackage.id, vehicleModelId: camry.id },
+  ];
+
   await prisma.serviceVehicleModel.createMany({
-    data: [
-      { serviceId: svcComfort.id, vehicleModelId: bmw5.id },
-      { serviceId: svcComfort.id, vehicleModelId: sonata.id },
-      { serviceId: svcRegular.id, vehicleModelId: camry.id },
-      { serviceId: svcRegular.id, vehicleModelId: corolla.id },
-      { serviceId: svcRegular.id, vehicleModelId: sonata.id },
-      { serviceId: svcMoto.id, vehicleModelId: cb125.id },
-      { serviceId: svcPackage.id, vehicleModelId: hiAce.id },
-      { serviceId: svcPackage.id, vehicleModelId: camry.id },
-    ],
+    data: serviceVehicleModelSeed,
   });
   console.log('Seeded service vehicle models');
 
@@ -478,6 +480,26 @@ async function main() {
     }),
   ]);
   console.log('Seeded vehicles');
+
+  const servicesForVehicleModel = (vehicleModelId) =>
+    serviceVehicleModelSeed
+      .filter((item) => item.vehicleModelId === vehicleModelId)
+      .map((item) => item.serviceId);
+
+  await prisma.driverService.createMany({
+    data: [
+      { driverId: driver1.id, vehicleModelId: camry.id },
+      { driverId: driver2.id, vehicleModelId: bmw5.id },
+      { driverId: driver3.id, vehicleModelId: corolla.id },
+    ].flatMap(({ driverId, vehicleModelId }) =>
+      servicesForVehicleModel(vehicleModelId).map((serviceId) => ({
+        driverId,
+        serviceId,
+      }))
+    ),
+    skipDuplicates: true,
+  });
+  console.log('Seeded driver services');
 
   const [walletAhmed, walletSara, walletOmar, walletDriver1, walletDriver2, walletDriver3] = await Promise.all([
     prisma.wallet.create({ data: { userId: ahmed.id, balance: 300, currency: 'EGP' } }),
