@@ -19,7 +19,7 @@ const assertActiveActor = async ({ id, role }) => {
     });
 
     if (!admin || !admin.isActive) {
-      throw { status: 401, message: 'Refresh token is invalid or expired' };
+      throw { status: 402, message: 'Refresh token is invalid or expired' };  // should be 401 but changed bsed on the flutter developer request
     }
 
     return { id: admin.id, role: 'admin' };
@@ -31,7 +31,7 @@ const assertActiveActor = async ({ id, role }) => {
   });
 
   if (!user || user.role !== role) {
-    throw { status: 401, message: 'Refresh token is invalid or expired' };
+    throw { status: 402, message: 'Refresh token is invalid or expired' };   // should be 401 but changed bsed on the flutter developer request  // should be 401 but changed bsed on the flutter developer request
   }
 
   return { id: user.id, role: user.role };
@@ -148,22 +148,22 @@ const login = async ({ identifier, email: emailField, password }) => {
     ? await repo.findUserByEmail(raw)
     : await repo.findUserByPhone(raw);
 
-  if (!actor) throw { status: 401, message: 'Invalid credentials' };
-  if (!['customer', 'driver'].includes(actor.role)) throw { status: 401, message: 'Invalid credentials' };
+  if (!actor) throw { status: 402, message: 'Invalid credentials' };   // should be 401 but changed bsed on the flutter developer request
+  if (!['customer', 'driver'].includes(actor.role)) throw { status: 402, message: 'Invalid credentials' };   // should be 401 but changed bsed on the flutter developer request
 
   const isMatch = await bcrypt.compare(password, actor.passwordHash);
-  if (!isMatch) throw { status: 401, message: 'Invalid credentials' };
+  if (!isMatch) throw { status: 402, message: 'Invalid credentials' };  // should be 401 but changed bsed on the flutter developer request
 
   return issueUserTokens(actor);
 };
 
 const adminLogin = async ({ email, password }) => {
   const actor = await repo.findAdminByEmail(email);
-  if (!actor) throw { status: 401, message: 'Invalid credentials' };
+  if (!actor) throw { status: 402, message: 'Invalid credentials' };  // should be 401 but changed bsed on the flutter developer request
   if (!actor.isActive) throw { status: 403, message: 'Admin account is deactivated' };
 
   const isMatch = await bcrypt.compare(password, actor.passwordHash);
-  if (!isMatch) throw { status: 401, message: 'Invalid credentials' };
+  if (!isMatch) throw { status: 402, message: 'Invalid credentials' };  // should be 401 but changed bsed on the flutter developer request
 
   const payload = { id: actor.id, role: 'admin' };
   const accessToken = generateAccessToken(payload);
@@ -199,7 +199,7 @@ const logout = async (actor, refreshToken, fcmToken) => {
     try {
       decoded = verifyRefreshToken(refreshToken);
     } catch (err) {
-      throw { status: 401, message: 'Refresh token is invalid or expired' };
+      throw { status: 402, message: 'Refresh token is invalid or expired' };   // // should be 401 but changed bsed on the flutter developer request
     }
 
     const actorTokenRole = actor.role || (typeof actor.isAdmin === 'boolean' ? 'admin' : undefined);
@@ -223,18 +223,18 @@ const logout = async (actor, refreshToken, fcmToken) => {
 const refreshToken = async (token) => {
   const stored = await repo.findRefreshToken(token);
   if (!stored || stored.expiresAt < new Date()) {
-    throw { status: 401, message: 'Refresh token is invalid or expired' };
+    throw { status: 402, message: 'Refresh token is invalid or expired' };   // // should be 401 but changed bsed on the flutter developer request
   }
 
   let decoded;
   try {
     decoded = verifyRefreshToken(token);
   } catch (err) {
-    throw { status: 401, message: 'Refresh token is invalid or expired' };
+    throw { status: 402, message: 'Refresh token is invalid or expired' };   // // should be 401 but changed bsed on the flutter developer request
   }
 
   if (stored.userId && stored.userId !== decoded.id) {
-    throw { status: 401, message: 'Refresh token is invalid or expired' };
+    throw { status: 402, message: 'Refresh token is invalid or expired' };   // // should be 401 but changed bsed on the flutter developer request
   }
 
   const actor = await assertActiveActor({ id: decoded.id, role: decoded.role });
@@ -256,11 +256,11 @@ const verifyOtp = async (idToken) => {
   try {
     decoded = await adminAuth.verifyIdToken(idToken);
   } catch (err) {
-    throw { status: 401, message: 'Invalid or expired Firebase ID token' };
+    throw { status: 402, message: 'Invalid or expired Firebase ID token' };   // // should be 401 but changed bsed on the flutter developer request
   }
 
   if (decoded.firebase?.sign_in_provider !== 'phone') {
-    throw { status: 401, message: 'Firebase token is not a phone authentication token' };
+    throw { status: 402, message: 'Firebase token is not a phone authentication token' };   // // should be 401 but changed bsed on the flutter developer request
   }
 
   const phone = decoded.phone_number;
@@ -332,13 +332,13 @@ const resetPassword = async (email, otp, newPassword) => {
 const verifyGoogleToken = async (idToken) => {
   const ticket = await googleConfig.verifyIdToken(idToken);
   const payload = ticket.getPayload();
-  if (!payload) throw { status: 401, message: 'Invalid Google token' };
+  if (!payload) throw { status: 402, message: 'Invalid Google token' };  // should be 401 but changed bsed on the flutter developer request
   return { googleId: payload.sub, email: payload.email, name: payload.name };
 };
 
 const verifyAppleToken = async (idToken) => {
   const payload = await appleConfig.verifyIdToken(idToken);
-  if (!payload || !payload.sub) throw { status: 401, message: 'Invalid Apple token' };
+  if (!payload || !payload.sub) throw { status: 402, message: 'Invalid Apple token' };  // should be 401 but changed bsed on the flutter developer request
   return { appleId: payload.sub, email: payload.email ?? null, name: null };
 };
 
@@ -350,8 +350,8 @@ const verifyFacebookToken = (accessToken) =>
       res.on('data', (chunk) => { raw += chunk; });
       res.on('end', () => {
         const data = JSON.parse(raw);
-        if (data.error) return reject({ status: 401, message: `Facebook: ${data.error.message}` });
-        if (!data.id) return reject({ status: 401, message: 'Invalid Facebook token' });
+        if (data.error) return reject({ status: 402, message: `Facebook: ${data.error.message}` });  // should be 401 but changed bsed on the flutter developer request
+        if (!data.id) return reject({ status: 402, message: 'Invalid Facebook token' });  // should be 401 but changed bsed on the flutter developer request
         resolve({ facebookId: data.id, email: data.email ?? null, name: data.name });
       });
     }).on('error', () => reject({ status: 502, message: 'Could not reach Facebook API' }));

@@ -41,7 +41,7 @@ const requestEmailChange = async (userId, { newEmail, currentPassword, baseUrl }
   if (user.email === newEmail) throw { status: 400, message: 'New email must be different from the current email' };
 
   const isMatch = await bcrypt.compare(currentPassword, user.passwordHash);
-  if (!isMatch) throw { status: 401, message: 'Current password is incorrect' };
+  if (!isMatch) throw { status: 402, message: 'Current password is incorrect' };   // should be 401 but changed based on the flutter developer request.
 
   const existing = await repo.findByEmail(newEmail);
   if (existing && existing.id !== userId) throw { status: 409, message: 'Email already exists' };
@@ -85,7 +85,7 @@ const changePassword = async (userId, { currentPassword, newPassword }) => {
   if (!user.passwordHash) throw { status: 400, message: 'Password is not set for this account' };
 
   const isMatch = await bcrypt.compare(currentPassword, user.passwordHash);
-  if (!isMatch) throw { status: 401, message: 'Current password is incorrect' };
+  if (!isMatch) throw { status: 402, message: 'Current password is incorrect' };   // should be 401 but changed based on the flutter developer request
 
   const passwordHash = await bcrypt.hash(newPassword, 10);
   await repo.updatePassword(userId, passwordHash);

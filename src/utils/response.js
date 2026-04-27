@@ -19,7 +19,7 @@ const error = (res, message = 'An error occurred', statusCode = 400, errors = nu
 };
 
 const notFound = (res, message = 'Resource not found') => error(res, message, 404);
-const unauthorized = (res, message = 'Unauthorized') => error(res, message, 401);
+const unauthorized = (res, message = 'Unauthorized') => error(res, message, 402);  // should be 401 but changed bsed on the flutter developer request
 const forbidden = (res, message = 'Forbidden') => error(res, message, 403);
 const conflict = (res, message = 'Conflict') => error(res, message, 409);
 const serverError = (res, message = 'Internal server error') => error(res, message, 500);
