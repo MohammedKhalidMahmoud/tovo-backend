@@ -29,6 +29,23 @@ const createModel = async (req, res, next) => {
   }
 };
 
+const importModels = async (req, res, next) => {
+  try {
+    const file = req.file
+      || req.files?.file?.[0]
+      || req.files?.xlsx?.[0]
+      || req.files?.excel?.[0];
+
+    if (!file) return error(res, 'No Excel file uploaded', 400);
+
+    const data = await service.importModels(file.buffer);
+    return success(res, data, 'Vehicle models import completed');
+  } catch (err) {
+    if (err.status) return error(res, err.message, err.status);
+    next(err);
+  }
+};
+
 const updateModel = async (req, res, next) => {
   try {
     const { name, brand, serviceId, isActive, status } = req.body;
@@ -79,4 +96,4 @@ const getModelServices = async (req, res, next) => {
 
 const created = (res, data, message) => success(res, data, message, 201);
 
-module.exports = { listModels, getModel, createModel, updateModel, deleteModel, listActiveModels, getActiveModel, getModelServices };
+module.exports = { listModels, getModel, createModel, importModels, updateModel, deleteModel, listActiveModels, getActiveModel, getModelServices };

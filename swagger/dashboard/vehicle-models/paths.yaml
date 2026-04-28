@@ -42,6 +42,29 @@
       '401': { description: Unauthorized }
       '403': { description: Forbidden }
 
+/admin/vehicle-models/import-data:
+  post:
+    tags: [AdminVehicle Models]
+    summary: Import vehicle models from Excel (admin)
+    security: [{ BearerAuth: [] }]
+    requestBody:
+      required: true
+      content:
+        multipart/form-data:
+          schema:
+            type: object
+            required: [file]
+            properties:
+              file:
+                type: string
+                format: binary
+                description: Excel file with columns name, brand, and serviceId or serviceName.
+    responses:
+      '200': { description: Vehicle models import summary }
+      '400': { description: Invalid or missing Excel file }
+      '401': { description: Unauthorized }
+      '403': { description: Forbidden }
+
 /admin/vehicle-models/{id}:
   get:
     tags: [AdminVehicle Models]

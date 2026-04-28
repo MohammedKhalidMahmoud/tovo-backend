@@ -5,15 +5,44 @@
 
 const router = require('express').Router();
 const { body, param, query } = require('express-validator');
+const multer = require('multer');
+const path = require('path');
 const ctrl = require('./vehicleModels.controller');
 const validate = require('../../middleware/validate.middleware');
 const { authenticate, requirePermission } = require('../../middleware/auth.middleware');
+const { error } = require('../../utils/response');
 
 const adminRead = [authenticate, requirePermission('vehicle-models:read')];
 const adminManage = [authenticate, requirePermission('vehicle-models:manage')];
 
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const extension = path.extname(file.originalname).toLowerCase();
+    if (!['.xlsx', '.xls'].includes(extension)) {
+      return cb(new Error('Only .xlsx and .xls files are allowed'));
+    }
+    return cb(null, true);
+  },
+});
+
+const importUpload = (req, res, next) => {
+  upload.fields([
+    { name: 'file', maxCount: 1 },
+    { name: 'xlsx', maxCount: 1 },
+    { name: 'excel', maxCount: 1 },
+  ])(req, res, (err) => {
+    if (err) return error(res, err.message, 400);
+    return next();
+  });
+};
+
 // GET /admin/vehicle-models — list all models
 router.get('/', ...adminRead, ctrl.listModels);
+
+// POST /admin/vehicle-models/import-data - import models from an Excel file
+router.post('/import-data', ...adminManage, importUpload, ctrl.importModels);
 
 // GET /admin/vehicle-models/:id — get single model
 router.get('/:id', ...adminRead, [param('id').isUUID()], validate, ctrl.getModel);
