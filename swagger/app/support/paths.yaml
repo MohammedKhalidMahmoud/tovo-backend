@@ -12,6 +12,11 @@
             required: [subject]
             properties:
               subject: { type: string }
+              tripId:
+                type: string
+                format: uuid
+                nullable: true
+                description: Optional trip to associate with the ticket. The trip must belong to the authenticated user or driver.
     responses:
       '201':
         description: Ticket created
@@ -25,6 +30,8 @@
                     data: { $ref: '#/components/schemas/SupportTicket' }
       '400': { description: Validation error }
       '401': { description: Unauthorized }
+      '403': { description: Trip does not belong to this account }
+      '404': { description: Trip not found }
 
   get:
     tags: [Support]

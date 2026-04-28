@@ -1,8 +1,13 @@
 const { verifyAccessToken } = require('../utils/jwt');
 const logger = require('../config/logger');
+const prisma = require('../config/prisma');
 const locationStore = require('./locationStore');
 const notificationsService = require('../modules/notifications/notifications.service');
 const { resolveShareTokenSocketContext } = require('../modules/trips/trips.service');
+
+const TRIP_CHAT_MESSAGE_MAX_LENGTH = 2000;
+const TRIP_CHAT_HISTORY_MAX_LIMIT = 100;
+const TRIP_CHAT_SEND_STATUSES = new Set(['matched', 'on_way', 'in_progress']);
 
 const emitSocketEvent = ({ io, event, payload, rooms = [], socket }) => {
   if (socket) {
@@ -127,6 +132,60 @@ const buildTripStatusNotification = (target, payload) => {
   };
 };
 
+const getTripSocketContext = (tripId) =>
+  prisma.trip.findUnique({
+    where: { id: String(tripId) },
+    select: {
+      id: true,
+      userId: true,
+      driverId: true,
+      status: true,
+    },
+  });
+
+const getTripParticipantRole = (trip, actor) => {
+  if (!trip || !actor?.id) return null;
+  if (trip.userId === actor.id && actor.role === 'customer') return 'customer';
+  if (trip.driverId === actor.id && actor.role === 'driver') return 'driver';
+  return null;
+};
+
+const emitOrAck = (socket, ack, event, payload) => {
+  if (typeof ack === 'function') {
+    ack(payload);
+    return;
+  }
+
+  socket.emit(event, payload);
+};
+
+const serializeTripChatMessage = (message) => ({
+  id: message.id,
+  tripId: message.tripId,
+  senderId: message.senderId,
+  body: message.body,
+  createdAt: message.createdAt?.toISOString?.() || message.createdAt,
+  sender: message.sender
+    ? {
+        id: message.sender.id,
+        name: message.sender.name,
+        role: message.sender.role,
+        avatarUrl: message.sender.avatarUrl,
+      }
+    : undefined,
+});
+
+const getTripChatRecipient = (trip, senderId) => {
+  if (trip.userId === senderId && trip.driverId) return { id: trip.driverId, role: 'driver' };
+  if (trip.driverId === senderId) return { id: trip.userId, role: 'customer' };
+  return null;
+};
+
+const truncateNotificationBody = (body) => {
+  if (!body) return 'You have a new trip message.';
+  return body.length > 120 ? `${body.slice(0, 117)}...` : body;
+};
+
 const emitLastKnownDriverLocation = ({ socket, tripId, driverId }) => {
   const loc = locationStore.get(driverId);
   if (!loc) return;
@@ -193,7 +252,6 @@ const setupSocket = (io) => {
       socket.join('drivers:available');
 
       try {
-        const prisma = require('../config/prisma');
         const driverData = await prisma.driverProfile.findUnique({ where: { userId: id }, select: { serviceId: true } });
         socket.driverServiceId = driverData?.serviceId ?? null;
       } catch (e) {
@@ -223,25 +281,162 @@ const setupSocket = (io) => {
     });
 
     socket.on('trip.join', async ({ tripId }) => {
+      if (!tripId) return;
+
       if (role === 'trip_share') {
         if (tripId !== socket.shareTrip?.id) return;
+        socket.join(`trip:${tripId}`);
+        logger.info(`${role}:${id} joined trip room: trip:${tripId}`);
+        emitLastKnownDriverLocation({ socket, tripId, driverId: socket.shareTrip.driverId });
+        return;
       }
 
-      socket.join(`trip:${tripId}`);
-      logger.info(`${role}:${id} joined trip room: trip:${tripId}`);
-
       try {
-        const prisma = require('../config/prisma');
-        const trip = await prisma.trip.findUnique({
-          where: { id: tripId },
-          select: { driverId: true, status: true },
-        });
+        const trip = await getTripSocketContext(tripId);
+        const participantRole = getTripParticipantRole(trip, socket.actor);
+
+        if (!participantRole) {
+          socket.emit('trip.join_error', { tripId, message: 'Access denied' });
+          return;
+        }
+
+        socket.join(`trip:${tripId}`);
+        logger.info(`${role}:${id} joined trip room: trip:${tripId}`);
 
         if (trip?.driverId && ['matched', 'on_way', 'in_progress'].includes(trip.status)) {
           emitLastKnownDriverLocation({ socket, tripId, driverId: trip.driverId });
         }
       } catch (e) {
         logger.error('Failed to push last known location on trip.join', e);
+      }
+    });
+
+    socket.on('trip.chat.send', async (payload = {}, ack) => {
+      const tripId = payload?.tripId;
+      const body = String(payload?.body ?? payload?.message ?? '').trim();
+
+      if (!tripId) {
+        emitOrAck(socket, ack, 'trip.chat.error', { ok: false, message: 'tripId is required' });
+        return;
+      }
+
+      if (!body) {
+        emitOrAck(socket, ack, 'trip.chat.error', { ok: false, tripId, message: 'Message body is required' });
+        return;
+      }
+
+      if (body.length > TRIP_CHAT_MESSAGE_MAX_LENGTH) {
+        emitOrAck(socket, ack, 'trip.chat.error', {
+          ok: false,
+          tripId,
+          message: `Message body must be ${TRIP_CHAT_MESSAGE_MAX_LENGTH} characters or less`,
+        });
+        return;
+      }
+
+      try {
+        const trip = await getTripSocketContext(tripId);
+        const participantRole = getTripParticipantRole(trip, socket.actor);
+
+        if (!trip) {
+          emitOrAck(socket, ack, 'trip.chat.error', { ok: false, tripId, message: 'Trip not found' });
+          return;
+        }
+
+        if (!participantRole) {
+          emitOrAck(socket, ack, 'trip.chat.error', { ok: false, tripId, message: 'Access denied' });
+          return;
+        }
+
+        if (!trip.driverId || !TRIP_CHAT_SEND_STATUSES.has(trip.status)) {
+          emitOrAck(socket, ack, 'trip.chat.error', {
+            ok: false,
+            tripId,
+            message: 'Trip chat is available only while a driver is assigned and the trip is active',
+          });
+          return;
+        }
+
+        const message = await prisma.tripChatMessage.create({
+          data: { tripId: trip.id, senderId: id, body },
+          include: {
+            sender: {
+              select: { id: true, name: true, role: true, avatarUrl: true },
+            },
+          },
+        });
+        const chatMessage = serializeTripChatMessage(message);
+        const recipient = getTripChatRecipient(trip, id);
+
+        socket.join(`trip:${trip.id}`);
+        emitRealtimeEvent({
+          io,
+          event: 'trip.chat.message',
+          payload: chatMessage,
+          rooms: [`trip:${trip.id}`, `user:${trip.userId}`, trip.driverId ? `driver:${trip.driverId}` : null],
+          pushTargets: recipient ? [recipient] : [],
+          buildNotification: () => ({
+            title: 'New Trip Message',
+            body: truncateNotificationBody(body),
+          }),
+        });
+
+        emitOrAck(socket, ack, 'trip.chat.sent', { ok: true, message: chatMessage });
+      } catch (e) {
+        logger.error('Failed to send trip chat message', e);
+        emitOrAck(socket, ack, 'trip.chat.error', { ok: false, tripId, message: 'Failed to send message' });
+      }
+    });
+
+    socket.on('trip.chat.history', async (payload = {}, ack) => {
+      const tripId = payload?.tripId;
+
+      if (!tripId) {
+        emitOrAck(socket, ack, 'trip.chat.error', { ok: false, message: 'tripId is required' });
+        return;
+      }
+
+      try {
+        const trip = await getTripSocketContext(tripId);
+        const participantRole = getTripParticipantRole(trip, socket.actor);
+
+        if (!trip) {
+          emitOrAck(socket, ack, 'trip.chat.error', { ok: false, tripId, message: 'Trip not found' });
+          return;
+        }
+
+        if (!participantRole) {
+          emitOrAck(socket, ack, 'trip.chat.error', { ok: false, tripId, message: 'Access denied' });
+          return;
+        }
+
+        const take = Math.min(
+          Math.max(Number(payload?.limit) || 50, 1),
+          TRIP_CHAT_HISTORY_MAX_LIMIT
+        );
+        const before = payload?.before ? new Date(payload.before) : null;
+        const messages = await prisma.tripChatMessage.findMany({
+          where: {
+            tripId: trip.id,
+            ...(before && !Number.isNaN(before.getTime()) ? { createdAt: { lt: before } } : {}),
+          },
+          orderBy: { createdAt: 'desc' },
+          take,
+          include: {
+            sender: {
+              select: { id: true, name: true, role: true, avatarUrl: true },
+            },
+          },
+        });
+
+        emitOrAck(socket, ack, 'trip.chat.history_result', {
+          ok: true,
+          tripId: trip.id,
+          messages: messages.reverse().map(serializeTripChatMessage),
+        });
+      } catch (e) {
+        logger.error('Failed to load trip chat history', e);
+        emitOrAck(socket, ack, 'trip.chat.error', { ok: false, tripId, message: 'Failed to load chat history' });
       }
     });
 
@@ -256,7 +451,6 @@ const setupSocket = (io) => {
         locationStore.remove(id);
 
         try {
-          const prisma = require('../config/prisma');
           await prisma.driverProfile.updateMany({ where: { userId: id }, data: { isOnline: false } });
         } catch (e) {
           logger.error('Failed to set driver offline on disconnect', e);

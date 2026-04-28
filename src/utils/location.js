@@ -42,10 +42,54 @@ const isPointInCircle = (pointLat, pointLng, centerLat, centerLng, radiusKm) => 
 };
 
 /**
- * Check if a location point is within any of the given regions
+ * Normalize a polygon point array to finite latitude/longitude pairs.
+ * @param {Array} points - Array of objects with lat and lng
+ * @returns {Array} Normalized polygon points
+ */
+const normalizePolygonPoints = (points) =>
+  (Array.isArray(points) ? points : [])
+    .map((point) => ({
+      lat: Number(point?.lat),
+      lng: Number(point?.lng),
+    }))
+    .filter((point) => Number.isFinite(point.lat) && Number.isFinite(point.lng));
+
+/**
+ * Check if a location point is inside a polygon using ray casting.
  * @param {number} pointLat - Latitude of the point to check
  * @param {number} pointLng - Longitude of the point to check
- * @param {Array} regions - Array of region objects with lat, lng, radius properties
+ * @param {Array} polygonPoints - Array of objects with lat and lng
+ * @returns {boolean} True if point is inside the polygon
+ */
+const isPointInPolygon = (pointLat, pointLng, polygonPoints) => {
+  const points = normalizePolygonPoints(polygonPoints);
+  if (points.length < 3) return false;
+
+  const lat = Number(pointLat);
+  const lng = Number(pointLng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false;
+
+  let inside = false;
+
+  for (let index = 0, previousIndex = points.length - 1; index < points.length; previousIndex = index, index += 1) {
+    const current = points[index];
+    const previous = points[previousIndex];
+
+    const intersects =
+      ((current.lng > lng) !== (previous.lng > lng)) &&
+      (lat < ((previous.lat - current.lat) * (lng - current.lng)) / (previous.lng - current.lng) + current.lat);
+
+    if (intersects) inside = !inside;
+  }
+
+  return inside;
+};
+
+/**
+ * Check if a location point is within any of the given polygon regions
+ * @param {number} pointLat - Latitude of the point to check
+ * @param {number} pointLng - Longitude of the point to check
+ * @param {Array} regions - Array of region objects with points polygons
  * @returns {object|null} The matching region object or null if no match
  */
 const findPointInRegions = (pointLat, pointLng, regions) => {
@@ -54,7 +98,7 @@ const findPointInRegions = (pointLat, pointLng, regions) => {
   }
 
   for (const region of regions) {
-    if (isPointInCircle(pointLat, pointLng, region.lat, region.lng, region.radius)) {
+    if (isPointInPolygon(pointLat, pointLng, region.points)) {
       return region;
     }
   }
@@ -155,6 +199,8 @@ const distancePointToPolylineKm = (point, polyline = []) => {
 module.exports = {
   haversineKm,
   isPointInCircle,
+  normalizePolygonPoints,
+  isPointInPolygon,
   findPointInRegions,
   decodeEncodedPolyline,
   distancePointToPolylineKm,

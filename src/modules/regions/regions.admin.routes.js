@@ -13,6 +13,33 @@ const { authenticate, requirePermission } = require('../../middleware/auth.middl
 const adminRead = [authenticate, requirePermission('regions:read')];
 const adminManage = [authenticate, requirePermission('regions:manage')];
 
+const validateRegionPoints = (required = false) =>
+  body('points').custom((value) => {
+    if (value == null) {
+      if (required) throw new Error('points is required');
+      return true;
+    }
+
+    if (!Array.isArray(value) || value.length < 3) {
+      throw new Error('points must contain at least 3 coordinates');
+    }
+
+    value.forEach((point, index) => {
+      const lat = Number(point?.lat);
+      const lng = Number(point?.lng);
+
+      if (!Number.isFinite(lat) || lat < -90 || lat > 90) {
+        throw new Error(`points[${index}].lat must be between -90 and 90`);
+      }
+
+      if (!Number.isFinite(lng) || lng < -180 || lng > 180) {
+        throw new Error(`points[${index}].lng must be between -180 and 180`);
+      }
+    });
+
+    return true;
+  });
+
 router.get('/', ...adminRead, ctrl.listRegions);
 
 router.post(
@@ -20,11 +47,8 @@ router.post(
   ...adminManage,
   [
     body('name').trim().isLength({ min: 1 }).withMessage('name is required'),
-    // body('country').trim().isLength({ min: 1 }).withMessage('country is required'),
     body('city').optional().trim(),
-    body('lat').optional().isFloat({ min: -90,  max: 90  }).withMessage('lat must be between -90 and 90'),
-    body('lng').optional().isFloat({ min: -180, max: 180 }).withMessage('lng must be between -180 and 180'),
-    body('radius').optional().isFloat({ min: 0.1 }).withMessage('radius must be a positive number (in km)'),
+    validateRegionPoints(true),
     body('status').optional().isBoolean(),
   ],
   validate,
@@ -39,11 +63,9 @@ router.put(
   [
     param('id').isUUID(),
     body('name').optional().trim().isLength({ min: 1 }).withMessage('name must not be empty'),
-    body('country').optional().trim().isLength({ min: 1 }).withMessage('country must not be empty'),
     body('city').optional().trim(),
-    body('lat').optional().isFloat({ min: -90,  max: 90  }).withMessage('lat must be between -90 and 90'),
-    body('lng').optional().isFloat({ min: -180, max: 180 }).withMessage('lng must be between -180 and 180'),
-    body('radius').optional().isFloat({ min: 0.1 }).withMessage('radius must be a positive number (in km)'),
+    validateRegionPoints(false),
+    body('status').optional().isBoolean(),
     body('isActive').optional().isBoolean(),
   ],
   validate,

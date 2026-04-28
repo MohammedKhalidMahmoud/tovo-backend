@@ -5,13 +5,23 @@ Region:
     name:      { type: string, example: Cairo }
     country:   { type: string, example: Egypt }
     city:      { type: string, nullable: true, example: Cairo }
+    points:
+      type: array
+      minItems: 3
+      description: Polygon boundary points for the service region.
+      items:
+        type: object
+        required: [lat, lng]
+        properties:
+          lat: { type: number, example: 30.0444 }
+          lng: { type: number, example: 31.2357 }
     lat:       { type: number, nullable: true, example: 30.0444 }
     lng:       { type: number, nullable: true, example: 31.2357 }
     radius:
       type: number
       nullable: true
-      example: 25.5
-      description: 'Radius in kilometers for circular service area'
+      deprecated: true
+      description: 'Deprecated. Regions are now matched by polygon points.'
     isActive:  { type: boolean, example: true }
     createdAt: { type: string, format: date-time }
     updatedAt: { type: string, format: date-time }

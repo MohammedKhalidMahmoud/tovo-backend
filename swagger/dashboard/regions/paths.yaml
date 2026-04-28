@@ -38,7 +38,7 @@
   post:
     tags: [AdminRegions]
     summary: Create a region (admin)
-    description: Create a circular service region with center coordinates and radius.
+    description: Create a polygon service region with boundary points.
     security: [{ BearerAuth: [] }]
     requestBody:
       required: true
@@ -46,13 +46,19 @@
         application/json:
           schema:
             type: object
-            required: [name]
+            required: [name, points]
             properties:
               name:     { type: string, example: 'Downtown Cairo' }
               city:     { type: string, example: Cairo }
-              lat:      { type: number, example: 30.0444, description: 'Center latitude' }
-              lng:      { type: number, example: 31.2357, description: 'Center longitude' }
-              radius:   { type: number, example: 25.5, description: 'Radius in kilometers' }
+              points:
+                type: array
+                minItems: 3
+                items:
+                  type: object
+                  required: [lat, lng]
+                  properties:
+                    lat: { type: number, example: 30.0244 }
+                    lng: { type: number, example: 31.2157 }
               status:   { type: boolean, default: true, description: 'Active status' }
     responses:
       '201':
@@ -111,9 +117,16 @@
               name:     { type: string }
               country:  { type: string }
               city:     { type: string }
-              lat:      { type: number, description: 'Center latitude' }
-              lng:      { type: number, description: 'Center longitude' }
-              radius:   { type: number, description: 'Radius in kilometers' }
+              points:
+                type: array
+                minItems: 3
+                items:
+                  type: object
+                  required: [lat, lng]
+                  properties:
+                    lat: { type: number }
+                    lng: { type: number }
+              status:   { type: boolean }
               isActive: { type: boolean }
     responses:
       '200':

@@ -80,6 +80,7 @@ model User {
   insuranceCards  InsuranceCard[]
   notifications   Notification[]
   supportTickets  SupportTicket[]
+  tripChatMessages TripChatMessage[]
   deviceTokens    DeviceToken[]
   refreshTokens   RefreshToken[]
 
@@ -238,6 +239,8 @@ model Trip {
   declines           TripDecline[]
   walletTransactions WalletTransaction[]
   commissionLog      CommissionLog?
+  supportTickets     SupportTicket[]
+  chatMessages       TripChatMessage[]
 
   @@index([userId], map: "trips_userId_fkey")
   @@index([driverId], map: "trips_driverId_fkey")
@@ -422,14 +425,17 @@ model DeviceToken {
 model SupportTicket {
   id        String              @id @default(uuid())
   userId    String
+  tripId    String?
   subject   String
   status    SupportTicketStatus @default(open)
   createdAt DateTime            @default(now())
   updatedAt DateTime            @updatedAt
 
   user     User            @relation(fields: [userId], references: [id])
+  trip     Trip?           @relation(fields: [tripId], references: [id], onDelete: SetNull)
   messages TicketMessage[]
 
+  @@index([tripId], map: "support_tickets_tripId_fkey")
   @@map("support_tickets")
 }
 
@@ -443,6 +449,21 @@ model TicketMessage {
   ticket SupportTicket @relation(fields: [ticketId], references: [id])
 
   @@map("ticket_messages")
+}
+
+model TripChatMessage {
+  id        String   @id @default(uuid())
+  tripId    String
+  senderId  String
+  body      String   @db.Text
+  createdAt DateTime @default(now())
+
+  trip   Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  sender User @relation(fields: [senderId], references: [id])
+
+  @@index([tripId, createdAt], map: "trip_chat_messages_tripId_createdAt_idx")
+  @@index([senderId], map: "trip_chat_messages_senderId_fkey")
+  @@map("trip_chat_messages")
 }
 
 // ─────────────────────────────────────────────
@@ -513,6 +534,7 @@ model Region {
   id        String   @id @default(uuid())
   name      String
   city      String?
+  points    Json?
   lat       Float?
   lng       Float?
   radius    Float?

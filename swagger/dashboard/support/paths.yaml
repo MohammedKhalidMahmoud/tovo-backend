@@ -20,6 +20,9 @@
       - name: search
         in: query
         schema: { type: string }
+      - name: tripId
+        in: query
+        schema: { type: string, format: uuid }
     responses:
       '200': { description: Ticket list }
       '401': { description: Unauthorized }

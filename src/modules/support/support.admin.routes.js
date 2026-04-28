@@ -16,6 +16,7 @@ router.get(
     query('status').optional().isString(),
     query('type').optional().isString(),
     query('search').optional().isString(),
+    query('tripId').optional().isUUID(),
   ],
   validate,
   ctrl.listComplaints,

@@ -4,7 +4,7 @@
 // ════════════════════════════════════════════════════════════════════════════════
 
 const service = require('./regions.service');
-const { success, error } = require('../../utils/response');
+const { success, error, paginate } = require('../../utils/response');
 
 /**
  * GET /api/v1/admin/regions
@@ -15,16 +15,18 @@ exports.listRegions = async (req, res, next) => {
       ? req.query.isActive === 'true'
       : undefined;
 
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
     const result = await service.listRegions({
-      page:     parseInt(req.query.page)  || 1,
-      limit:    parseInt(req.query.limit) || 20,
+      page,
+      limit,
       isActive,
       search:   req.query.search,
     });
 
     res.set('X-Total-Count', result.total);
     res.set('X-Total-Pages', result.pages);
-    return success(res, result.data, 'Regions retrieved successfully');
+    return success(res, result.data, 'Regions retrieved successfully', 200, paginate(page, limit, result.total));
   } catch (err) { next(err); }
 };
 

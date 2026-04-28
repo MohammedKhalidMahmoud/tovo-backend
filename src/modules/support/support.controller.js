@@ -3,9 +3,12 @@ const { success, created, error, notFound, paginate } = require('../../utils/res
 
 const createTicket = async (req, res, next) => {
   try {
-    const data = await service.createTicket(req.actor.id, req.body.subject);
+    const data = await service.createTicket(req.actor.id, req.body.subject, req.body.tripId || null);
     return created(res, data, 'Support ticket created');
-  } catch (err) { next(err); }
+  } catch (err) {
+    if (err.status) return error(res, err.message, err.status);
+    next(err);
+  }
 };
 
 const getTickets = async (req, res, next) => {
@@ -37,8 +40,8 @@ const addMessage = async (req, res, next) => {
 
 const listComplaints = async (req, res, next) => {
   try {
-    const { page = 1, limit = 20, status, type, search } = req.query;
-    const result = await service.listComplaints({ page: +page, limit: +limit, status, type, search });
+    const { page = 1, limit = 20, status, type, search, tripId } = req.query;
+    const result = await service.listComplaints({ page: +page, limit: +limit, status, type, search, tripId });
     return success(res, result.data, 'Success', 200, paginate(page, limit, result.total));
   } catch (err) { next(err); }
 };
