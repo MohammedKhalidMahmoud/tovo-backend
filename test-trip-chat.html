@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tovo Trip Chat Two-Sided Tester</title>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #101114;
+      --panel: #181a1f;
+      --panel-2: #20232b;
+      --border: #343843;
+      --text: #eeeeee;
+      --muted: #a8adb8;
+      --accent: #44ffcc;
+      --danger: #ff5555;
+      --warn: #ffaa33;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 20px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    h1, h2, h3 { color: var(--accent); margin-top: 0; }
+    h1 { margin-bottom: 6px; }
+    h2 { font-size: 17px; margin-bottom: 12px; }
+    h3 { font-size: 15px; margin-bottom: 10px; }
+
+    p, small { color: var(--muted); }
+
+    label {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    input, textarea, select {
+      width: 100%;
+      margin-bottom: 10px;
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: #22252d;
+      color: var(--text);
+      font: inherit;
+    }
+
+    textarea { resize: vertical; }
+
+    button {
+      margin: 0 8px 8px 0;
+      padding: 8px 14px;
+      border: 0;
+      border-radius: 4px;
+      background: var(--accent);
+      color: #06110e;
+      cursor: pointer;
+      font: inherit;
+      font-weight: 700;
+    }
+
+    button:hover { filter: brightness(0.92); }
+    button.red { background: var(--danger); color: #fff; }
+    button.gray { background: #6f7684; color: #fff; }
+
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: flex-start;
+      margin-bottom: 18px;
+    }
+
+    .panel {
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--panel);
+      padding: 14px;
+      margin-bottom: 16px;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      align-items: end;
+    }
+
+    .two-column {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 16px;
+      align-items: start;
+    }
+
+    .actor {
+      min-width: 0;
+    }
+
+    .actor-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .badge {
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 4px 9px;
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .badge.connected {
+      border-color: rgba(68, 255, 204, 0.55);
+      color: var(--accent);
+    }
+
+    .chat-box {
+      height: 340px;
+      overflow-y: auto;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      background: #121419;
+      padding: 10px;
+      margin-bottom: 12px;
+    }
+
+    .message {
+      max-width: 82%;
+      margin-bottom: 10px;
+      padding: 8px 10px;
+      border-radius: 6px;
+      background: var(--panel-2);
+      border: 1px solid transparent;
+      overflow-wrap: anywhere;
+    }
+
+    .message.own {
+      margin-left: auto;
+      border-color: rgba(68, 255, 204, 0.45);
+      background: #17342d;
+    }
+
+    .message-meta {
+      color: var(--muted);
+      font-size: 11px;
+      margin-bottom: 4px;
+    }
+
+    .raw-log {
+      height: 180px;
+      overflow-y: auto;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      background: #121419;
+      padding: 10px;
+      white-space: pre-wrap;
+      font-size: 12px;
+    }
+
+    @media (max-width: 900px) {
+      .row, .two-column { grid-template-columns: 1fr; }
+      .page-header { display: block; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page-header">
+    <div>
+      <h1>Tovo Trip Chat Two-Sided Tester</h1>
+      <small>Use a customer token on the left and the assigned driver token on the right. Chat works only for matched, on_way, or in_progress trips.</small>
+    </div>
+    <button class="gray" onclick="clearEverything()">Clear all logs</button>
+  </div>
+
+  <section class="panel">
+    <h2>Shared Settings</h2>
+    <div class="row">
+      <div>
+        <label>Backend origin</label>
+        <input id="origin" value="http://localhost:3000" />
+      </div>
+      <div>
+        <label>Transport</label>
+        <select id="transportMode">
+          <option value="polling">polling only</option>
+          <option value="websocket">websocket only</option>
+          <option value="both">polling then websocket</option>
+        </select>
+      </div>
+      <div>
+        <label>Trip ID</label>
+        <input id="tripId" placeholder="Trip UUID" />
+      </div>
+    </div>
+    <button onclick="connectBoth()">Connect both</button>
+    <button onclick="joinBoth()">Join both</button>
+    <button onclick="loadHistoryBoth()">Load history both</button>
+    <button class="red" onclick="disconnectBoth()">Disconnect both</button>
+  </section>
+
+  <main class="two-column">
+    <section class="panel actor" data-actor="customer">
+      <div class="actor-header">
+        <h2>Customer View</h2>
+        <span id="customerStatus" class="badge">disconnected</span>
+      </div>
+
+      <label>Customer JWT access token</label>
+      <textarea id="customerToken" rows="3" placeholder="Paste customer token without Bearer"></textarea>
+
+      <button onclick="connectActor('customer')">Connect customer</button>
+      <button onclick="joinTrip('customer')">Join trip</button>
+      <button onclick="loadHistory('customer')">Load history</button>
+      <button class="red" onclick="disconnectActor('customer')">Disconnect</button>
+
+      <h3>Conversation</h3>
+      <div id="customerChat" class="chat-box"></div>
+
+      <label>Customer message</label>
+      <textarea id="customerBody" rows="3" placeholder="Type as customer"></textarea>
+      <button onclick="sendMessage('customer')">Send as customer</button>
+      <button class="gray" onclick="sendSample('customer')">Sample</button>
+
+      <h3>Customer Raw Log</h3>
+      <pre id="customerLog" class="raw-log"></pre>
+    </section>
+
+    <section class="panel actor" data-actor="driver">
+      <div class="actor-header">
+        <h2>Driver View</h2>
+        <span id="driverStatus" class="badge">disconnected</span>
+      </div>
+
+      <label>Driver JWT access token</label>
+      <textarea id="driverToken" rows="3" placeholder="Paste assigned driver token without Bearer"></textarea>
+
+      <button onclick="connectActor('driver')">Connect driver</button>
+      <button onclick="joinTrip('driver')">Join trip</button>
+      <button onclick="loadHistory('driver')">Load history</button>
+      <button class="red" onclick="disconnectActor('driver')">Disconnect</button>
+
+      <h3>Conversation</h3>
+      <div id="driverChat" class="chat-box"></div>
+
+      <label>Driver message</label>
+      <textarea id="driverBody" rows="3" placeholder="Type as driver"></textarea>
+      <button onclick="sendMessage('driver')">Send as driver</button>
+      <button class="gray" onclick="sendSample('driver')">Sample</button>
+
+      <h3>Driver Raw Log</h3>
+      <pre id="driverLog" class="raw-log"></pre>
+    </section>
+  </main>
+
+  <script>
+    const actors = {
+      customer: { socket: null, ownSenderId: null },
+      driver: { socket: null, ownSenderId: null },
+    };
+
+    function getOrigin() {
+      return document.getElementById('origin').value.trim().replace(/\/$/, '');
+    }
+
+    function getTripId() {
+      return document.getElementById('tripId').value.trim();
+    }
+
+    function getToken(actor) {
+      return document.getElementById(`${actor}Token`).value.trim();
+    }
+
+    function getBody(actor) {
+      return document.getElementById(`${actor}Body`).value.trim();
+    }
+
+    function setBody(actor, value) {
+      document.getElementById(`${actor}Body`).value = value;
+    }
+
+    function getTransports() {
+      const mode = document.getElementById('transportMode').value;
+      if (mode === 'polling') return ['polling'];
+      if (mode === 'websocket') return ['websocket'];
+      return ['polling', 'websocket'];
+    }
+
+    function pretty(value) {
+      return JSON.stringify(value, null, 2);
+    }
+
+    function decodeJwtPayload(token) {
+      try {
+        const payload = token.split('.')[1];
+        const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
+        const json = decodeURIComponent(
+          atob(normalized)
+            .split('')
+            .map((char) => `%${(`00${char.charCodeAt(0).toString(16)}`).slice(-2)}`)
+            .join('')
+        );
+        return JSON.parse(json);
+      } catch {
+        return null;
+      }
+    }
+
+    function log(actor, message) {
+      const el = document.getElementById(`${actor}Log`);
+      const ts = new Date().toLocaleTimeString();
+      el.textContent += `[${ts}] ${message}\n`;
+      el.scrollTop = el.scrollHeight;
+    }
+
+    function setStatus(actor, text, connected = false) {
+      const el = document.getElementById(`${actor}Status`);
+      el.textContent = text;
+      el.classList.toggle('connected', connected);
+    }
+
+    function appendChat(actor, message, source = 'event') {
+      const chat = document.getElementById(`${actor}Chat`);
+      const ownSenderId = actors[actor].ownSenderId;
+      const senderId = message?.senderId || message?.sender?.id || 'unknown';
+      const senderRole = message?.sender?.role || senderId;
+      const body = message?.body || message?.message || '';
+      const createdAt = message?.createdAt ? new Date(message.createdAt).toLocaleTimeString() : new Date().toLocaleTimeString();
+      const isOwn = ownSenderId && senderId === ownSenderId;
+
+      const item = document.createElement('div');
+      item.className = `message${isOwn ? ' own' : ''}`;
+      item.innerHTML = `
+        <div class="message-meta">${senderRole} | ${createdAt} | ${source}</div>
+        <div>${escapeHtml(body)}</div>
+      `;
+      chat.appendChild(item);
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    function renderHistory(actor, messages = []) {
+      const chat = document.getElementById(`${actor}Chat`);
+      chat.textContent = '';
+      messages.forEach((message) => appendChat(actor, message, 'history'));
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function requireConnected(actor) {
+      if (!actors[actor].socket?.connected) {
+        log(actor, 'ERROR: socket is not connected');
+        return false;
+      }
+      return true;
+    }
+
+    function connectActor(actor) {
+      const origin = getOrigin();
+      const token = getToken(actor);
+      const transports = getTransports();
+
+      if (!origin) return log(actor, 'ERROR: backend origin is required');
+      if (!token) return log(actor, `ERROR: ${actor} token is required`);
+
+      disconnectActor(actor);
+      log(actor, `Connecting to ${origin} transports=${pretty(transports)}`);
+      setStatus(actor, 'connecting');
+
+      const socket = io(origin, {
+        path: '/socket.io',
+        auth: { token },
+        transports,
+        reconnection: false,
+        timeout: 15000,
+        forceNew: true,
+      });
+
+      actors[actor].socket = socket;
+      actors[actor].ownSenderId = decodeJwtPayload(token)?.id || null;
+
+      socket.on('connect', () => {
+        setStatus(actor, `connected ${socket.id}`, true);
+        log(actor, `Connected. socket.id=${socket.id}, transport=${socket.io.engine.transport.name}`);
+        socket.io.engine.on('upgrade', (transport) => log(actor, `Transport upgraded to ${transport.name}`));
+      });
+
+      socket.on('disconnect', (reason) => {
+        setStatus(actor, 'disconnected');
+        log(actor, `Disconnected: ${reason}`);
+      });
+
+      socket.on('connect_error', (error) => {
+        setStatus(actor, 'connect error');
+        log(actor, `CONNECT ERROR: ${error.message}`);
+        if (error.description) log(actor, `Description: ${pretty(error.description)}`);
+        if (error.context) log(actor, `Context: ${pretty(error.context)}`);
+      });
+
+      socket.on('trip.join_error', (data) => log(actor, `trip.join_error:\n${pretty(data)}`));
+
+      socket.on('trip.chat.message', (data) => {
+        log(actor, `trip.chat.message:\n${pretty(data)}`);
+        appendChat(actor, data, 'event');
+      });
+
+      socket.on('trip.chat.sent', (data) => {
+        log(actor, `trip.chat.sent:\n${pretty(data)}`);
+        if (data?.message) appendChat(actor, data.message, 'sent');
+      });
+
+      socket.on('trip.chat.error', (data) => log(actor, `trip.chat.error:\n${pretty(data)}`));
+
+      socket.on('trip.chat.history_result', (data) => {
+        log(actor, `trip.chat.history_result:\n${pretty(data)}`);
+        renderHistory(actor, data?.messages || []);
+      });
+
+      socket.on('trip.status_changed', (data) => log(actor, `trip.status_changed:\n${pretty(data)}`));
+      socket.on('trip.cancelled', (data) => log(actor, `trip.cancelled:\n${pretty(data)}`));
+    }
+
+    function disconnectActor(actor) {
+      actors[actor].socket?.disconnect();
+      actors[actor].socket = null;
+      actors[actor].ownSenderId = null;
+      setStatus(actor, 'disconnected');
+    }
+
+    function connectBoth() {
+      connectActor('customer');
+      connectActor('driver');
+    }
+
+    function disconnectBoth() {
+      disconnectActor('customer');
+      disconnectActor('driver');
+    }
+
+    function joinTrip(actor) {
+      if (!requireConnected(actor)) return;
+      const tripId = getTripId();
+      if (!tripId) return log(actor, 'ERROR: trip ID is required');
+      actors[actor].socket.emit('trip.join', { tripId });
+      log(actor, `Sent trip.join for ${tripId}`);
+    }
+
+    function joinBoth() {
+      joinTrip('customer');
+      joinTrip('driver');
+    }
+
+    function loadHistory(actor) {
+      if (!requireConnected(actor)) return;
+      const tripId = getTripId();
+      if (!tripId) return log(actor, 'ERROR: trip ID is required');
+
+      actors[actor].socket.emit('trip.chat.history', { tripId, limit: 50 }, (ack) => {
+        log(actor, `trip.chat.history ACK:\n${pretty(ack)}`);
+        if (ack?.ok) renderHistory(actor, ack.messages || []);
+      });
+      log(actor, `Sent trip.chat.history for ${tripId}`);
+    }
+
+    function loadHistoryBoth() {
+      loadHistory('customer');
+      loadHistory('driver');
+    }
+
+    function sendMessage(actor) {
+      if (!requireConnected(actor)) return;
+      const tripId = getTripId();
+      const body = getBody(actor);
+
+      if (!tripId) return log(actor, 'ERROR: trip ID is required');
+      if (!body) return log(actor, 'ERROR: message body is required');
+
+      actors[actor].socket.emit('trip.chat.send', { tripId, body }, (ack) => {
+        log(actor, `trip.chat.send ACK:\n${pretty(ack)}`);
+      });
+      log(actor, `Sent trip.chat.send for ${tripId}`);
+      setBody(actor, '');
+    }
+
+    function sendSample(actor) {
+      const label = actor === 'customer' ? 'Customer' : 'Driver';
+      setBody(actor, `${label} test message at ${new Date().toLocaleTimeString()}`);
+      sendMessage(actor);
+    }
+
+    function clearEverything() {
+      ['customer', 'driver'].forEach((actor) => {
+        document.getElementById(`${actor}Log`).textContent = '';
+        document.getElementById(`${actor}Chat`).textContent = '';
+      });
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tovo Share Link Tester</title>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <style>
+    body { font-family: monospace; padding: 20px; background: #111; color: #eee; }
+    h1, h2 { color: #4fc; }
+    input, select {
+      background: #222; color: #eee; border: 1px solid #444; padding: 8px 10px;
+      width: 100%; box-sizing: border-box; border-radius: 4px; margin-bottom: 10px;
+    }
+    button {
+      background: #4fc; color: #000; border: none; padding: 8px 18px;
+      border-radius: 4px; cursor: pointer; margin: 0 8px 8px 0; font-weight: bold;
+    }
+    button.red { background: #f55; color: #fff; }
+    label { color: #aaa; font-size: 12px; display: block; }
+    small { color: #aaa; }
+    .panel { border: 1px solid #333; background: #181818; border-radius: 6px; padding: 12px; margin-bottom: 16px; }
+    .row { display: flex; gap: 8px; }
+    .row > div { flex: 1; }
+    #snapshot, #log {
+      background: #1a1a1a; border: 1px solid #333; padding: 12px; overflow-y: auto;
+      border-radius: 4px; font-size: 13px; white-space: pre-wrap;
+    }
+    #snapshot { min-height: 120px; }
+    #log { height: 340px; }
+  </style>
+</head>
+<body>
+  <h1>Tovo Share Link Server Tester</h1>
+  <p><small>Paste only the 48-character share token. This page loads the public REST snapshot and connects to Socket.IO as a share-link viewer.</small></p>
+
+  <div class="panel">
+    <div class="row">
+      <div>
+        <label>Backend origin</label>
+        <input id="origin" value="https://tovo-b.developteam.site:443" />
+      </div>
+      <div>
+        <label>Transport</label>
+        <select id="transportMode">
+          <option value="polling">polling only</option>
+          <option value="websocket">websocket only</option>
+          <option value="both">polling then websocket</option>
+        </select>
+      </div>
+    </div>
+
+    <label>Share token</label>
+    <input id="shareToken" placeholder="Paste shareToken here" />
+
+    <button onclick="loadSnapshot()">Load REST snapshot</button>
+    <button onclick="connectSocket()">Connect socket</button>
+    <button onclick="loadAndConnect()">Load + connect</button>
+    <button class="red" onclick="disconnectSocket()">Disconnect</button>
+  </div>
+
+  <h2>REST Snapshot</h2>
+  <pre id="snapshot">No snapshot loaded.</pre>
+
+  <h2>Socket Log</h2>
+  <button onclick="clearLog()">Clear</button>
+  <pre id="log"></pre>
+
+  <script>
+    let socket = null;
+
+    function getToken() {
+      return document.getElementById('shareToken').value.trim();
+    }
+
+    function getOrigin() {
+      return document.getElementById('origin').value.trim().replace(/\/$/, '');
+    }
+
+    function getTransports() {
+      const mode = document.getElementById('transportMode').value;
+      if (mode === 'polling') return ['polling'];
+      if (mode === 'websocket') return ['websocket'];
+      return ['polling', 'websocket'];
+    }
+
+    function log(message) {
+      const el = document.getElementById('log');
+      const ts = new Date().toLocaleTimeString();
+      el.textContent += `[${ts}] ${message}\n`;
+      el.scrollTop = el.scrollHeight;
+    }
+
+    function clearLog() {
+      document.getElementById('log').textContent = '';
+    }
+
+    async function loadSnapshot() {
+      const token = getToken();
+      const origin = getOrigin();
+      if (!token) return log('ERROR: share token is required');
+      if (!origin) return log('ERROR: backend origin is required');
+
+      const url = `${origin}/api/v1/trips/share/${encodeURIComponent(token)}`;
+      log(`GET ${url}`);
+
+      try {
+        const response = await fetch(url);
+        const data = await response.json();
+        document.getElementById('snapshot').textContent = JSON.stringify(data, null, 2);
+        log(`Snapshot HTTP ${response.status}`);
+      } catch (error) {
+        log(`Snapshot error: ${error.message}`);
+      }
+    }
+
+    function connectSocket() {
+      const token = getToken();
+      const origin = getOrigin();
+      const transports = getTransports();
+
+      if (!token) return log('ERROR: share token is required');
+      if (!origin) return log('ERROR: backend origin is required');
+      if (socket) socket.disconnect();
+
+      log(`Connecting socket to ${origin} with transports=${JSON.stringify(transports)}`);
+
+      socket = io(origin, {
+        path: '/socket.io',
+        auth: { shareToken: token },
+        transports,
+        reconnection: false,
+        timeout: 15000,
+        forceNew: true,
+      });
+
+      socket.on('connect', () => {
+        log(`Connected as share viewer. socket.id=${socket.id}, transport=${socket.io.engine.transport.name}`);
+        socket.io.engine.on('upgrade', (transport) => log(`Transport upgraded to ${transport.name}`));
+      });
+
+      socket.on('disconnect', (reason) => log(`Disconnected: ${reason}`));
+      socket.on('connect_error', (error) => {
+        log(`CONNECT ERROR: ${error.message}`);
+        if (error.description) log(`Description: ${JSON.stringify(error.description)}`);
+        if (error.context) log(`Context: ${JSON.stringify(error.context)}`);
+      });
+
+      socket.on('trip.driver_location', (data) => {
+        log(`trip.driver_location:\n${JSON.stringify(data, null, 2)}`);
+      });
+
+      socket.on('trip.status_changed', (data) => {
+        log(`trip.status_changed:\n${JSON.stringify(data, null, 2)}`);
+      });
+
+      socket.on('trip.cancelled', (data) => {
+        log(`trip.cancelled:\n${JSON.stringify(data, null, 2)}`);
+      });
+    }
+
+    async function loadAndConnect() {
+      await loadSnapshot();
+      connectSocket();
+    }
+
+    function disconnectSocket() {
+      socket?.disconnect();
+      socket = null;
+    }
+  </script>
+</body>
+</html>

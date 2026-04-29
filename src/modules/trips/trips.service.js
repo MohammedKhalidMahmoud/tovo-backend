@@ -378,12 +378,13 @@ const validatePickupInRegion = async (pickupLat, pickupLng) => {
   if (!activeRegions || activeRegions.length === 0) return true;
 
   const matchingRegion = locationUtils.findPointInRegions(pickupLat, pickupLng, activeRegions);
-  if (!matchingRegion) {
-    throw Object.assign(
-      new Error('Pickup location is outside all service regions. Please select a location within the service area.'),
-      { statusCode: 422 }
-    );
-  }
+  // Temporarily allow pickups outside configured service regions.
+  // if (!matchingRegion) {
+  //   throw Object.assign(
+  //     new Error('Pickup location is outside all service regions. Please select a location within the service area.'),
+  //     { statusCode: 422 }
+  //   );
+  // }
 
   return true;
 };
