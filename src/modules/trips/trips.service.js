@@ -321,6 +321,15 @@ const generateUniqueShareToken = async () => {
   throw { status: 500, message: 'Unable to generate a unique share token right now' };
 };
 
+const ensureTripShareToken = async (trip) => {
+  if (trip.shareToken && !isShareTokenExpired(trip)) return trip;
+
+  const shareToken = await generateUniqueShareToken();
+  const shareTokenExpiresAt = resolveShareTokenExpiry(trip);
+
+  return repo.updateTrip(trip.id, { shareToken, shareTokenExpiresAt });
+};
+
 const estimateFare = async ({ pickupLat, pickupLng, dropoffLat, dropoffLng, stops = [] }) => {
   const normalizedStops = normalizeStops(stops);
   const routeData = await resolveRouteData({
@@ -639,10 +648,7 @@ const generateTripShareLink = async (tripId, userId) => {
     throw { status: 422, message: 'Trip sharing is only available for active trips with an assigned driver' };
   }
 
-  const shareToken = await generateUniqueShareToken();
-  const shareTokenExpiresAt = resolveShareTokenExpiry(trip);
-
-  return repo.updateTrip(tripId, { shareToken, shareTokenExpiresAt });
+  return ensureTripShareToken(trip);
 };
 
 const getSharedTrip = async (shareToken) => {
@@ -701,7 +707,7 @@ const acceptTrip = async (tripId, driverId) => {
 
   const updated = await repo.updateTrip(tripId, { driverId, status: 'matched' });
 
-  return updated;
+  return ensureTripShareToken(updated);
 };
 
 const declineTrip = async (tripId, driverId) => {

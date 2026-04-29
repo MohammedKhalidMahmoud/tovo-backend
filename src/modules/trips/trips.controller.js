@@ -10,6 +10,19 @@ const {
   emitTripRemoved,
 } = require('../../realtime/socket');
 
+const getTripShareBaseUrl = (req) =>
+  process.env.TRIP_SHARE_BASE_URL ||
+  process.env.APP_BASE_URL ||
+  `${req.protocol}://${req.get('host')}`;
+
+const buildTripShareUrl = (req, shareToken) =>
+  shareToken ? new URL(`/api/v1/trips/share/${shareToken}`, getTripShareBaseUrl(req)).toString() : null;
+
+const withTripShareUrl = (req, trip) => ({
+  ...trip,
+  shareUrl: buildTripShareUrl(req, trip.shareToken),
+});
+
 const estimateFare = async (req, res, next) => {
   try {
     const { lat_pick, lng_pick, lat_drop, lng_drop, stops } = req.query;
@@ -128,16 +141,11 @@ const getTripRouteById = async (req, res, next) => {
 const generateTripShareLink = async (req, res, next) => {
   try {
     const trip = await service.generateTripShareLink(req.params.id, req.actor.id);
-    const baseUrl =
-      process.env.TRIP_SHARE_BASE_URL ||
-      process.env.APP_BASE_URL ||
-      `${req.protocol}://${req.get('host')}`;
-    const shareUrl = new URL(`/api/v1/trips/share/${trip.shareToken}`, baseUrl).toString();
 
     return success(res, {
       shareToken: trip.shareToken,
       shareTokenExpiresAt: trip.shareTokenExpiresAt,
-      shareUrl,
+      shareUrl: buildTripShareUrl(req, trip.shareToken),
     }, 'Trip share link generated');
   } catch (err) {
     if (err.status) return error(res, err.message, err.status);
@@ -190,6 +198,7 @@ const getNewRequests = async (req, res, next) => {
 const acceptTrip = async (req, res, next) => {
   try {
     const trip = await service.acceptTrip(req.params.id, req.actor.id);
+    const tripWithShareUrl = withTripShareUrl(req, trip);
     const io = req.app.get('io');
 
     // Server-side: join both parties to the trip room so location tracking
@@ -199,9 +208,9 @@ const acceptTrip = async (req, res, next) => {
     io.in(`driver:${trip.driverId}`).socketsJoin(`trip:${trip.id}`);
     io.in(`user:${trip.userId}`).socketsJoin(`trip:${trip.id}`);
 
-    emitDriverMatched(io, trip.userId, trip);
-    emitTripTaken(io, trip);
-    return success(res, trip, 'Trip accepted');
+    emitDriverMatched(io, trip.userId, tripWithShareUrl);
+    emitTripTaken(io, tripWithShareUrl);
+    return success(res, tripWithShareUrl, 'Trip accepted');
   } catch (err) {
     if (err.status) return error(res, err.message, err.status);
     next(err);
