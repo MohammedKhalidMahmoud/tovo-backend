@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tovo Server Socket Tester</title>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <style>
+    body { font-family: monospace; padding: 20px; background: #111; color: #eee; }
+    h1, h2 { color: #4fc; }
+    h2 { margin-top: 30px; }
+    input, textarea, select {
+      background: #222; color: #eee; border: 1px solid #444; padding: 6px 10px;
+      width: 100%; box-sizing: border-box; border-radius: 4px; margin-bottom: 8px;
+    }
+    button {
+      background: #4fc; color: #000; border: none; padding: 8px 18px;
+      border-radius: 4px; cursor: pointer; margin: 0 8px 8px 0; font-weight: bold;
+    }
+    button:hover { background: #3db; }
+    button.red { background: #f55; color: #fff; }
+    button.gray { background: #777; color: #fff; }
+    label { color: #aaa; font-size: 12px; display: block; }
+    small { color: #aaa; }
+    .row { display: flex; gap: 8px; align-items: flex-end; }
+    .row > div { flex: 1; }
+    .panel { border: 1px solid #333; background: #181818; border-radius: 6px; padding: 12px; margin-bottom: 12px; }
+    #log {
+      background: #1a1a1a; border: 1px solid #333; padding: 12px; height: 360px;
+      overflow-y: auto; border-radius: 4px; font-size: 13px; white-space: pre-wrap;
+    }
+    .status { color: #fa0; }
+  </style>
+</head>
+<body>
+  <h1>Tovo Server Socket.io Tester</h1>
+  <p class="status">
+    Target defaults to <strong>https://tovo-b.developteam.site:443</strong>. Use this page to verify server socket auth,
+    transports, driver location updates, trip rooms, and trip chat.
+  </p>
+
+  <h2>1. Connection</h2>
+  <div class="panel">
+    <label>Socket origin</label>
+    <input id="socketUrl" value="https://tovo-b.developteam.site:443" />
+    <small>Use the backend origin only. Do not add /api/v1. Socket.IO will use /socket.io automatically.</small>
+
+    <div class="row" style="margin-top: 12px;">
+      <div>
+        <label>Transport</label>
+        <select id="transportMode">
+          <option value="polling">polling only</option>
+          <option value="websocket">websocket only</option>
+          <option value="both">polling then websocket</option>
+        </select>
+      </div>
+      <div>
+        <label>Path</label>
+        <input id="socketPath" value="/socket.io" />
+      </div>
+    </div>
+
+    <label>JWT access token</label>
+    <textarea id="token" rows="3" placeholder="Paste token here without Bearer"></textarea>
+    <button onclick="connect()">Connect</button>
+    <button class="red" onclick="disconnect()">Disconnect</button>
+    <button class="gray" onclick="printStatus()">Print status</button>
+  </div>
+
+  <h2>2. Driver Location</h2>
+  <div class="panel">
+    <p><small>Requires a driver token. Call the driver duty/start API first when testing trip requests.</small></p>
+    <div class="row">
+      <div><label>Latitude</label><input id="lat" value="30.0444" /></div>
+      <div><label>Longitude</label><input id="lng" value="31.2357" /></div>
+      <div><label>Heading</label><input id="heading" value="0" /></div>
+      <div><label>Trip ID for live tracking</label><input id="locTripId" placeholder="optional" /></div>
+    </div>
+    <button onclick="sendLocation()">Emit driver.location_update</button>
+    <button onclick="startInterval()">Auto-send every 3s</button>
+    <button class="red" onclick="stopInterval()">Stop auto-send</button>
+  </div>
+
+  <h2>3. Trip Room</h2>
+  <div class="panel">
+    <div class="row">
+      <div><label>Trip ID</label><input id="tripId" placeholder="trip UUID" /></div>
+    </div>
+    <button onclick="joinTrip()">Emit trip.join</button>
+    <button class="red" onclick="leaveTrip()">Emit trip.leave</button>
+  </div>
+
+  <h2>4. Trip Chat</h2>
+  <div class="panel">
+    <label>Message</label>
+    <textarea id="chatBody" rows="2" placeholder="Message body"></textarea>
+    <button onclick="sendChat()">Emit trip.chat.send</button>
+    <button onclick="loadChatHistory()">Emit trip.chat.history</button>
+  </div>
+
+  <h2>Event Log</h2>
+  <button onclick="clearLog()">Clear</button>
+  <div id="log"></div>
+
+  <script>
+    let socket = null;
+    let intervalId = null;
+
+    function log(message) {
+      const div = document.getElementById('log');
+      const ts = new Date().toLocaleTimeString();
+      div.textContent += `[${ts}] ${message}\n`;
+      div.scrollTop = div.scrollHeight;
+    }
+
+    function clearLog() {
+      document.getElementById('log').textContent = '';
+    }
+
+    function getTransports() {
+      const mode = document.getElementById('transportMode').value;
+      if (mode === 'polling') return ['polling'];
+      if (mode === 'websocket') return ['websocket'];
+      return ['polling', 'websocket'];
+    }
+
+    function connect() {
+      const token = document.getElementById('token').value.trim();
+      const url = document.getElementById('socketUrl').value.trim();
+      const path = document.getElementById('socketPath').value.trim() || '/socket.io';
+      const transports = getTransports();
+
+      if (!url) return log('ERROR: socket origin is required');
+      if (!token) return log('ERROR: JWT access token is required');
+      if (socket) socket.disconnect();
+
+      log(`Connecting to ${url} path=${path} transports=${JSON.stringify(transports)}`);
+
+      socket = io(url, {
+        path,
+        auth: { token },
+        transports,
+        reconnection: false,
+        timeout: 15000,
+        forceNew: true,
+      });
+
+      socket.on('connect', () => {
+        log(`Connected. socket.id=${socket.id}, transport=${socket.io.engine.transport.name}`);
+        socket.io.engine.on('upgrade', (transport) => {
+          log(`Transport upgraded to ${transport.name}`);
+        });
+      });
+
+      socket.on('disconnect', (reason) => log(`Disconnected: ${reason}`));
+      socket.on('connect_error', (error) => {
+        log(`CONNECT ERROR: ${error.message}`);
+        if (error.description) log(`Description: ${JSON.stringify(error.description)}`);
+        if (error.context) log(`Context: ${JSON.stringify(error.context)}`);
+      });
+      socket.on('error', (error) => log(`SOCKET ERROR: ${JSON.stringify(error)}`));
+
+      socket.on('trip.new_request', (data) => log(`trip.new_request:\n${JSON.stringify(data, null, 2)}`));
+      socket.on('trip.taken', (data) => log(`trip.taken:\n${JSON.stringify(data, null, 2)}`));
+      socket.on('trip.removed', (data) => log(`trip.removed:\n${JSON.stringify(data, null, 2)}`));
+      socket.on('trip.driver_matched', (data) => log(`trip.driver_matched:\n${JSON.stringify(data, null, 2)}`));
+      socket.on('trip.status_changed', (data) => log(`trip.status_changed:\n${JSON.stringify(data, null, 2)}`));
+      socket.on('trip.cancelled', (data) => log(`trip.cancelled:\n${JSON.stringify(data, null, 2)}`));
+      socket.on('trip.driver_location', (data) => log(`trip.driver_location:\n${JSON.stringify(data, null, 2)}`));
+      socket.on('trip.join_error', (data) => log(`trip.join_error:\n${JSON.stringify(data, null, 2)}`));
+      socket.on('trip.chat.message', (data) => log(`trip.chat.message:\n${JSON.stringify(data, null, 2)}`));
+      socket.on('trip.chat.sent', (data) => log(`trip.chat.sent:\n${JSON.stringify(data, null, 2)}`));
+      socket.on('trip.chat.error', (data) => log(`trip.chat.error:\n${JSON.stringify(data, null, 2)}`));
+      socket.on('trip.chat.history_result', (data) => log(`trip.chat.history_result:\n${JSON.stringify(data, null, 2)}`));
+    }
+
+    function disconnect() {
+      stopInterval();
+      socket?.disconnect();
+      socket = null;
+    }
+
+    function requireConnected() {
+      if (!socket?.connected) {
+        log('ERROR: socket is not connected');
+        return false;
+      }
+      return true;
+    }
+
+    function printStatus() {
+      if (!socket) return log('Socket has not been created');
+      log(`connected=${socket.connected}, id=${socket.id || '-'}, transport=${socket.io?.engine?.transport?.name || '-'}`);
+    }
+
+    function sendLocation() {
+      if (!requireConnected()) return;
+      const payload = {
+        latitude: parseFloat(document.getElementById('lat').value),
+        longitude: parseFloat(document.getElementById('lng').value),
+        heading: parseFloat(document.getElementById('heading').value) || 0,
+      };
+      const tripId = document.getElementById('locTripId').value.trim();
+      if (tripId) payload.tripId = tripId;
+
+      socket.emit('driver.location_update', payload);
+      log(`Sent driver.location_update:\n${JSON.stringify(payload, null, 2)}`);
+    }
+
+    function startInterval() {
+      if (intervalId) return log('Auto-send is already running');
+      sendLocation();
+      intervalId = setInterval(sendLocation, 3000);
+      log('Auto-send started');
+    }
+
+    function stopInterval() {
+      if (!intervalId) return;
+      clearInterval(intervalId);
+      intervalId = null;
+      log('Auto-send stopped');
+    }
+
+    function joinTrip() {
+      if (!requireConnected()) return;
+      const tripId = document.getElementById('tripId').value.trim();
+      if (!tripId) return log('ERROR: trip ID is required');
+      socket.emit('trip.join', { tripId });
+      log(`Sent trip.join for ${tripId}`);
+    }
+
+    function leaveTrip() {
+      if (!requireConnected()) return;
+      const tripId = document.getElementById('tripId').value.trim();
+      if (!tripId) return log('ERROR: trip ID is required');
+      socket.emit('trip.leave', { tripId });
+      log(`Sent trip.leave for ${tripId}`);
+    }
+
+    function sendChat() {
+      if (!requireConnected()) return;
+      const tripId = document.getElementById('tripId').value.trim();
+      const body = document.getElementById('chatBody').value.trim();
+      if (!tripId) return log('ERROR: trip ID is required');
+      if (!body) return log('ERROR: message body is required');
+
+      socket.emit('trip.chat.send', { tripId, body }, (ack) => {
+        log(`trip.chat.send ACK:\n${JSON.stringify(ack, null, 2)}`);
+      });
+      log(`Sent trip.chat.send for ${tripId}`);
+    }
+
+    function loadChatHistory() {
+      if (!requireConnected()) return;
+      const tripId = document.getElementById('tripId').value.trim();
+      if (!tripId) return log('ERROR: trip ID is required');
+
+      socket.emit('trip.chat.history', { tripId, limit: 50 }, (ack) => {
+        log(`trip.chat.history ACK:\n${JSON.stringify(ack, null, 2)}`);
+      });
+      log(`Sent trip.chat.history for ${tripId}`);
+    }
+  </script>
+</body>
+</html>
