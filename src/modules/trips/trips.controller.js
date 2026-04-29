@@ -18,10 +18,23 @@ const getTripShareBaseUrl = (req) =>
 const buildTripShareUrl = (req, shareToken) =>
   shareToken ? new URL(`/api/v1/trips/share/${shareToken}`, getTripShareBaseUrl(req)).toString() : null;
 
-const withTripShareUrl = (req, trip) => ({
-  ...trip,
-  shareUrl: buildTripShareUrl(req, trip.shareToken),
-});
+const withTripShareUrl = (req, trip) => {
+  const shareUrl = buildTripShareUrl(req, trip.shareToken);
+  const responseTrip = {};
+
+  Object.entries(trip).forEach(([key, value]) => {
+    responseTrip[key] = value;
+    if (key === 'shareTokenExpiresAt') {
+      responseTrip.shareUrl = shareUrl;
+    }
+  });
+
+  if (!Object.prototype.hasOwnProperty.call(responseTrip, 'shareUrl')) {
+    responseTrip.shareUrl = shareUrl;
+  }
+
+  return responseTrip;
+};
 
 const estimateFare = async (req, res, next) => {
   try {
