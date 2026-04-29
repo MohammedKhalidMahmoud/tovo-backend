@@ -34,8 +34,9 @@
             properties:
               name: { type: string }
               baseFare: { type: number, minimum: 0 }
-              fixedSurcharge: { type: number, minimum: 0 }
-              perStopSurcharge: { type: number, minimum: 0 }
+              perKmRate: { type: number, minimum: 0 }
+              minimumDistanceKm: { type: number, minimum: 0 }
+              perStopCharge: { type: number, minimum: 0 }
               requiresSenderCode: { type: boolean, nullable: true }
               requiresReceiverCode: { type: boolean, nullable: true }
               maxWeightKg: { type: number, minimum: 0, nullable: true }
@@ -80,8 +81,9 @@
             properties:
               name: { type: string }
               baseFare: { type: number, minimum: 0 }
-              fixedSurcharge: { type: number, minimum: 0 }
-              perStopSurcharge: { type: number, minimum: 0 }
+              perKmRate: { type: number, minimum: 0 }
+              minimumDistanceKm: { type: number, minimum: 0 }
+              perStopCharge: { type: number, minimum: 0 }
               requiresSenderCode: { type: boolean, nullable: true }
               requiresReceiverCode: { type: boolean, nullable: true }
               maxWeightKg: { type: number, minimum: 0, nullable: true }

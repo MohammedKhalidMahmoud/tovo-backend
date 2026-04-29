@@ -63,6 +63,10 @@ Trip:
     dropoffLng: { type: number }
     dropoffAddress: { type: string }
     paymentType: { type: string, enum: [cash], nullable: true }
+    baseFareAmount: { type: number }
+    distanceFareAmount: { type: number }
+    tollGateAmount: { type: number }
+    stopsFareAmount: { type: number }
     finalFare: { type: number, nullable: true }
     originalFare: { type: number, nullable: true }
     discountAmount: { type: number }
@@ -107,8 +111,9 @@ Trip:
         id: { type: string, format: uuid }
         name: { type: string }
         baseFare: { type: number }
-        fixedSurcharge: { type: number }
-        perStopSurcharge: { type: number }
+        perKmRate: { type: number }
+        minimumDistanceKm: { type: number }
+        perStopCharge: { type: number }
         requiresSenderCode: { type: boolean, nullable: true }
         requiresReceiverCode: { type: boolean, nullable: true }
         maxWeightKg: { type: number, nullable: true }
@@ -146,8 +151,9 @@ TripRouteDetails:
         id: { type: string, format: uuid }
         name: { type: string }
         baseFare: { type: number }
-        fixedSurcharge: { type: number }
-        perStopSurcharge: { type: number }
+        perKmRate: { type: number }
+        minimumDistanceKm: { type: number }
+        perStopCharge: { type: number }
         requiresSenderCode: { type: boolean, nullable: true }
         requiresReceiverCode: { type: boolean, nullable: true }
         maxWeightKg: { type: number, nullable: true }
@@ -166,10 +172,14 @@ TripRouteDetails:
     stops:
       type: array
       items: { $ref: '#/components/schemas/TripStop' }
+    tollGateAmount: { type: number }
     tollFeesTotal: { type: number }
     tollGates:
       type: array
       items: { $ref: '#/components/schemas/TripTollGate' }
+    baseFareAmount: { type: number }
+    distanceFareAmount: { type: number }
+    stopsFareAmount: { type: number }
     finalFare: { type: number, nullable: true }
     originalFare: { type: number, nullable: true }
     distanceKm: { type: number, nullable: true }

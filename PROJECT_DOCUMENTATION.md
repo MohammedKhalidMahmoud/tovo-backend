@@ -843,11 +843,15 @@ Admin driver management is mounted under `/api/v1/admin/drivers` (list/get/creat
   "serviceId": "uuid",
   "serviceName": "Normal",
   "distanceKm": 12.5,
-  "farePerKm": 5,
-  "fixedSurcharge": 0,
-  "perStopSurcharge": 0,
+  "chargeableDistanceKm": 12.5,
+  "baseFareAmount": 10,
+  "perKmRate": 5,
+  "minimumDistanceKm": 2,
+  "distanceFareAmount": 62.5,
+  "perStopCharge": 5,
   "stopsCount": 0,
-  "stopsSurcharge": 0,
+  "stopsFareAmount": 0,
+  "tollGateAmount": 0,
   "originalFare": 72.5,
   "finalFare": 72.5,
   "discountAmount": 0,
@@ -1118,19 +1122,23 @@ Cancellation: Customer calls PATCH /trips/:id/cancel → status: cancelled
 - If no active regions exist → trips are allowed (backward compatibility)
 
 ### Fare Calculation
-Current implementation note: the live Trip fields are `originalFare`, `discountAmount`, and `finalFare`, where `finalFare = originalFare - discountAmount`.
+Current implementation note: the live Trip fare breakdown fields are `baseFareAmount`, `distanceFareAmount`, `tollGateAmount`, `stopsFareAmount`, `discountAmount`, and `finalFare`, where `finalFare = originalFare - discountAmount`.
 
 ```
 distanceKm     = haversine(pickupLat, pickupLng, dropoffLat, dropoffLng)
-driverEarnings = distanceKm × FARE_PER_KM
+baseFareAmount = service.baseFare
+perKmRate      = service.perKmRate
+chargeableDistanceKm = max(distanceKm, service.minimumDistanceKm)
+distanceFareAmount = chargeableDistanceKm × perKmRate
+driverEarnings = distanceFareAmount
 commission     = calculateCommission(driverEarnings)
-fixedSurcharge = service.fixedSurcharge
-stopsSurcharge = stops.length × service.perStopSurcharge
-originalFare   = driverEarnings + commission + fixedSurcharge + stopsSurcharge
+stopsFareAmount = stops.length × service.perStopCharge
+tollGateAmount = matched toll gate fees
+originalFare   = baseFareAmount + distanceFareAmount + commission + tollGateAmount + stopsFareAmount
 finalFare      = originalFare - discountAmount
 ```
-- `FARE_PER_KM` defaults to `5.0` (override via env var)
-- `Service.baseFare` exists on the model but is currently not used in `calculateTripPricing()`
+- `FARE_PER_KM` is only a fallback when a service has no `perKmRate`
+- `Service.baseFare` is the fixed amount charged at the start of the trip
 - Commission is added on top of driver earnings to produce `originalFare`
 - Coupons reduce rider fare only; they do not reduce `driverEarnings` or `commission`
 - Commission is DB-driven (see Commission System below)
@@ -1266,7 +1274,7 @@ All flows create immutable `WalletTransaction` entries and update balances atomi
 | `JWT_REFRESH_SECRET` | Refresh token signing secret | — (required) |
 | `JWT_EXPIRES_IN` | Access token TTL | e.g. `15m` |
 | `JWT_REFRESH_EXPIRES_IN` | Refresh token TTL | e.g. `7d` |
-| `FARE_PER_KM` | Fare multiplier per kilometre | `5.0` |
+| `FARE_PER_KM` | Fallback per-km rate when a service has no `perKmRate` | `5.0` |
 | `COMMISSION_PCT` | Fallback commission % (used only when no active DB rule exists) | `15` |
 | `RATE_LIMIT_DISABLED` | Set `true` to disable rate limiter | `false` |
 | `RATE_LIMIT_WINDOW_MINUTES` | Rate limit window | `15` |

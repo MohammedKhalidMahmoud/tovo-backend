@@ -26,8 +26,9 @@ exports.getService = async (id) => {
 exports.createService = async ({
   name,
   baseFare = 0,
-  fixedSurcharge = 0,
-  perStopSurcharge = 0,
+  perKmRate = 0,
+  minimumDistanceKm = 0,
+  perStopCharge = 0,
   isActive = true,
   requiresSenderCode,
   requiresReceiverCode,
@@ -38,8 +39,9 @@ exports.createService = async ({
       data: {
         name,
         baseFare: Number(baseFare) || 0,
-        fixedSurcharge: Number(fixedSurcharge) || 0,
-        perStopSurcharge: Number(perStopSurcharge) || 0,
+        perKmRate: Number(perKmRate) || 0,
+        minimumDistanceKm: Number(minimumDistanceKm) || 0,
+        perStopCharge: Number(perStopCharge) || 0,
         isActive: normalizeBoolean(isActive) ?? true,
         ...(requiresSenderCode !== undefined && { requiresSenderCode: normalizeBoolean(requiresSenderCode) }),
         ...(requiresReceiverCode !== undefined && { requiresReceiverCode: normalizeBoolean(requiresReceiverCode) }),
@@ -54,13 +56,14 @@ exports.createService = async ({
   }
 };
 
-exports.updateService = async (id, { name, baseFare, fixedSurcharge, perStopSurcharge, isActive, requiresSenderCode, requiresReceiverCode, maxWeightKg }) => {
+exports.updateService = async (id, { name, baseFare, perKmRate, minimumDistanceKm, perStopCharge, isActive, requiresSenderCode, requiresReceiverCode, maxWeightKg }) => {
   await exports.getService(id);
   const data = {};
   if (name     !== undefined) data.name     = name;
   if (baseFare !== undefined) data.baseFare = parseFloat(baseFare);
-  if (fixedSurcharge !== undefined) data.fixedSurcharge = parseFloat(fixedSurcharge);
-  if (perStopSurcharge !== undefined) data.perStopSurcharge = parseFloat(perStopSurcharge);
+  if (perKmRate !== undefined) data.perKmRate = parseFloat(perKmRate);
+  if (minimumDistanceKm !== undefined) data.minimumDistanceKm = parseFloat(minimumDistanceKm);
+  if (perStopCharge !== undefined) data.perStopCharge = parseFloat(perStopCharge);
   if (isActive !== undefined && isActive !== null) data.isActive = normalizeBoolean(isActive);
   if (requiresSenderCode !== undefined) data.requiresSenderCode = normalizeBoolean(requiresSenderCode);
   if (requiresReceiverCode !== undefined) data.requiresReceiverCode = normalizeBoolean(requiresReceiverCode);

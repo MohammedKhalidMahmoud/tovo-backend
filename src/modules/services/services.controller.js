@@ -55,8 +55,9 @@ exports.createService = async (req, res, next) => {
     const {
       name,
       baseFare,
-      fixedSurcharge,
-      perStopSurcharge,
+      perKmRate,
+      minimumDistanceKm,
+      perStopCharge,
       isActive,
       requiresSenderCode,
       requiresReceiverCode,
@@ -66,8 +67,9 @@ exports.createService = async (req, res, next) => {
     const svc = await service.createService({
       name,
       baseFare,
-      fixedSurcharge,
-      perStopSurcharge,
+      perKmRate,
+      minimumDistanceKm,
+      perStopCharge,
       isActive,
       requiresSenderCode,
       requiresReceiverCode,

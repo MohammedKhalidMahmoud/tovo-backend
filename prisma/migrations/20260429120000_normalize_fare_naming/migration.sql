@@ -1,0 +1,15 @@
+ALTER TABLE `services`
+  CHANGE COLUMN `perStopSurcharge` `perStopCharge` DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+  DROP COLUMN `fixedSurcharge`,
+  ADD COLUMN `perKmRate` DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+  ADD COLUMN `minimumDistanceKm` DOUBLE NOT NULL DEFAULT 0;
+
+UPDATE `services`
+SET `perKmRate` = 5.00
+WHERE `perKmRate` = 0.00;
+
+ALTER TABLE `trips`
+  ADD COLUMN `baseFareAmount` DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+  ADD COLUMN `distanceFareAmount` DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+  ADD COLUMN `tollGateAmount` DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+  ADD COLUMN `stopsFareAmount` DECIMAL(10, 2) NOT NULL DEFAULT 0.00;

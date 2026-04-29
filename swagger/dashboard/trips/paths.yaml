@@ -43,12 +43,15 @@
                           serviceId: { type: string, format: uuid }
                           serviceName: { type: string }
                           distanceKm: { type: number }
-                          farePerKm: { type: number }
-                          fixedSurcharge: { type: number }
-                          perStopSurcharge: { type: number }
+                          chargeableDistanceKm: { type: number }
+                          baseFareAmount: { type: number }
+                          perKmRate: { type: number }
+                          minimumDistanceKm: { type: number }
+                          distanceFareAmount: { type: number }
+                          perStopCharge: { type: number }
                           stopsCount: { type: integer }
-                          stopsSurcharge: { type: number }
-                          tollFees: { type: number }
+                          stopsFareAmount: { type: number }
+                          tollGateAmount: { type: number }
                           tollGatesCount: { type: integer }
                           originalFare: { type: number }
                           finalFare: { type: number }

@@ -31,8 +31,10 @@ const haversineKm = (lat1, lng1, lat2, lng2) => {
 // ─────────────────────────────────────────────────────────────────────────────
 const FARE_PER_KM = Number(process.env.FARE_PER_KM) || 5.0;
 const roundMoney = (value) => +Number(value).toFixed(2);
-const getFixedSurchargeAmount = (service) => roundMoney(service?.fixedSurcharge ?? 0);
-const getPerStopSurchargeAmount = (service) => roundMoney(service?.perStopSurcharge ?? 0);
+const getBaseFareAmount = (service) => roundMoney(service?.baseFare ?? 0);
+const getPerKmRate = (service) => roundMoney(service?.perKmRate ?? FARE_PER_KM);
+const getMinimumDistanceKm = (service) => Number(service?.minimumDistanceKm ?? 0) || 0;
+const getPerStopCharge = (service) => roundMoney(service?.perStopCharge ?? 0);
 const ACTIVE_PRE_START_STATUSES = ['searching', 'matched', 'on_way'];
 const ACTIVE_SHAREABLE_STATUSES = ['matched', 'on_way', 'in_progress'];
 const DEFAULT_SHARE_TOKEN_DURATION_MINUTES = 120;
@@ -163,24 +165,33 @@ const calculateTripPricing = async ({
   stops = [],
   tollFeesTotal = 0,
 }) => {
-  const driverEarnings = roundMoney(distanceKm * FARE_PER_KM);
-  const { commission } = await commissionService.calculateCommission(driverEarnings);
-  const fixedSurcharge = getFixedSurchargeAmount(service);
-  const perStopSurcharge = getPerStopSurchargeAmount(service);
-  const stopsSurcharge = roundMoney(stops.length * perStopSurcharge);
-  const normalizedTollFeesTotal = roundMoney(tollFeesTotal);
+  const baseFareAmount = getBaseFareAmount(service);
+  const perKmRate = getPerKmRate(service);
+  const minimumDistanceKm = getMinimumDistanceKm(service);
+  const chargeableDistanceKm = Math.max(Number(distanceKm) || 0, minimumDistanceKm);
+  const distanceFareAmount = roundMoney(chargeableDistanceKm * perKmRate);
+  const driverEarnings = distanceFareAmount;
+  const { commission } = await commissionService.calculateCommission(distanceFareAmount);
+  const perStopCharge = getPerStopCharge(service);
+  const stopsFareAmount = roundMoney(stops.length * perStopCharge);
+  const tollGateAmount = roundMoney(tollFeesTotal);
   const originalFare = roundMoney(
-    driverEarnings + commission + fixedSurcharge + stopsSurcharge + normalizedTollFeesTotal
+    baseFareAmount + distanceFareAmount + commission + tollGateAmount + stopsFareAmount
   );
 
   return {
     distanceKm,
+    chargeableDistanceKm,
+    baseFareAmount,
+    perKmRate,
+    minimumDistanceKm,
+    distanceFareAmount,
     driverEarnings,
     commission,
-    fixedSurcharge,
-    perStopSurcharge,
-    stopsSurcharge,
-    tollFeesTotal: normalizedTollFeesTotal,
+    perStopCharge,
+    stopsFareAmount,
+    tollGateAmount,
+    tollFeesTotal: tollGateAmount,
     originalFare,
     finalFare: originalFare,
     discountAmount: 0,
@@ -333,12 +344,15 @@ const estimateFare = async ({ pickupLat, pickupLng, dropoffLat, dropoffLng, stop
         serviceId:     service.id,
         serviceName:   service.name,
         distanceKm:    +pricing.distanceKm.toFixed(2),
-        farePerKm:     FARE_PER_KM,
-        fixedSurcharge: pricing.fixedSurcharge,
-        perStopSurcharge: pricing.perStopSurcharge,
+        chargeableDistanceKm: +pricing.chargeableDistanceKm.toFixed(2),
+        baseFareAmount: pricing.baseFareAmount,
+        perKmRate: pricing.perKmRate,
+        minimumDistanceKm: pricing.minimumDistanceKm,
+        distanceFareAmount: pricing.distanceFareAmount,
+        perStopCharge: pricing.perStopCharge,
         stopsCount: normalizedStops.length,
-        stopsSurcharge: pricing.stopsSurcharge,
-        tollFees: pricing.tollFeesTotal,
+        stopsFareAmount: pricing.stopsFareAmount,
+        tollGateAmount: pricing.tollGateAmount,
         originalFare: pricing.originalFare,
         finalFare: pricing.finalFare,
         discountAmount: pricing.discountAmount,
@@ -433,6 +447,10 @@ const createTrip = async (userId, body) => {
       : Math.max(1, Math.round(routeData.routeDurationSeconds / 60)),
     finalFare:      pricing.finalFare,
     originalFare:   pricing.originalFare,
+    baseFareAmount: pricing.baseFareAmount,
+    distanceFareAmount: pricing.distanceFareAmount,
+    tollGateAmount: pricing.tollGateAmount,
+    stopsFareAmount: pricing.stopsFareAmount,
     discountAmount: 0,
     commission:     pricing.commission,
     driverEarnings: pricing.driverEarnings,
@@ -494,7 +512,11 @@ const getTripRouteById = async (id, actorId) => {
       arrivedAt: stop.arrivedAt,
     })),
     tollFeesTotal: getTripTollFeesTotal(trip),
+    tollGateAmount: trip.tollGateAmount,
     tollGates: trip.tollGates,
+    baseFareAmount: trip.baseFareAmount,
+    distanceFareAmount: trip.distanceFareAmount,
+    stopsFareAmount: trip.stopsFareAmount,
     finalFare: trip.finalFare,
     originalFare: trip.originalFare,
     distanceKm: trip.distanceKm,
@@ -589,6 +611,10 @@ const addTripStops = async (tripId, userId, stops) => {
       : Math.max(1, Math.round(routeData.routeDurationSeconds / 60)),
     originalFare: fareData.originalFare,
     finalFare: fareData.finalFare,
+    baseFareAmount: pricing.baseFareAmount,
+    distanceFareAmount: pricing.distanceFareAmount,
+    tollGateAmount: pricing.tollGateAmount,
+    stopsFareAmount: pricing.stopsFareAmount,
     discountAmount: fareData.discountAmount,
     commission: pricing.commission,
     driverEarnings: pricing.driverEarnings,
