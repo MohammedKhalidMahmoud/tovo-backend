@@ -1,6 +1,17 @@
 const prisma = require('../../config/prisma');
 const commissionRepo = require('../earnings/earnings.repository');
 
+const formatRating = (value) => {
+  const rating = Number(value);
+  return Number.isFinite(rating) ? Number(rating.toFixed(1)) : 0;
+};
+
+const averageRating = (ratings = []) => {
+  if (!ratings.length) return 0;
+  const total = ratings.reduce((sum, rating) => sum + Number(rating.stars || 0), 0);
+  return formatRating(total / ratings.length);
+};
+
 exports.dashboardStatistics = async () => {
   const [totalRiders, totalDrivers, totalVehicles] = await Promise.all([
     prisma.user.count({ where: { role: 'customer' } }),
@@ -106,12 +117,29 @@ exports.driverPerformance = async (filters) => {
   }
 
   // simple grouping by driver
-  const trips = await prisma.trip.findMany({ where, include: { driver: true } });
+  const trips = await prisma.trip.findMany({
+    where,
+    include: {
+      driver: {
+        include: {
+          driverProfile: true,
+        },
+      },
+    },
+  });
   const map = {};
   trips.forEach((t) => {
     if (!t.driverId) return;
     const id = t.driverId;
-    if (!map[id]) map[id] = { driverId: id, ridesCompleted: 0, totalEarnings: 0, ratings: [] };
+    if (!map[id]) {
+      map[id] = {
+        driverId: id,
+        driverName: t.driver?.name || 'Unknown Driver',
+        ridesCompleted: 0,
+        totalEarnings: 0,
+        averageRating: formatRating(t.driver?.driverProfile?.rating),
+      };
+    }
     if (t.status === 'completed') {
       map[id].ridesCompleted++;
       map[id].totalEarnings += parseFloat(t.driverEarnings || 0) + parseFloat(t.discountAmount || 0);
@@ -129,11 +157,28 @@ exports.userActivity = async (filters) => {
     if (filters.dateTo) where.createdAt.lte = new Date(filters.dateTo);
   }
 
-  const trips = await prisma.trip.findMany({ where, include: { user: true } });
+  const trips = await prisma.trip.findMany({
+    where,
+    include: {
+      user: {
+        include: {
+          ratingsGiven: { select: { stars: true } },
+        },
+      },
+    },
+  });
   const map = {};
   trips.forEach((t) => {
     const id = t.userId;
-    if (!map[id]) map[id] = { userId: id, ridesTaken: 0, totalSpent: 0, ratings: [] };
+    if (!map[id]) {
+      map[id] = {
+        userId: id,
+        userName: t.user?.name || 'Unknown User',
+        ridesTaken: 0,
+        totalSpent: 0,
+        averageRating: averageRating(t.user?.ratingsGiven || []),
+      };
+    }
     if (t.status === 'completed') {
       map[id].ridesTaken++;
       map[id].totalSpent += parseFloat(t.finalFare || 0);

@@ -2,7 +2,17 @@
 const prisma = require('../../config/prisma');
 
 const ticketInclude = {
-  messages: true,
+  user: {
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      phone: true,
+    },
+  },
+  messages: {
+    orderBy: { createdAt: 'asc' },
+  },
   trip: {
     select: {
       id: true,

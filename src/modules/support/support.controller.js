@@ -33,7 +33,10 @@ const addMessage = async (req, res, next) => {
   try {
     const data = await service.addMessage(req.params.id, req.actor.id, req.body.body);
     return created(res, data, 'Message sent');
-  } catch (err) { next(err); }
+  } catch (err) {
+    if (err.status) return error(res, err.message, err.status);
+    next(err);
+  }
 };
 
 // ── Admin handlers ────────────────────────────────────────────────────────────
@@ -56,9 +59,12 @@ const getComplaint = async (req, res, next) => {
 
 const respondToComplaint = async (req, res, next) => {
   try {
-    const data = await service.respondToComplaint(req.params.id, req.body.response);
+    const data = await service.respondToComplaint(req.params.id, req.actor.id, req.body.response);
     return success(res, data, 'Response sent');
-  } catch (err) { next(err); }
+  } catch (err) {
+    if (err.status) return error(res, err.message, err.status);
+    next(err);
+  }
 };
 
 const resolveComplaint = async (req, res, next) => {

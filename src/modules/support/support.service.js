@@ -37,7 +37,24 @@ const getTicketById = async (id, actorId) => {
   return ticket;
 };
 
-const addMessage = (ticketId, senderId, body) => repo.addMessage(ticketId, senderId, body);
+const assertTicketCanReceiveMessage = async (ticketId, where = {}) => {
+  const ticket = await prisma.supportTicket.findFirst({
+    where: { id: ticketId, ...where },
+    select: { id: true, status: true },
+  });
+
+  if (!ticket) throw { status: 404, message: 'Ticket not found' };
+  if (ticket.status === 'resolved') {
+    throw { status: 422, message: 'Resolved complaints cannot receive new messages.' };
+  }
+
+  return ticket;
+};
+
+const addMessage = async (ticketId, senderId, body) => {
+  await assertTicketCanReceiveMessage(ticketId, { userId: senderId });
+  return repo.addMessage(ticketId, senderId, body);
+};
 
 // ── Admin: manage all tickets ─────────────────────────────────────────────────
 const listComplaints = async ({ page = 1, limit = 20, status, type, search, tripId } = {}) => {
@@ -64,8 +81,11 @@ const listComplaints = async ({ page = 1, limit = 20, status, type, search, trip
 
 const getComplaint = (id) => prisma.supportTicket.findUnique({ where: { id }, include: repo.ticketInclude });
 
-const respondToComplaint = (id, response) =>
-  prisma.supportTicket.update({ where: { id }, data: { response }, include: repo.ticketInclude });
+const respondToComplaint = async (id, senderId, response) => {
+  await assertTicketCanReceiveMessage(id);
+  await repo.addMessage(id, senderId, response);
+  return prisma.supportTicket.findUnique({ where: { id }, include: repo.ticketInclude });
+};
 
 const resolveComplaint = (id) =>
   prisma.supportTicket.update({ where: { id }, data: { status: 'resolved' }, include: repo.ticketInclude });

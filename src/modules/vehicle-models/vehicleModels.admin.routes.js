@@ -43,6 +43,7 @@ router.get('/', ...adminRead, ctrl.listModels);
 
 // POST /admin/vehicle-models/import-data - import models from an Excel file
 router.post('/import-data', ...adminManage, importUpload, ctrl.importModels);
+router.post('/import', ...adminManage, importUpload, ctrl.importModels);
 
 // GET /admin/vehicle-models/:id — get single model
 router.get('/:id', ...adminRead, [param('id').isUUID()], validate, ctrl.getModel);
