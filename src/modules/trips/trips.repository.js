@@ -41,6 +41,41 @@ const TRIP_INCLUDE = {
   rating: true,
 };
 
+const NEARBY_DRIVER_SELECT = {
+  id: true,
+  name: true,
+  avatarUrl: true,
+  role: true,
+  isVerified: true,
+  driverProfile: {
+    select: {
+      isOnline: true,
+      rating: true,
+      totalTrips: true,
+      serviceId: true,
+      service: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+    },
+  },
+  vehicle: {
+    select: {
+      id: true,
+      vehicleModel: {
+        select: {
+          id: true,
+          name: true,
+          brand: true,
+          imageUrl: true,
+        },
+      },
+    },
+  },
+};
+
 const normalizeDriver = (driver) => {
   if (!driver) return driver;
 
@@ -51,6 +86,22 @@ const normalizeDriver = (driver) => {
     ...safe,
     rating: profile?.rating ?? 0,
     totalTrips: profile?.totalTrips ?? 0,
+  };
+};
+
+const normalizeNearbyDriver = (driver) => {
+  if (!driver) return driver;
+
+  const profile = driver.driverProfile || null;
+  const { driverProfile, ...safe } = driver;
+
+  return {
+    ...safe,
+    isOnline: profile?.isOnline ?? false,
+    rating: profile?.rating ?? 0,
+    totalTrips: profile?.totalTrips ?? 0,
+    serviceId: profile?.serviceId ?? null,
+    service: profile?.service ?? null,
   };
 };
 
@@ -117,6 +168,20 @@ const findNewRequests = async (driverId) =>
     orderBy: { createdAt: 'asc' },
   })).map(normalizeTrip);
 
+const findNearbyDriversByIds = async (driverIds = []) => {
+  if (!driverIds.length) return [];
+
+  const drivers = await prisma.user.findMany({
+    where: {
+      id: { in: driverIds },
+      role: 'driver',
+    },
+    select: NEARBY_DRIVER_SELECT,
+  });
+
+  return drivers.map(normalizeNearbyDriver);
+};
+
 const updateTrip = async (id, data) =>
   normalizeTrip(await prisma.trip.update({ where: { id }, data, include: TRIP_INCLUDE }));
 
@@ -147,5 +212,5 @@ module.exports = {
   createTrip, findTripById, findTripsByUser,
   findTripsByDriver, findTrips, findNewRequests, updateTrip, recordDecline,
   updateTripStop, createRating, findRatingsByTrip, findDriverRatings,
-  findTripByShareToken, findTripShareSocketContextByToken,
+  findTripByShareToken, findTripShareSocketContextByToken, findNearbyDriversByIds,
 };

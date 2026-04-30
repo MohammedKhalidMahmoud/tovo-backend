@@ -401,8 +401,28 @@ const validatePickupInRegion = async (pickupLat, pickupLng) => {
 // ─────────────────────────────────────────────────────────────────────────────
 //  NEARBY DRIVERS
 // ─────────────────────────────────────────────────────────────────────────────
-const getNearbyDrivers = (pickupLat, pickupLng, radiusKm = 10, serviceId = null) =>
-  locationStore.getNearby(pickupLat, pickupLng, radiusKm, serviceId);
+const getNearbyDrivers = async (pickupLat, pickupLng, radiusKm = 10, serviceId = null) => {
+  const nearbyLocations = locationStore.getNearby(pickupLat, pickupLng, radiusKm, serviceId);
+  const drivers = await repo.findNearbyDriversByIds(nearbyLocations.map(({ id }) => id));
+  const driversById = new Map(drivers.map((driver) => [driver.id, driver]));
+
+  return nearbyLocations
+    .map((location) => {
+      const driver = driversById.get(location.id);
+      if (!driver) return null;
+
+      return {
+        id: location.id,
+        latitude: location.lat,
+        longitude: location.lng,
+        heading: location.heading,
+        serviceId: location.serviceId,
+        lastLocationAt: new Date(location.ts).toISOString(),
+        driver,
+      };
+    })
+    .filter(Boolean);
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  CREATE TRIP

@@ -35,7 +35,7 @@ const remove = (driverId) => {
  * @param {number}      pickupLng
  * @param {number}      [radiusKm=10]
  * @param {string|null} [serviceId=null]  — filter by driver's service category
- * @returns {{ id: string }[]}
+ * @returns {{ id: string, lat: number, lng: number, heading: number|null, serviceId: string|null, ts: number }[]}
  */
 const getNearby = (pickupLat, pickupLng, radiusKm = 10, serviceId = null) => {
   const latDelta = radiusKm / 111;
@@ -53,7 +53,14 @@ const getNearby = (pickupLat, pickupLng, radiusKm = 10, serviceId = null) => {
       Math.abs(loc.lat - pickupLat) <= latDelta &&
       Math.abs(loc.lng - pickupLng) <= lngDelta
     ) {
-      results.push({ id: driverId });
+      results.push({
+        id: driverId,
+        lat: loc.lat,
+        lng: loc.lng,
+        heading: loc.heading ?? null,
+        serviceId: loc.serviceId ?? null,
+        ts: loc.ts,
+      });
     }
   }
 

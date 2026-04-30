@@ -299,10 +299,10 @@ const getDriverRatings = async (req, res, next) => {
   }
 };
 
-const getNearbyDrivers = (req, res, next) => {
+const getNearbyDrivers = async (req, res, next) => {
   try {
     const { latitude, longitude, radius, serviceId } = req.query;
-    const data = service.getNearbyDrivers(+latitude, +longitude, +(radius || 5), serviceId || null);
+    const data = await service.getNearbyDrivers(+latitude, +longitude, +(radius || 5), serviceId || null);
     return success(res, data);
   } catch (err) {
     next(err);
