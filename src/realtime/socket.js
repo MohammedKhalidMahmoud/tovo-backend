@@ -8,6 +8,32 @@ const { resolveShareTokenSocketContext } = require('../modules/trips/trips.servi
 const TRIP_CHAT_MESSAGE_MAX_LENGTH = 2000;
 const TRIP_CHAT_HISTORY_MAX_LIMIT = 100;
 const TRIP_CHAT_SEND_STATUSES = new Set(['matched', 'on_way', 'in_progress']);
+const ACTIVE_DRIVER_TRIP_STATUSES = ['matched', 'on_way', 'in_progress'];
+
+const setDriverOnline = (driverId) =>
+  prisma.driverProfile.upsert({
+    where: { userId: driverId },
+    create: { userId: driverId, isOnline: true },
+    update: { isOnline: true },
+  });
+
+const setDriverOffline = (driverId) =>
+  prisma.driverProfile.updateMany({
+    where: { userId: driverId, isOnline: true },
+    data: { isOnline: false },
+  });
+
+const hasActiveDriverTrip = async (driverId) => {
+  const trip = await prisma.trip.findFirst({
+    where: {
+      driverId,
+      status: { in: ACTIVE_DRIVER_TRIP_STATUSES },
+    },
+    select: { id: true },
+  });
+
+  return Boolean(trip);
+};
 
 const emitSocketEvent = ({ io, event, payload, rooms = [], socket }) => {
   if (socket) {

@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tovo Trip Request Broadcast Tester</title>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #101114;
+      --panel: #181a1f;
+      --border: #343843;
+      --text: #eeeeee;
+      --muted: #a8adb8;
+      --accent: #44ffcc;
+      --danger: #ff5555;
+      --warn: #ffaa33;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 20px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    h1, h2 { color: var(--accent); margin-top: 0; }
+    h1 { margin-bottom: 8px; }
+    h2 { font-size: 17px; margin-bottom: 12px; }
+    p, small { color: var(--muted); }
+
+    label {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    input, textarea, select {
+      width: 100%;
+      margin-bottom: 10px;
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: #22252d;
+      color: var(--text);
+      font: inherit;
+    }
+
+    textarea { resize: vertical; }
+
+    button {
+      margin: 0 8px 8px 0;
+      padding: 8px 14px;
+      border: 0;
+      border-radius: 4px;
+      background: var(--accent);
+      color: #06110e;
+      cursor: pointer;
+      font: inherit;
+      font-weight: 700;
+    }
+
+    button:hover { filter: brightness(0.92); }
+    button.red { background: var(--danger); color: #fff; }
+    button.gray { background: #6f7684; color: #fff; }
+    button.warn { background: var(--warn); color: #16100a; }
+
+    .panel {
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--panel);
+      padding: 14px;
+      margin-bottom: 16px;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      align-items: end;
+    }
+
+    .two-column {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 16px;
+      align-items: start;
+    }
+
+    .badge {
+      display: inline-block;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 4px 9px;
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 10px;
+    }
+
+    .badge.connected {
+      border-color: rgba(68, 255, 204, 0.55);
+      color: var(--accent);
+    }
+
+    #log {
+      height: 420px;
+      overflow-y: auto;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      background: #121419;
+      padding: 10px;
+      white-space: pre-wrap;
+      font-size: 12px;
+    }
+
+    @media (max-width: 900px) {
+      .row, .two-column { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <h1>Tovo Trip Request Broadcast Tester</h1>
+  <p>
+    This verifies the exact broadcast path used by <code>emitTripRequest</code>:
+    a driver socket listens for <code>trip.new_request</code>, then a customer creates a trip.
+  </p>
+
+  <div class="panel">
+    <h2>Connection Settings</h2>
+    <div class="row">
+      <div>
+        <label>Backend origin</label>
+        <input id="baseUrl" value="https://tovo-b.developteam.site" />
+      </div>
+      <div>
+        <label>Socket path</label>
+        <input id="socketPath" value="/socket.io" />
+      </div>
+      <div>
+        <label>Transport</label>
+        <select id="transportMode">
+          <option value="both">polling then websocket</option>
+          <option value="websocket">websocket only</option>
+          <option value="polling">polling only</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="two-column">
+    <div class="panel">
+      <h2>1. Driver Listener</h2>
+      <span id="driverStatus" class="badge">Disconnected</span>
+      <label>Driver JWT access token</label>
+      <textarea id="driverToken" rows="4" placeholder="Paste driver token without Bearer"></textarea>
+
+      <div class="row">
+        <div><label>Driver latitude</label><input id="driverLat" value="30.064088" /></div>
+        <div><label>Driver longitude</label><input id="driverLng" value="31.264473" /></div>
+        <div><label>Driver heading</label><input id="driverHeading" value="0" /></div>
+      </div>
+
+      <button onclick="connectDriver()">Connect Driver Socket</button>
+      <button onclick="emitDriverLocation()">Emit Location Once</button>
+      <button onclick="startDriverLocationLoop()">Auto Location 3s</button>
+      <button class="warn" onclick="callDutyStart()">Call /drivers/me/duty/start</button>
+      <button class="red" onclick="disconnectDriver()">Disconnect</button>
+      <p>
+        The driver must be connected and present in <code>locationStore</code> before the trip is created.
+        This page logs any <code>trip.new_request</code> received by the driver socket.
+      </p>
+    </div>
+
+    <div class="panel">
+      <h2>2. Trigger Trip Creation</h2>
+      <label>Customer JWT access token</label>
+      <textarea id="customerToken" rows="4" placeholder="Paste customer token without Bearer"></textarea>
+
+      <label>Service ID</label>
+      <input id="serviceId" placeholder="Service UUID that matches the driver's service" />
+
+      <div class="row">
+        <div><label>Pickup latitude</label><input id="pickupLat" value="30.064088" /></div>
+        <div><label>Pickup longitude</label><input id="pickupLng" value="31.264473" /></div>
+        <div><label>Pickup address</label><input id="pickupAddress" value="Broadcast test pickup" /></div>
+      </div>
+
+      <div class="row">
+        <div><label>Dropoff latitude</label><input id="dropoffLat" value="30.074088" /></div>
+        <div><label>Dropoff longitude</label><input id="dropoffLng" value="31.274473" /></div>
+        <div><label>Dropoff address</label><input id="dropoffAddress" value="Broadcast test dropoff" /></div>
+      </div>
+
+      <button onclick="createTrip()">Create Trip and Broadcast</button>
+      <button class="gray" onclick="checkNearbyDrivers()">Check /trips/nearby-drivers</button>
+      <p>
+        If nearby drivers returns this driver but <code>trip.new_request</code> is not logged, the issue is likely socket delivery.
+        If nearby drivers does not return this driver, the issue is likely presence/location/service matching.
+      </p>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Event Log</h2>
+    <button class="gray" onclick="clearLog()">Clear</button>
+    <div id="log"></div>
+  </div>
+
+  <script>
+    let driverSocket = null;
+    let locationInterval = null;
+
+    function log(message, data) {
+      const div = document.getElementById('log');
+      const ts = new Date().toLocaleTimeString();
+      const suffix = data === undefined ? '' : `\n${JSON.stringify(data, null, 2)}`;
+      div.textContent += `[${ts}] ${message}${suffix}\n`;
+      div.scrollTop = div.scrollHeight;
+    }
+
+    function clearLog() {
+      document.getElementById('log').textContent = '';
+    }
+
+    function getBaseUrl() {
+      const value = document.getElementById('baseUrl').value.trim().replace(/\/+$/, '');
+      if (!value) return '';
+      return /^https?:\/\//i.test(value) ? value : `http://${value}`;
+    }
+
+    function getTransports() {
+      const mode = document.getElementById('transportMode').value;
+      if (mode === 'polling') return ['polling'];
+      if (mode === 'websocket') return ['websocket'];
+      return ['polling', 'websocket'];
+    }
+
+    function setDriverStatus(connected) {
+      const status = document.getElementById('driverStatus');
+      status.textContent = connected ? `Connected: ${driverSocket?.id || ''}` : 'Disconnected';
+      status.className = connected ? 'badge connected' : 'badge';
+    }
+
+    function getDriverLocationPayload() {
+      return {
+        latitude: Number(document.getElementById('driverLat').value),
+        longitude: Number(document.getElementById('driverLng').value),
+        heading: Number(document.getElementById('driverHeading').value) || 0,
+      };
+    }
+
+    function connectDriver() {
+      const token = document.getElementById('driverToken').value.trim();
+      const baseUrl = getBaseUrl();
+      const path = document.getElementById('socketPath').value.trim() || '/socket.io';
+
+      if (!baseUrl) return log('ERROR: backend origin is required');
+      if (!token) return log('ERROR: driver token is required');
+      if (driverSocket) driverSocket.disconnect();
+
+      log('Connecting driver socket', { baseUrl, path, transports: getTransports() });
+
+      driverSocket = io(baseUrl, {
+        path,
+        auth: { token },
+        transports: getTransports(),
+        reconnection: false,
+        timeout: 15000,
+        forceNew: true,
+      });
+
+      driverSocket.on('connect', () => {
+        setDriverStatus(true);
+        log('Driver socket connected', {
+          socketId: driverSocket.id,
+          transport: driverSocket.io.engine.transport.name,
+        });
+      });
+
+      driverSocket.io.on('reconnect_attempt', (attempt) => log(`Driver reconnect attempt ${attempt}`));
+      driverSocket.io.engine?.on?.('upgrade', (transport) => log(`Driver transport upgraded to ${transport.name}`));
+
+      driverSocket.on('disconnect', (reason) => {
+        setDriverStatus(false);
+        log(`Driver socket disconnected: ${reason}`);
+      });
+
+      driverSocket.on('connect_error', (error) => {
+        setDriverStatus(false);
+        log('DRIVER CONNECT ERROR', {
+          message: error.message,
+          description: error.description || null,
+          context: error.context || null,
+        });
+      });
+
+      driverSocket.on('trip.new_request', (trip) => {
+        log('RECEIVED trip.new_request', trip);
+      });
+
+      driverSocket.onAny((event, payload) => {
+        if (event === 'trip.new_request') return;
+        log(`Driver received event: ${event}`, payload);
+      });
+    }
+
+    function disconnectDriver() {
+      stopDriverLocationLoop();
+      driverSocket?.disconnect();
+      driverSocket = null;
+      setDriverStatus(false);
+    }
+
+    function requireDriverSocket() {
+      if (!driverSocket?.connected) {
+        log('ERROR: driver socket is not connected');
+        return false;
+      }
+      return true;
+    }
+
+    function emitDriverLocation() {
+      if (!requireDriverSocket()) return;
+      const payload = getDriverLocationPayload();
+      driverSocket.emit('driver.location_update', payload);
+      log('Sent driver.location_update', payload);
+    }
+
+    function startDriverLocationLoop() {
+      if (locationInterval) return log('Driver location loop is already running');
+      emitDriverLocation();
+      locationInterval = setInterval(emitDriverLocation, 3000);
+      log('Started driver location loop');
+    }
+
+    function stopDriverLocationLoop() {
+      if (!locationInterval) return;
+      clearInterval(locationInterval);
+      locationInterval = null;
+      log('Stopped driver location loop');
+    }
+
+    async function apiFetch(path, token, options = {}) {
+      const url = `${getBaseUrl()}${path}`;
+
+      try {
+        const response = await fetch(url, {
+          ...options,
+          headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+            ...(options.headers || {}),
+          },
+        });
+
+        const body = await response.json().catch(() => null);
+        return { ok: response.ok, status: response.status, body };
+      } catch (error) {
+        log('API REQUEST FAILED', {
+          url,
+          message: error.message,
+        });
+        return { ok: false, status: 0, body: null };
+      }
+    }
+
+    async function callDutyStart() {
+      const token = document.getElementById('driverToken').value.trim();
+      if (!token) return log('ERROR: driver token is required');
+
+      const result = await apiFetch('/api/v1/drivers/me/duty/start', token, {
+        method: 'POST',
+        body: JSON.stringify(getDriverLocationPayload()),
+      });
+
+      log(`POST /api/v1/drivers/me/duty/start -> ${result.status}`, result.body);
+    }
+
+    async function checkNearbyDrivers() {
+      const token = document.getElementById('customerToken').value.trim() || document.getElementById('driverToken').value.trim();
+      if (!token) return log('ERROR: customer or driver token is required');
+
+      const params = new URLSearchParams({
+        latitude: document.getElementById('pickupLat').value,
+        longitude: document.getElementById('pickupLng').value,
+        radius: '10',
+      });
+      const serviceId = document.getElementById('serviceId').value.trim();
+      if (serviceId) params.set('serviceId', serviceId);
+
+      const result = await apiFetch(`/api/v1/trips/nearby-drivers?${params}`, token);
+      log(`GET /api/v1/trips/nearby-drivers -> ${result.status}`, result.body);
+    }
+
+    async function createTrip() {
+      const token = document.getElementById('customerToken').value.trim();
+      const serviceId = document.getElementById('serviceId').value.trim();
+
+      if (!token) return log('ERROR: customer token is required');
+      if (!serviceId) return log('ERROR: service ID is required');
+
+      const payload = {
+        pickup_lat: Number(document.getElementById('pickupLat').value),
+        pickup_lng: Number(document.getElementById('pickupLng').value),
+        pickup_address: document.getElementById('pickupAddress').value.trim(),
+        dropoff_lat: Number(document.getElementById('dropoffLat').value),
+        dropoff_lng: Number(document.getElementById('dropoffLng').value),
+        dropoff_address: document.getElementById('dropoffAddress').value.trim(),
+        service_id: serviceId,
+        payment_type: 'cash',
+      };
+
+      log('Creating trip; watch for trip.new_request on the driver socket', payload);
+
+      const result = await apiFetch('/api/v1/trips', token, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+
+      log(`POST /api/v1/trips -> ${result.status}`, result.body);
+    }
+  </script>
+</body>
+</html>

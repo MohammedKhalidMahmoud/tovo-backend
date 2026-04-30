@@ -35,9 +35,10 @@ const updateAvatar = async (req, res, next) => {
 
 const startDuty = async (req, res, next) => {
   try {
-    await service.startDuty(req.actor.id);
-    return success(res, {}, 'You are now on duty — share your location via the socket to receive trip requests');
+    await service.startDuty(req.actor.id, req.body);
+    return success(res, {}, 'You are now on duty');
   } catch (err) {
+    if (err.status) return error(res, err.message, err.status);
     next(err);
   }
 };

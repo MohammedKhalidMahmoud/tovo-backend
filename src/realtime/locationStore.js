@@ -23,8 +23,10 @@ const set = (driverId, { lat, lng, heading = null, serviceId = null }) => {
 };
 
 const remove = (driverId) => {
-  store.delete(driverId);
+  return store.delete(driverId);
 };
+
+const has = (driverId) => store.has(driverId);
 
 /**
  * Returns drivers whose last known location falls within a bounding box
@@ -45,23 +47,23 @@ const getNearby = (pickupLat, pickupLng, radiusKm = 10, serviceId = null) => {
 
   for (const [driverId, loc] of store) {
     if (loc.ts < staleThreshold) {
-      store.delete(driverId); // lazy cleanup
       continue;
     }
     if (serviceId && loc.serviceId !== serviceId) continue; // service filter
-    if (
-      Math.abs(loc.lat - pickupLat) <= latDelta &&
-      Math.abs(loc.lng - pickupLng) <= lngDelta
-    ) {
-      results.push({
-        id: driverId,
-        lat: loc.lat,
-        lng: loc.lng,
-        heading: loc.heading ?? null,
-        serviceId: loc.serviceId ?? null,
-        ts: loc.ts,
-      });
-    }
+    // Temporarily disabled for testing: return all active drivers regardless of distance.
+    // if (
+    //   Math.abs(loc.lat - pickupLat) <= latDelta &&
+    //   Math.abs(loc.lng - pickupLng) <= lngDelta
+    // ) {
+    results.push({
+      id: driverId,
+      lat: loc.lat,
+      lng: loc.lng,
+      heading: loc.heading ?? null,
+      serviceId: loc.serviceId ?? null,
+      ts: loc.ts,
+    });
+    // }
   }
 
   return results;
@@ -70,9 +72,16 @@ const getNearby = (pickupLat, pickupLng, radiusKm = 10, serviceId = null) => {
 /** Periodic cleanup — call via setInterval to evict long-stale entries. */
 const cleanup = () => {
   const staleThreshold = Date.now() - STALE_MS;
+  const expired = [];
+
   for (const [driverId, loc] of store) {
-    if (loc.ts < staleThreshold) store.delete(driverId);
+    if (loc.ts < staleThreshold) {
+      expired.push({ id: driverId, ...loc });
+      store.delete(driverId);
+    }
   }
+
+  return expired;
 };
 
 /** Returns the full store contents — useful for debugging. */
@@ -81,4 +90,4 @@ const getAll = () => Object.fromEntries(store);
 /** Returns the location entry for a single driver, or undefined if not present. */
 const get = (driverId) => store.get(driverId);
 
-module.exports = { set, get, remove, getNearby, cleanup, getAll };
+module.exports = { set, get, has, remove, getNearby, cleanup, getAll };

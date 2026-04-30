@@ -28,7 +28,11 @@ router.put('/me',                          ...driverOnly, [
   body('notificationsEnabled').optional().isBoolean(),
 ], validate, driverController.updateProfile);
 router.patch('/me/avatar',                 ...driverOnly, upload.single('avatar'), driverController.updateAvatar);
-router.post('/me/duty/start',              ...driverOnly, driverController.startDuty);
+router.post('/me/duty/start',              ...driverOnly, [
+  body('latitude').isFloat().withMessage('latitude is required and must be a float'),
+  body('longitude').isFloat().withMessage('longitude is required and must be a float'),
+  body('heading').optional({ nullable: true }).isFloat().withMessage('heading must be a float'),
+], validate, driverController.startDuty);
 router.post('/me/duty/end',                ...driverOnly, driverController.endDuty);
 router.get('/me/wallet',                   ...driverOnly, driverController.getWallet);
 

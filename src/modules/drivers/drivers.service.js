@@ -67,8 +67,22 @@ exports.updateAvatar = async (driverId, avatarUrl) => {
   return existing?.avatarUrl ?? null;
 };
 
-exports.startDuty = (driverId) =>
-  repo.updateDriver(driverId, { isOnline: true });
+exports.startDuty = async (driverId, { latitude, longitude, heading = null } = {}) => {
+  const driver = await repo.findById(driverId);
+  if (!driver) throw { status: 404, message: 'Driver not found' };
+
+  const hadLocation = locationStore.has(driverId);
+  if (!hadLocation) {
+    await repo.updateDriver(driverId, { isOnline: true });
+  }
+
+  locationStore.set(driverId, {
+    lat: Number(latitude),
+    lng: Number(longitude),
+    heading,
+    serviceId: driver.driverProfile?.serviceId ?? null,
+  });
+};
 
 exports.endDuty = async (driverId) => {
   locationStore.remove(driverId);
