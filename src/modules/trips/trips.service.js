@@ -49,9 +49,7 @@ const normalizeStops = (stops = [], startOrder = 1) =>
   }));
 
 const getTripTollFeesTotal = (trip) =>
-  roundMoney(
-    (trip?.tollGates || []).reduce((sum, toll) => sum + Number(toll.fee || 0), 0)
-  );
+  roundMoney(trip?.tollGateAmount ?? 0);
 
 const parseRouteDurationSeconds = (durationValue) => {
   if (!durationValue || typeof durationValue !== 'string') {
@@ -102,7 +100,7 @@ const resolveRouteData = async ({
   const routeResponse = await googleRoutesProvider.computeDrivingRoute(
     getTripWaypoints({ pickupLat, pickupLng, dropoffLat, dropoffLng, stops })
   );
-
+  console.log('Google Routes API response:', routeResponse);
   const routeCoordinates = locationUtils.decodeEncodedPolyline(routeResponse.encodedPolyline);
   if (!routeCoordinates.length) {
     throw { status: 502, message: 'Unable to decode the route returned by Google Routes API' };
@@ -131,9 +129,7 @@ const resolveRouteData = async ({
     routeDurationSeconds,
     distanceKm: routeDistanceMeters / 1000,
     matchedTollGates,
-    tollFeesTotal: roundMoney(
-      matchedTollGates.reduce((sum, gate) => sum + Number(gate.fee || 0), 0)
-    ),
+    tollFeesTotal: roundMoney(Number(routeResponse.tollCost || 0)),
   };
 };
 
@@ -174,7 +170,8 @@ const calculateTripPricing = async ({
   const { commission } = await commissionService.calculateCommission(distanceFareAmount);
   const perStopCharge = getPerStopCharge(service);
   const stopsFareAmount = roundMoney(stops.length * perStopCharge);
-  const tollGateAmount = roundMoney(tollFeesTotal);
+  const tollCost = roundMoney(tollFeesTotal);
+  const tollGateAmount = roundMoney(tollCost * 1.1);
   const originalFare = roundMoney(
     baseFareAmount + distanceFareAmount + commission + tollGateAmount + stopsFareAmount
   );
@@ -190,8 +187,9 @@ const calculateTripPricing = async ({
     commission,
     perStopCharge,
     stopsFareAmount,
+    tollCost,
     tollGateAmount,
-    tollFeesTotal: tollGateAmount,
+    tollFeesTotal: tollCost,
     originalFare,
     finalFare: originalFare,
     discountAmount: 0,

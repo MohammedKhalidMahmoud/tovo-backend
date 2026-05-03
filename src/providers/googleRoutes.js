@@ -1,5 +1,5 @@
 const GOOGLE_ROUTES_ENDPOINT = 'https://routes.googleapis.com/directions/v2:computeRoutes';
-const ROUTES_FIELD_MASK = 'routes.distanceMeters,routes.duration,routes.polyline.encodedPolyline';
+const ROUTES_FIELD_MASK = 'routes.distanceMeters,routes.duration,routes.polyline.encodedPolyline,routes.travelAdvisory.tollInfo.estimatedPrice';
 
 const buildWaypoint = ({ lat, lng }) => ({
   location: {
@@ -27,6 +27,7 @@ const computeDrivingRouteMock = async ({ origin, destination, intermediates = []
     encodedPolyline: 'mock_w`{Iw`{I??_seK??_seK',
     distanceMeters: 12400,
     duration: '1320s',
+    tollCost: 0,
   };
 };
 // ─────────────────────────────────────────────────────────────────────────────
@@ -49,6 +50,12 @@ const computeDrivingRoute = async ({ origin, destination, intermediates = [] }) 
       intermediates: intermediates.map(buildWaypoint),
       travelMode: 'DRIVE',
       computeAlternativeRoutes: false,
+      extraComputations: ['TOLLS'],
+      routeModifiers: {
+        vehicleInfo: {
+          emissionType: 'GASOLINE',
+        },
+      },
     }),
   });
 
@@ -78,6 +85,7 @@ const computeDrivingRoute = async ({ origin, destination, intermediates = [] }) 
     distanceMeters: Number(route.distanceMeters || 0),
     duration: route.duration || null,
     encodedPolyline: route.polyline.encodedPolyline,
+    tollCost: Number(route.travelAdvisory?.tollInfo?.estimatedPrice?.[0]?.units || 0),
   };
 };
 
