@@ -67,7 +67,6 @@ export function configureSwagger(app) {
   const notificationsSchemas = YAML.load(path.resolve(__dirname, "./app/notifications/schemas.yaml"));
   const supportSchemas = YAML.load(path.resolve(__dirname, "./app/support/schemas.yaml"));
   const faqsSchemas = YAML.load(path.resolve(__dirname, "./app/faqs/schemas.yaml"));
-  const instructionsSchemas = YAML.load(path.resolve(__dirname, "./app/instructions/schemas.yaml"));
   // const analyticsSchemas = YAML.load(path.resolve(__dirname, "./app/analytics/schemas.yaml"));
 
   const settingsSchemas = YAML.load(path.resolve(__dirname, "./app/settings/schemas.yaml"));
@@ -91,7 +90,6 @@ export function configureSwagger(app) {
   const notificationsPaths = YAML.load(path.resolve(__dirname, "./app/notifications/paths.yaml"));
   const supportPaths = YAML.load(path.resolve(__dirname, "./app/support/paths.yaml"));
   const faqsPaths = YAML.load(path.resolve(__dirname, "./app/faqs/paths.yaml"));
-  const instructionsPaths = YAML.load(path.resolve(__dirname, "./app/instructions/paths.yaml"));
   // const analyticsPaths = YAML.load(path.resolve(__dirname, "./app/analytics/paths.yaml"));
 
   const settingsPaths = YAML.load(path.resolve(__dirname, "./app/settings/paths.yaml"));
@@ -113,7 +111,6 @@ export function configureSwagger(app) {
   const notificationsAdminPaths = YAML.load(path.resolve(__dirname, "./dashboard/notifications/paths.yaml"));
   const supportAdminPaths = YAML.load(path.resolve(__dirname, "./dashboard/support/paths.yaml"));
   const faqsAdminPaths = YAML.load(path.resolve(__dirname, "./dashboard/faqs/paths.yaml"));
-  const instructionsAdminPaths = YAML.load(path.resolve(__dirname, "./dashboard/instructions/paths.yaml"));
   const analyticsAdminPaths = YAML.load(path.resolve(__dirname, "./dashboard/analytics/paths.yaml"));
 
   const settingsAdminPaths = YAML.load(path.resolve(__dirname, "./dashboard/settings/paths.yaml"));
@@ -136,7 +133,6 @@ export function configureSwagger(app) {
     ...notificationsSchemas,
     ...supportSchemas,
     ...faqsSchemas,
-    ...instructionsSchemas,
     // ...analyticsSchemas,
     ...settingsSchemas,
     // ...commissionRulesSchemas,
@@ -159,7 +155,6 @@ export function configureSwagger(app) {
     ...notificationsPaths,
     ...supportPaths,
     ...faqsPaths,
-    ...instructionsPaths,
     // ...analyticsPaths,
     ...settingsPaths,
     // ...commissionRulesPaths,
@@ -178,7 +173,6 @@ export function configureSwagger(app) {
     ...notificationsAdminPaths,
     ...supportAdminPaths,
     ...faqsAdminPaths,
-    ...instructionsAdminPaths,
     ...analyticsAdminPaths,
     ...settingsAdminPaths,
     ...commissionRulesAdminPaths,

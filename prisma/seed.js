@@ -23,7 +23,6 @@ const DASHBOARD_TABS = [
   { label: 'Toll Gates', slug: 'toll-gates' },
   { label: 'Vehicle Models', slug: 'vehicle-models' },
   { label: 'FAQs', slug: 'faqs' },
-  { label: 'Instructions', slug: 'instructions' },
   { label: 'Cancellations', slug: 'cancellations' },
   { label: 'Payments', slug: 'payments' },
   { label: 'Wallets', slug: 'wallets' },
@@ -61,7 +60,6 @@ const supportReadSlugs = [
   'toll-gates',
   'vehicle-models',
   'faqs',
-  'instructions',
   'cancellations',
   'payments',
   'wallets',
@@ -238,6 +236,10 @@ async function main() {
         minimumDistanceKm: 2,
         perStopCharge: 5,
         imageUrl: 'https://assets.tovo.app/services/comfort.png',
+        instructions: [
+          'Stand at the selected pickup location and keep your phone available for driver calls.',
+          'Check the driver, vehicle, and trip details in the app before starting the trip.',
+        ],
         isActive: true,
       },
     }),
@@ -249,6 +251,10 @@ async function main() {
         minimumDistanceKm: 2,
         perStopCharge: 5,
         imageUrl: 'https://assets.tovo.app/services/normal.png',
+        instructions: [
+          'Stand at the selected pickup location and keep your phone available for driver calls.',
+          'Check the driver, vehicle, and trip details in the app before starting the trip.',
+        ],
         isActive: true,
       },
     }),
@@ -261,6 +267,10 @@ async function main() {
         perStopCharge: 0,
         maxWeightKg: 10,
         imageUrl: 'https://assets.tovo.app/services/moto.png',
+        instructions: [
+          'Stand at the selected pickup location and keep your phone available for driver calls.',
+          'Check the driver, vehicle, and trip details in the app before starting the trip.',
+        ],
         isActive: true,
       },
     }),
@@ -273,6 +283,10 @@ async function main() {
         perStopCharge: 10,
         maxWeightKg: 25,
         imageUrl: 'https://assets.tovo.app/services/packages.png',
+        instructions: [
+          'Share the sender code at pickup and the receiver code at delivery to complete package trips.',
+          'Check the driver, vehicle, and trip details in the app before starting the trip.',
+        ],
         isActive: true,
         requiresSenderCode: true,
         requiresReceiverCode: true,
@@ -366,47 +380,6 @@ async function main() {
     data: serviceVehicleModelSeed,
   });
   console.log('Seeded service vehicle models');
-
-  const [ridePickupInstruction, packageInstruction, safetyInstruction] = await Promise.all([
-    prisma.instruction.create({
-      data: {
-        title: 'Confirm your pickup point',
-        description: 'Stand at the selected pickup location and keep your phone available for driver calls.',
-        order: 1,
-        isActive: true,
-      },
-    }),
-    prisma.instruction.create({
-      data: {
-        title: 'Package handoff codes',
-        description: 'Share the sender code at pickup and the receiver code at delivery to complete package trips.',
-        order: 2,
-        isActive: true,
-      },
-    }),
-    prisma.instruction.create({
-      data: {
-        title: 'Safety first',
-        description: 'Check the driver, vehicle, and trip details in the app before starting the trip.',
-        order: 3,
-        isActive: true,
-      },
-    }),
-  ]);
-
-  await prisma.serviceInstruction.createMany({
-    data: [
-      { serviceId: svcComfort.id, instructionId: ridePickupInstruction.id },
-      { serviceId: svcRegular.id, instructionId: ridePickupInstruction.id },
-      { serviceId: svcMoto.id, instructionId: ridePickupInstruction.id },
-      { serviceId: svcPackage.id, instructionId: packageInstruction.id },
-      { serviceId: svcComfort.id, instructionId: safetyInstruction.id },
-      { serviceId: svcRegular.id, instructionId: safetyInstruction.id },
-      { serviceId: svcMoto.id, instructionId: safetyInstruction.id },
-      { serviceId: svcPackage.id, instructionId: safetyInstruction.id },
-    ],
-  });
-  console.log('Seeded service instructions');
 
   const [ahmed, sara, omar, driver1, driver2, driver3] = await Promise.all([
     prisma.user.create({

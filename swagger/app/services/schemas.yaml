@@ -11,6 +11,13 @@ Service:
     requiresSenderCode: { type: boolean, nullable: true }
     requiresReceiverCode: { type: boolean, nullable: true }
     maxWeightKg: { type: number, nullable: true }
+    instructions:
+      type: array
+      items: { type: string }
+      description: Ordered bullet-point text for this service.
+      example:
+        - Stand at the selected pickup location and keep your phone available for driver calls.
+        - Check the driver, vehicle, and trip details in the app before starting the trip.
     isActive: { type: boolean, example: true }
     createdAt: { type: string, format: date-time }
     updatedAt: { type: string, format: date-time }

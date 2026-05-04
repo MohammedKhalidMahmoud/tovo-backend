@@ -62,6 +62,7 @@ exports.createService = async (req, res, next) => {
       requiresSenderCode,
       requiresReceiverCode,
       maxWeightKg,
+      instructions,
     } = req.body;
     if (!name) return res.status(400).json({ success: false, message: 'Service name is required' });
     const svc = await service.createService({
@@ -74,6 +75,7 @@ exports.createService = async (req, res, next) => {
       requiresSenderCode,
       requiresReceiverCode,
       maxWeightKg,
+      instructions,
     });
     return success(res, svc, 'Service created successfully', 201);
   } catch (err) { next(err); }

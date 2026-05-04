@@ -11,6 +11,29 @@ const normalizeBoolean = (value) => {
   return !!value;
 };
 
+const normalizeInstructionText = (value) => {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim().replace(/^[-*\u2022]\s*/, '').trim();
+  return trimmed.length > 0 ? trimmed : null;
+};
+
+const normalizeInstructions = (value) => {
+  if (value === undefined) return undefined;
+  if (value === null || value === '') return [];
+  if (typeof value === 'string') {
+    return value
+      .split(/\r?\n/)
+      .map(normalizeInstructionText)
+      .filter(Boolean);
+  }
+  if (Array.isArray(value)) {
+    return value
+      .map(normalizeInstructionText)
+      .filter(Boolean);
+  }
+  throw Object.assign(new Error('instructions must be an array of strings or a newline-separated string'), { statusCode: 400 });
+};
+
 // ── Public ────────────────────────────────────────────────────────────────────
 exports.listActiveServices = () => repo.findAll();
 
@@ -33,8 +56,10 @@ exports.createService = async ({
   requiresSenderCode,
   requiresReceiverCode,
   maxWeightKg,
+  instructions,
 }) => {
   try {
+    const normalizedInstructions = normalizeInstructions(instructions);
     const svc = await prisma.service.create({
       data: {
         name,
@@ -46,6 +71,7 @@ exports.createService = async ({
         ...(requiresSenderCode !== undefined && { requiresSenderCode: normalizeBoolean(requiresSenderCode) }),
         ...(requiresReceiverCode !== undefined && { requiresReceiverCode: normalizeBoolean(requiresReceiverCode) }),
         ...(maxWeightKg !== undefined && { maxWeightKg: maxWeightKg === null ? null : parseFloat(maxWeightKg) }),
+        instructions: normalizedInstructions ?? [],
       },
     });
     invalidateServicesCache();
@@ -56,7 +82,7 @@ exports.createService = async ({
   }
 };
 
-exports.updateService = async (id, { name, baseFare, perKmRate, minimumDistanceKm, perStopCharge, isActive, requiresSenderCode, requiresReceiverCode, maxWeightKg }) => {
+exports.updateService = async (id, { name, baseFare, perKmRate, minimumDistanceKm, perStopCharge, isActive, requiresSenderCode, requiresReceiverCode, maxWeightKg, instructions }) => {
   await exports.getService(id);
   const data = {};
   if (name     !== undefined) data.name     = name;
@@ -68,10 +94,13 @@ exports.updateService = async (id, { name, baseFare, perKmRate, minimumDistanceK
   if (requiresSenderCode !== undefined) data.requiresSenderCode = normalizeBoolean(requiresSenderCode);
   if (requiresReceiverCode !== undefined) data.requiresReceiverCode = normalizeBoolean(requiresReceiverCode);
   if (maxWeightKg !== undefined) data.maxWeightKg = maxWeightKg === null ? null : parseFloat(maxWeightKg);
+  if (instructions !== undefined) data.instructions = normalizeInstructions(instructions);
   const svc = await prisma.service.update({ where: { id }, data });
   invalidateServicesCache();
   return svc;
 };
+
+exports.normalizeInstructions = normalizeInstructions;
 
 exports.deleteService = async (id) => {
   const svc = await repo.findById(id);

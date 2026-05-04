@@ -68,21 +68,21 @@ model User {
 
   // ── Driver-only fields (null for customers) ───────────────────────────────
   // ── Relations ─────────────────────────────────────────────────────────────
-  driverProfile   DriverProfile?
-  driverServices  DriverService[] @relation("DriverServices")
-  vehicle         Vehicle?
-  wallet          Wallet?
-  savedAddresses  SavedAddress[]
-  tripsAsCustomer Trip[]          @relation("CustomerTrips")
-  tripsAsDriver   Trip[]          @relation("DriverTrips")
-  ratingsGiven    Rating[]        @relation("CustomerRatings")
-  ratingsReceived Rating[]        @relation("DriverRatings")
-  insuranceCards  InsuranceCard[]
-  notifications   Notification[]
-  supportTickets  SupportTicket[]
+  driverProfile    DriverProfile?
+  driverServices   DriverService[]   @relation("DriverServices")
+  vehicle          Vehicle?
+  wallet           Wallet?
+  savedAddresses   SavedAddress[]
+  tripsAsCustomer  Trip[]            @relation("CustomerTrips")
+  tripsAsDriver    Trip[]            @relation("DriverTrips")
+  ratingsGiven     Rating[]          @relation("CustomerRatings")
+  ratingsReceived  Rating[]          @relation("DriverRatings")
+  insuranceCards   InsuranceCard[]
+  notifications    Notification[]
+  supportTickets   SupportTicket[]
   tripChatMessages TripChatMessage[]
-  deviceTokens    DeviceToken[]
-  refreshTokens   RefreshToken[]
+  deviceTokens     DeviceToken[]
+  refreshTokens    RefreshToken[]
 
   @@map("users")
 }
@@ -393,15 +393,15 @@ model SystemSetting {
 }
 
 model AdminUser {
-  id              String         @id @default(uuid())
+  id              String   @id @default(uuid())
   name            String
-  email           String         @unique
+  email           String   @unique
   passwordHash    String
-  isActive        Boolean        @default(true)
-  isAdmin         Boolean        @default(false)
+  isActive        Boolean  @default(true)
+  isAdmin         Boolean  @default(false)
   dashboardRoleId String?
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   dashboardRole DashboardRole? @relation(fields: [dashboardRoleId], references: [id])
 
@@ -530,20 +530,6 @@ model Faq {
   @@map("faqs")
 }
 
-model Instruction {
-  id          String   @id @default(uuid())
-  title       String
-  description String   @db.Text
-  order       Int      @default(0)
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  services ServiceInstruction[]
-
-  @@map("instructions")
-}
-
 // ─────────────────────────────────────────────
 //  REGION
 // ─────────────────────────────────────────────
@@ -607,6 +593,7 @@ model Service {
   requiresSenderCode   Boolean? @default(false)
   requiresReceiverCode Boolean? @default(false)
   maxWeightKg          Float?
+  instructions         Json
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 
@@ -616,22 +603,8 @@ model Service {
   driverServices         DriverService[]
   commissionLogs         CommissionLog[]
   supportedVehicleModels ServiceVehicleModel[]
-  instructions           ServiceInstruction[]
 
   @@map("services")
-}
-
-model ServiceInstruction {
-  serviceId     String
-  instructionId String
-  createdAt     DateTime @default(now())
-
-  service     Service     @relation(fields: [serviceId], references: [id], onDelete: Cascade)
-  instruction Instruction @relation(fields: [instructionId], references: [id], onDelete: Cascade)
-
-  @@id([serviceId, instructionId])
-  @@index([instructionId], map: "service_instructions_instructionId_fkey")
-  @@map("service_instructions")
 }
 
 model DriverService {
@@ -681,7 +654,6 @@ model CommissionLog {
 
   @@map("commission_logs")
 }
-
 
 model Permission {
   id          String   @id @default(uuid())

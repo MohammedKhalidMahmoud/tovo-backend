@@ -40,6 +40,12 @@
               requiresSenderCode: { type: boolean, nullable: true }
               requiresReceiverCode: { type: boolean, nullable: true }
               maxWeightKg: { type: number, minimum: 0, nullable: true }
+              instructions:
+                oneOf:
+                  - type: array
+                    items: { type: string }
+                  - type: string
+                    description: Newline-separated bullet text.
               isActive: { type: boolean }
     responses:
       '201': { description: Service created }
@@ -87,6 +93,12 @@
               requiresSenderCode: { type: boolean, nullable: true }
               requiresReceiverCode: { type: boolean, nullable: true }
               maxWeightKg: { type: number, minimum: 0, nullable: true }
+              instructions:
+                oneOf:
+                  - type: array
+                    items: { type: string }
+                  - type: string
+                    description: Newline-separated bullet text.
               isActive: { type: boolean }
     responses:
       '200': { description: Service updated }

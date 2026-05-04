@@ -23,6 +23,14 @@ const upload = multer({ storage });
 const adminRead = [authenticate, requirePermission('services:read')];
 const adminManage = [authenticate, requirePermission('services:manage')];
 
+const instructionsValidator = body('instructions')
+  .optional({ nullable: true })
+  .custom((value) => {
+    if (typeof value === 'string') return true;
+    if (Array.isArray(value) && value.every((item) => typeof item === 'string')) return true;
+    throw new Error('instructions must be an array of strings or a newline-separated string');
+  });
+
 // ── Admin ─────────────────────────────────────────────────────────────────────
 router.get('/', ...adminRead, ctrl.listServices);
 router.get('/:id', ...adminRead, [param('id').isUUID()], validate, ctrl.getService);
@@ -39,6 +47,7 @@ router.post(
     body('requiresSenderCode').optional({ nullable: true }).isBoolean(),
     body('requiresReceiverCode').optional({ nullable: true }).isBoolean(),
     body('maxWeightKg').optional({ nullable: true }).isFloat({ min: 0 }).withMessage('maxWeightKg must be a non-negative number'),
+    instructionsValidator,
     body('isActive').optional().isBoolean(),
   ],
   validate,
@@ -58,6 +67,7 @@ router.patch(
     body('requiresSenderCode').optional({ nullable: true }).isBoolean(),
     body('requiresReceiverCode').optional({ nullable: true }).isBoolean(),
     body('maxWeightKg').optional({ nullable: true }).isFloat({ min: 0 }).withMessage('maxWeightKg must be a non-negative number'),
+    instructionsValidator,
     body('isActive').optional().isBoolean(),
   ],
   validate,

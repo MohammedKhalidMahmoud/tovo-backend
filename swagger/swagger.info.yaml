@@ -69,9 +69,6 @@ tags:
   - name: FAQs
     description: Frequently asked questions
 
-  - name: Instructions
-    description: Service-specific customer instructions
-
   - name: Settings
     description: System settings
 
@@ -117,9 +114,6 @@ tags:
 
   - name: Admin FAQs
     description: AdminFrequently asked questions
-
-  - name: Admin Instructions
-    description: Admin service-specific customer instructions
 
   - name: Admin Dashboard
     description: Admin Public and admin analytics/reporting endpoints
