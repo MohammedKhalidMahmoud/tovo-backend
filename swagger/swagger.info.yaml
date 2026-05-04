@@ -13,7 +13,7 @@ info:
 servers:
   - url: http://localhost:3000/api/v1
     description: Local Development Server
-  - url: https://tovo-b.developteam.site/api/v1
+  - url: https://tovo-b.nodeteam.site/api/v1
     description: Production Server
 
 components:

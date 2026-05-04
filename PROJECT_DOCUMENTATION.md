@@ -730,7 +730,7 @@ SupportTicket  ──< TicketMessage
 ### Base URL
 ```
 http://localhost:<PORT>/api/v1        (local)
-https://tovo-b.developteam.site/api/v1  (production)
+https://tovo-b.nodeteam.site/api/v1  (production)
 ```
 
 ### Authentication Flow
